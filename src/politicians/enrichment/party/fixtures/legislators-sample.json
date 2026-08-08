@@ -1,0 +1,67 @@
+[
+  {
+    "id": { "bioguide": "B001236" },
+    "name": {
+      "first": "John",
+      "last": "Boozman",
+      "official_full": "John Boozman"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "AR",
+        "party": "Republican",
+        "start": "2011-01-03"
+      }
+    ]
+  },
+  {
+    "id": { "bioguide": "P000197" },
+    "name": {
+      "first": "Nancy",
+      "last": "Pelosi",
+      "official_full": "Nancy Pelosi"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "state": "CA",
+        "district": 11,
+        "party": "Democrat",
+        "start": "2025-01-03"
+      }
+    ]
+  },
+  {
+    "id": { "bioguide": "S000033" },
+    "name": {
+      "first": "Bernard",
+      "last": "Sanders",
+      "official_full": "Bernie Sanders"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "VT",
+        "party": "Independent",
+        "start": "2007-01-04"
+      }
+    ]
+  },
+  {
+    "id": { "bioguide": "K000393" },
+    "name": {
+      "first": "Angus",
+      "last": "King",
+      "official_full": "Angus S. King Jr."
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "state": "ME",
+        "party": "Independent",
+        "start": "2013-01-03"
+      }
+    ]
+  }
+]

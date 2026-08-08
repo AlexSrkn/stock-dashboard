@@ -1,0 +1,343 @@
+import type { FinancialMetricDefinition, FinancialMetricKey, StatementSection } from "./types.js";
+
+export const FINANCIAL_METRIC_DEFINITIONS: FinancialMetricDefinition[] = [
+  {
+    key: "revenue",
+    label: "Revenue",
+    statement: "income",
+    valueType: "duration",
+    tags: [
+      "Revenues",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "RevenueFromContractWithCustomerIncludingAssessedTax",
+      "SalesRevenueNet",
+      "SalesRevenueGoodsNet",
+      "RevenueFromContractWithCustomerExcludingAssessedTaxAndOther",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "gross_profit",
+    label: "Gross profit",
+    statement: "income",
+    valueType: "duration",
+    tags: ["GrossProfit"],
+    unit: "USD",
+  },
+  {
+    key: "operating_income",
+    label: "Operating income",
+    statement: "income",
+    valueType: "duration",
+    tags: ["OperatingIncomeLoss"],
+    unit: "USD",
+  },
+  {
+    key: "net_income",
+    label: "Net income",
+    statement: "income",
+    valueType: "duration",
+    tags: ["NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"],
+    unit: "USD",
+  },
+  {
+    key: "eps_basic",
+    label: "EPS (basic)",
+    statement: "income",
+    valueType: "duration",
+    tags: ["EarningsPerShareBasic"],
+    unit: "USD/shares",
+  },
+  {
+    key: "eps_diluted",
+    label: "EPS (diluted)",
+    statement: "income",
+    valueType: "duration",
+    tags: ["EarningsPerShareDiluted"],
+    unit: "USD/shares",
+  },
+  {
+    key: "total_assets",
+    label: "Total assets",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["Assets", "NoncurrentAssets", "CurrentAssets"],
+    unit: "USD",
+  },
+  {
+    key: "total_liabilities",
+    label: "Total liabilities",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["Liabilities"],
+    unit: "USD",
+  },
+  {
+    key: "shareholder_equity",
+    label: "Shareholder equity",
+    statement: "balance",
+    valueType: "instant",
+    tags: [
+      "StockholdersEquity",
+      "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+      "Equity",
+      "EquityAttributableToOwnersOfParent",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "cash_and_equivalents",
+    label: "Cash & equivalents",
+    statement: "balance",
+    valueType: "instant",
+    tags: [
+      "CashAndCashEquivalentsAtCarryingValue",
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+      "CashCashEquivalentsAndShortTermInvestments",
+      "Cash",
+      "CashAndCashEquivalents",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "operating_cash_flow",
+    label: "Operating cash flow",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: [
+      "NetCashProvidedByUsedInOperatingActivities",
+      "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "capital_expenditures",
+    label: "Capital expenditures",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: [
+      "PaymentsToAcquirePropertyPlantAndEquipment",
+      "PaymentsToAcquireProductiveAssets",
+      "PaymentsToAcquireOtherPropertyPlantAndEquipment",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "debt",
+    label: "Debt",
+    statement: "balance",
+    valueType: "instant",
+    tags: [
+      "LongTermDebt",
+      "LongTermDebtNoncurrent",
+      "DebtInstrumentCarryingAmount",
+      "LongTermDebtAndCapitalLeaseObligations",
+      "LongTermDebtAndCapitalLeaseObligationsCurrent",
+      "ShortTermBorrowings",
+      "DebtCurrent",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "shares_outstanding",
+    label: "Shares outstanding",
+    statement: "balance",
+    valueType: "instant",
+    tags: [
+      "EntityCommonStockSharesOutstanding",
+      "CommonStockSharesOutstanding",
+      "CommonStockSharesIssued",
+    ],
+    unit: "shares",
+  },
+
+  // ---------------------------------------------------------------------------
+  // Additional direct SEC metrics (sourced from facts.us-gaap unless noted).
+  // Each flows through the same extraction pipeline, so provenance
+  // (xbrlTagUsed, filingDate, accessionNumber, fiscalPeriod, fiscalYear,
+  // sourceForm) is preserved automatically via metricSources.
+  // ---------------------------------------------------------------------------
+
+  // --- Balance sheet (instant) ---
+  {
+    key: "current_assets",
+    label: "Current assets",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["AssetsCurrent"],
+    unit: "USD",
+  },
+  {
+    key: "current_liabilities",
+    label: "Current liabilities",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["LiabilitiesCurrent"],
+    unit: "USD",
+  },
+  {
+    key: "long_term_debt",
+    label: "Long-term debt",
+    statement: "balance",
+    valueType: "instant",
+    tags: [
+      "LongTermDebtNoncurrent",
+      "LongTermDebt",
+      "LongTermDebtAndCapitalLeaseObligationsNoncurrent",
+    ],
+    unit: "USD",
+  },
+  {
+    // Internal helper for the Total Debt derived metric (current portion of debt).
+    key: "current_debt",
+    label: "Current debt",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings"],
+    unit: "USD",
+  },
+  {
+    key: "inventory",
+    label: "Inventory",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["InventoryNet", "InventoryFinishedGoods", "InventoryGross"],
+    unit: "USD",
+  },
+  {
+    key: "accounts_receivable",
+    label: "Accounts receivable",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["AccountsReceivableNetCurrent", "ReceivablesNetCurrent"],
+    unit: "USD",
+  },
+  {
+    key: "property_plant_equipment",
+    label: "Property, plant & equipment",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["PropertyPlantAndEquipmentNet"],
+    unit: "USD",
+  },
+  {
+    key: "goodwill",
+    label: "Goodwill",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["Goodwill"],
+    unit: "USD",
+  },
+
+  // --- Income statement (duration) ---
+  {
+    key: "research_and_development_expense",
+    label: "R&D expense",
+    statement: "income",
+    valueType: "duration",
+    tags: ["ResearchAndDevelopmentExpense"],
+    unit: "USD",
+  },
+  {
+    key: "selling_general_administrative_expense",
+    label: "SG&A expense",
+    statement: "income",
+    valueType: "duration",
+    tags: ["SellingGeneralAndAdministrativeExpense"],
+    unit: "USD",
+  },
+  {
+    key: "interest_expense",
+    label: "Interest expense",
+    statement: "income",
+    valueType: "duration",
+    tags: ["InterestExpense", "InterestExpenseAndDebtExpense"],
+    unit: "USD",
+  },
+  {
+    key: "income_tax_expense",
+    label: "Income tax expense",
+    statement: "income",
+    valueType: "duration",
+    tags: ["IncomeTaxExpenseBenefit"],
+    unit: "USD",
+  },
+  {
+    key: "weighted_average_diluted_shares",
+    label: "Weighted avg diluted shares",
+    statement: "income",
+    valueType: "duration",
+    tags: [
+      "WeightedAverageNumberOfDilutedSharesOutstanding",
+      "WeightedAverageNumberOfShareOutstandingDiluted",
+    ],
+    unit: "shares",
+  },
+
+  // --- Cash flow (duration) ---
+  {
+    key: "investing_cash_flow",
+    label: "Investing cash flow",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: [
+      "NetCashProvidedByUsedInInvestingActivities",
+      "NetCashProvidedByUsedInInvestingActivitiesContinuingOperations",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "financing_cash_flow",
+    label: "Financing cash flow",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: [
+      "NetCashProvidedByUsedInFinancingActivities",
+      "NetCashProvidedByUsedInFinancingActivitiesContinuingOperations",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "dividends_paid",
+    label: "Dividends paid",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: ["PaymentsOfDividends", "DividendsPaid", "PaymentsOfDividendsCommonStock"],
+    unit: "USD",
+  },
+  {
+    key: "share_repurchases",
+    label: "Share repurchases",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: ["PaymentsForRepurchaseOfCommonStock", "PaymentsToAcquireTreasuryStock"],
+    unit: "USD",
+  },
+  {
+    // Internal helper for the EBITDA derived metric.
+    key: "depreciation_amortization",
+    label: "Depreciation & amortization",
+    statement: "cashflow",
+    valueType: "duration",
+    tags: [
+      "DepreciationDepletionAndAmortization",
+      "Depreciation",
+      "DepreciationAmortizationAndAccretionNet",
+    ],
+    unit: "USD",
+  },
+];
+
+export const FINANCIAL_METRIC_KEYS: FinancialMetricKey[] = FINANCIAL_METRIC_DEFINITIONS.map(
+  (d) => d.key
+);
+
+export const FINANCIAL_METRIC_BY_KEY = Object.fromEntries(
+  FINANCIAL_METRIC_DEFINITIONS.map((d) => [d.key, d])
+) as Record<FinancialMetricKey, FinancialMetricDefinition>;
+
+export const METRICS_BY_STATEMENT: Record<StatementSection, FinancialMetricDefinition[]> = {
+  income: FINANCIAL_METRIC_DEFINITIONS.filter((d) => d.statement === "income"),
+  balance: FINANCIAL_METRIC_DEFINITIONS.filter((d) => d.statement === "balance"),
+  cashflow: FINANCIAL_METRIC_DEFINITIONS.filter((d) => d.statement === "cashflow"),
+};

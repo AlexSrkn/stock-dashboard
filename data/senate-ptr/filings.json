@@ -1,0 +1,29 @@
+[
+  {
+    "firstName": "John",
+    "lastName": "Boozman",
+    "office": "Boozman, John (Senator)",
+    "reportType": "Periodic Transaction Report for 06/16/2026 (Amendment 1)",
+    "reportDate": "06/16/2026",
+    "reportUrl": "https://efdsearch.senate.gov/search/view/ptr/727b4eb6-d8c7-4792-aa5b-c651c2d72f9c/",
+    "reportId": "727b4eb6-d8c7-4792-aa5b-c651c2d72f9c"
+  },
+  {
+    "firstName": "John",
+    "lastName": "Boozman",
+    "office": "Boozman, John (Senator)",
+    "reportType": "Periodic Transaction Report for 06/16/2026",
+    "reportDate": "06/16/2026",
+    "reportUrl": "https://efdsearch.senate.gov/search/view/ptr/a9754ff5-901a-4877-b7be-a647bd361c52/",
+    "reportId": "a9754ff5-901a-4877-b7be-a647bd361c52"
+  },
+  {
+    "firstName": "John",
+    "lastName": "Boozman",
+    "office": "Boozman, John (Senator)",
+    "reportType": "Periodic Transaction Report for 06/16/2026",
+    "reportDate": "06/16/2026",
+    "reportUrl": "https://efdsearch.senate.gov/search/view/ptr/2e076759-19df-458d-a3be-53610b8be5d0/",
+    "reportId": "2e076759-19df-458d-a3be-53610b8be5d0"
+  }
+]

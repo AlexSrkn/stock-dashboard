@@ -1,0 +1,5377 @@
+{
+  "fetchedAt": "2026-07-27T15:12:53.306Z",
+  "source": "unitedstates/congress-legislators (Congress.gov biographical data)",
+  "sourceUrl": "https://unitedstates.github.io/congress-legislators/legislators-current.json",
+  "members": [
+    {
+      "bioguideId": "C000127",
+      "name": "Maria Cantwell",
+      "firstName": "Maria",
+      "lastName": "Cantwell",
+      "chamber": "senate",
+      "state": "WA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000367",
+      "name": "Amy Klobuchar",
+      "firstName": "Amy",
+      "lastName": "Klobuchar",
+      "chamber": "senate",
+      "state": "MN",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S000033",
+      "name": "Bernard Sanders",
+      "firstName": "Bernard",
+      "lastName": "Sanders",
+      "chamber": "senate",
+      "state": "VT",
+      "district": null,
+      "party": "Independent"
+    },
+    {
+      "bioguideId": "W000802",
+      "name": "Sheldon Whitehouse",
+      "firstName": "Sheldon",
+      "lastName": "Whitehouse",
+      "chamber": "senate",
+      "state": "RI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001261",
+      "name": "John Barrasso",
+      "firstName": "John",
+      "lastName": "Barrasso",
+      "chamber": "senate",
+      "state": "WY",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000437",
+      "name": "Roger F. Wicker",
+      "firstName": "Roger",
+      "lastName": "Wicker",
+      "chamber": "senate",
+      "state": "MS",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001035",
+      "name": "Susan M. Collins",
+      "firstName": "Susan",
+      "lastName": "Collins",
+      "chamber": "senate",
+      "state": "ME",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001056",
+      "name": "John Cornyn",
+      "firstName": "John",
+      "lastName": "Cornyn",
+      "chamber": "senate",
+      "state": "TX",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000563",
+      "name": "Richard J. Durbin",
+      "firstName": "Richard",
+      "lastName": "Durbin",
+      "chamber": "senate",
+      "state": "IL",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M000355",
+      "name": "Mitch McConnell",
+      "firstName": "Mitch",
+      "lastName": "McConnell",
+      "chamber": "senate",
+      "state": "KY",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001176",
+      "name": "Jeff Merkley",
+      "firstName": "Jeff",
+      "lastName": "Merkley",
+      "chamber": "senate",
+      "state": "OR",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000122",
+      "name": "Jack Reed",
+      "firstName": "John",
+      "lastName": "Reed",
+      "chamber": "senate",
+      "state": "RI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000584",
+      "name": "James E. Risch",
+      "firstName": "James",
+      "lastName": "Risch",
+      "chamber": "senate",
+      "state": "ID",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001181",
+      "name": "Jeanne Shaheen",
+      "firstName": "Jeanne",
+      "lastName": "Shaheen",
+      "chamber": "senate",
+      "state": "NH",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000805",
+      "name": "Mark R. Warner",
+      "firstName": "Mark",
+      "lastName": "Warner",
+      "chamber": "senate",
+      "state": "VA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000555",
+      "name": "Kirsten E. Gillibrand",
+      "firstName": "Kirsten",
+      "lastName": "Gillibrand",
+      "chamber": "senate",
+      "state": "NY",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001088",
+      "name": "Christopher A. Coons",
+      "firstName": "Christopher",
+      "lastName": "Coons",
+      "chamber": "senate",
+      "state": "DE",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000055",
+      "name": "Robert B. Aderholt",
+      "firstName": "Robert",
+      "lastName": "Aderholt",
+      "chamber": "house",
+      "state": "AL",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001230",
+      "name": "Tammy Baldwin",
+      "firstName": "Tammy",
+      "lastName": "Baldwin",
+      "chamber": "senate",
+      "state": "WI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001267",
+      "name": "Michael F. Bennet",
+      "firstName": "Michael",
+      "lastName": "Bennet",
+      "chamber": "senate",
+      "state": "CO",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001257",
+      "name": "Gus M. Bilirakis",
+      "firstName": "Gus",
+      "lastName": "Bilirakis",
+      "chamber": "house",
+      "state": "FL",
+      "district": "12",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B000490",
+      "name": "Sanford D. Bishop, Jr.",
+      "firstName": "Sanford",
+      "lastName": "Bishop",
+      "chamber": "house",
+      "state": "GA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001243",
+      "name": "Marsha Blackburn",
+      "firstName": "Marsha",
+      "lastName": "Blackburn",
+      "chamber": "senate",
+      "state": "TN",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001277",
+      "name": "Richard Blumenthal",
+      "firstName": "Richard",
+      "lastName": "Blumenthal",
+      "chamber": "senate",
+      "state": "CT",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001236",
+      "name": "John Boozman",
+      "firstName": "John",
+      "lastName": "Boozman",
+      "chamber": "senate",
+      "state": "AR",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001260",
+      "name": "Vern Buchanan",
+      "firstName": "Vern",
+      "lastName": "Buchanan",
+      "chamber": "house",
+      "state": "FL",
+      "district": "16",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C000059",
+      "name": "Ken Calvert",
+      "firstName": "Ken",
+      "lastName": "Calvert",
+      "chamber": "house",
+      "state": "CA",
+      "district": "41",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001047",
+      "name": "Shelley Moore Capito",
+      "firstName": "Shelley",
+      "lastName": "Capito",
+      "chamber": "senate",
+      "state": "WV",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001072",
+      "name": "André Carson",
+      "firstName": "André",
+      "lastName": "Carson",
+      "chamber": "house",
+      "state": "IN",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001051",
+      "name": "John R. Carter",
+      "firstName": "John",
+      "lastName": "Carter",
+      "chamber": "house",
+      "state": "TX",
+      "district": "31",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001075",
+      "name": "Bill Cassidy",
+      "firstName": "Bill",
+      "lastName": "Cassidy",
+      "chamber": "senate",
+      "state": "LA",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001066",
+      "name": "Kathy Castor",
+      "firstName": "Kathy",
+      "lastName": "Castor",
+      "chamber": "house",
+      "state": "FL",
+      "district": "14",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001080",
+      "name": "Judy Chu",
+      "firstName": "Judy",
+      "lastName": "Chu",
+      "chamber": "house",
+      "state": "CA",
+      "district": "28",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001067",
+      "name": "Yvette D. Clarke",
+      "firstName": "Yvette",
+      "lastName": "Clarke",
+      "chamber": "house",
+      "state": "NY",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001061",
+      "name": "Emanuel Cleaver",
+      "firstName": "Emanuel",
+      "lastName": "Cleaver",
+      "chamber": "house",
+      "state": "MO",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C000537",
+      "name": "James E. Clyburn",
+      "firstName": "James",
+      "lastName": "Clyburn",
+      "chamber": "house",
+      "state": "SC",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001068",
+      "name": "Steve Cohen",
+      "firstName": "Steve",
+      "lastName": "Cohen",
+      "chamber": "house",
+      "state": "TN",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001053",
+      "name": "Tom Cole",
+      "firstName": "Tom",
+      "lastName": "Cole",
+      "chamber": "house",
+      "state": "OK",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001059",
+      "name": "Jim Costa",
+      "firstName": "Jim",
+      "lastName": "Costa",
+      "chamber": "house",
+      "state": "CA",
+      "district": "21",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001069",
+      "name": "Joe Courtney",
+      "firstName": "Joe",
+      "lastName": "Courtney",
+      "chamber": "house",
+      "state": "CT",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C000880",
+      "name": "Mike Crapo",
+      "firstName": "Michael",
+      "lastName": "Crapo",
+      "chamber": "senate",
+      "state": "ID",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001087",
+      "name": "Eric A. \"Rick\" Crawford",
+      "firstName": "Eric",
+      "lastName": "Crawford",
+      "chamber": "house",
+      "state": "AR",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001063",
+      "name": "Henry Cuellar",
+      "firstName": "Henry",
+      "lastName": "Cuellar",
+      "chamber": "house",
+      "state": "TX",
+      "district": "28",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000096",
+      "name": "Danny K. Davis",
+      "firstName": "Danny",
+      "lastName": "Davis",
+      "chamber": "house",
+      "state": "IL",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000197",
+      "name": "Diana DeGette",
+      "firstName": "Diana",
+      "lastName": "DeGette",
+      "chamber": "house",
+      "state": "CO",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000216",
+      "name": "Rosa L. DeLauro",
+      "firstName": "Rosa",
+      "lastName": "DeLauro",
+      "chamber": "house",
+      "state": "CT",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000616",
+      "name": "Scott DesJarlais",
+      "firstName": "Scott",
+      "lastName": "DesJarlais",
+      "chamber": "house",
+      "state": "TN",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000600",
+      "name": "Mario Diaz-Balart",
+      "firstName": "Mario",
+      "lastName": "Diaz-Balart",
+      "chamber": "house",
+      "state": "FL",
+      "district": "26",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000399",
+      "name": "Lloyd Doggett",
+      "firstName": "Lloyd",
+      "lastName": "Doggett",
+      "chamber": "house",
+      "state": "TX",
+      "district": "37",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000459",
+      "name": "Charles J. \"Chuck\" Fleischmann",
+      "firstName": "Charles",
+      "lastName": "Fleischmann",
+      "chamber": "house",
+      "state": "TN",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000450",
+      "name": "Virginia Foxx",
+      "firstName": "Virginia",
+      "lastName": "Foxx",
+      "chamber": "house",
+      "state": "NC",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000559",
+      "name": "John Garamendi",
+      "firstName": "John",
+      "lastName": "Garamendi",
+      "chamber": "house",
+      "state": "CA",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000565",
+      "name": "Paul A. Gosar",
+      "firstName": "Paul",
+      "lastName": "Gosar",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000386",
+      "name": "Chuck Grassley",
+      "firstName": "Charles",
+      "lastName": "Grassley",
+      "chamber": "senate",
+      "state": "IA",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000546",
+      "name": "Sam Graves",
+      "firstName": "Sam",
+      "lastName": "Graves",
+      "chamber": "house",
+      "state": "MO",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000553",
+      "name": "Al Green",
+      "firstName": "Al",
+      "lastName": "Green",
+      "chamber": "house",
+      "state": "TX",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000568",
+      "name": "H. Morgan Griffith",
+      "firstName": "H.",
+      "lastName": "Griffith",
+      "chamber": "house",
+      "state": "VA",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000558",
+      "name": "Brett Guthrie",
+      "firstName": "Brett",
+      "lastName": "Guthrie",
+      "chamber": "house",
+      "state": "KY",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001052",
+      "name": "Andy Harris",
+      "firstName": "Andy",
+      "lastName": "Harris",
+      "chamber": "house",
+      "state": "MD",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001046",
+      "name": "Martin Heinrich",
+      "firstName": "Martin",
+      "lastName": "Heinrich",
+      "chamber": "senate",
+      "state": "NM",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001047",
+      "name": "James A. Himes",
+      "firstName": "James",
+      "lastName": "Himes",
+      "chamber": "house",
+      "state": "CT",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001042",
+      "name": "Mazie K. Hirono",
+      "firstName": "Mazie",
+      "lastName": "Hirono",
+      "chamber": "senate",
+      "state": "HI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001061",
+      "name": "John Hoeven",
+      "firstName": "John",
+      "lastName": "Hoeven",
+      "chamber": "senate",
+      "state": "ND",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H000874",
+      "name": "Steny H. Hoyer",
+      "firstName": "Steny",
+      "lastName": "Hoyer",
+      "chamber": "house",
+      "state": "MD",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001058",
+      "name": "Bill Huizenga",
+      "firstName": "Bill",
+      "lastName": "Huizenga",
+      "chamber": "house",
+      "state": "MI",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000288",
+      "name": "Henry C. \"Hank\" Johnson, Jr.",
+      "firstName": "Henry",
+      "lastName": "Johnson",
+      "chamber": "house",
+      "state": "GA",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "J000293",
+      "name": "Ron Johnson",
+      "firstName": "Ron",
+      "lastName": "Johnson",
+      "chamber": "senate",
+      "state": "WI",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000289",
+      "name": "Jim Jordan",
+      "firstName": "Jim",
+      "lastName": "Jordan",
+      "chamber": "house",
+      "state": "OH",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000009",
+      "name": "Marcy Kaptur",
+      "firstName": "Marcy",
+      "lastName": "Kaptur",
+      "chamber": "house",
+      "state": "OH",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000375",
+      "name": "William R. Keating",
+      "firstName": "William",
+      "lastName": "Keating",
+      "chamber": "house",
+      "state": "MA",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000376",
+      "name": "Mike Kelly",
+      "firstName": "Mike",
+      "lastName": "Kelly",
+      "chamber": "house",
+      "state": "PA",
+      "district": "16",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000575",
+      "name": "James Lankford",
+      "firstName": "James",
+      "lastName": "Lankford",
+      "chamber": "senate",
+      "state": "OK",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000560",
+      "name": "Rick Larsen",
+      "firstName": "Rick",
+      "lastName": "Larsen",
+      "chamber": "house",
+      "state": "WA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000557",
+      "name": "John B. Larson",
+      "firstName": "John",
+      "lastName": "Larson",
+      "chamber": "house",
+      "state": "CT",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000566",
+      "name": "Robert E. Latta",
+      "firstName": "Robert",
+      "lastName": "Latta",
+      "chamber": "house",
+      "state": "OH",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000577",
+      "name": "Mike Lee",
+      "firstName": "Mike",
+      "lastName": "Lee",
+      "chamber": "senate",
+      "state": "UT",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000397",
+      "name": "Zoe Lofgren",
+      "firstName": "Zoe",
+      "lastName": "Lofgren",
+      "chamber": "house",
+      "state": "CA",
+      "district": "18",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000491",
+      "name": "Frank D. Lucas",
+      "firstName": "Frank",
+      "lastName": "Lucas",
+      "chamber": "house",
+      "state": "OK",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000570",
+      "name": "Ben Ray Luján",
+      "firstName": "Ben",
+      "lastName": "Luján",
+      "chamber": "senate",
+      "state": "NM",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000562",
+      "name": "Stephen F. Lynch",
+      "firstName": "Stephen",
+      "lastName": "Lynch",
+      "chamber": "house",
+      "state": "MA",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M000133",
+      "name": "Edward J. Markey",
+      "firstName": "Edward",
+      "lastName": "Markey",
+      "chamber": "senate",
+      "state": "MA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001163",
+      "name": "Doris O. Matsui",
+      "firstName": "Doris",
+      "lastName": "Matsui",
+      "chamber": "house",
+      "state": "CA",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001157",
+      "name": "Michael T. McCaul",
+      "firstName": "Michael",
+      "lastName": "McCaul",
+      "chamber": "house",
+      "state": "TX",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001177",
+      "name": "Tom McClintock",
+      "firstName": "Tom",
+      "lastName": "McClintock",
+      "chamber": "house",
+      "state": "CA",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001143",
+      "name": "Betty McCollum",
+      "firstName": "Betty",
+      "lastName": "McCollum",
+      "chamber": "house",
+      "state": "MN",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M000312",
+      "name": "James P. McGovern",
+      "firstName": "James",
+      "lastName": "McGovern",
+      "chamber": "house",
+      "state": "MA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001137",
+      "name": "Gregory W. Meeks",
+      "firstName": "Gregory",
+      "lastName": "Meeks",
+      "chamber": "house",
+      "state": "NY",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001160",
+      "name": "Gwen Moore",
+      "firstName": "Gwen",
+      "lastName": "Moore",
+      "chamber": "house",
+      "state": "WI",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M000934",
+      "name": "Jerry Moran",
+      "firstName": "Jerry",
+      "lastName": "Moran",
+      "chamber": "senate",
+      "state": "KS",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001153",
+      "name": "Lisa Murkowski",
+      "firstName": "Lisa",
+      "lastName": "Murkowski",
+      "chamber": "senate",
+      "state": "AK",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001169",
+      "name": "Christopher Murphy",
+      "firstName": "Christopher",
+      "lastName": "Murphy",
+      "chamber": "senate",
+      "state": "CT",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001111",
+      "name": "Patty Murray",
+      "firstName": "Patty",
+      "lastName": "Murray",
+      "chamber": "senate",
+      "state": "WA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000002",
+      "name": "Jerrold Nadler",
+      "firstName": "Jerrold",
+      "lastName": "Nadler",
+      "chamber": "house",
+      "state": "NY",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000015",
+      "name": "Richard E. Neal",
+      "firstName": "Richard",
+      "lastName": "Neal",
+      "chamber": "house",
+      "state": "MA",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000147",
+      "name": "Eleanor Holmes Norton",
+      "firstName": "Eleanor",
+      "lastName": "Norton",
+      "chamber": "house",
+      "state": "DC",
+      "district": "At-Large",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000034",
+      "name": "Frank Pallone, Jr.",
+      "firstName": "Frank",
+      "lastName": "Pallone",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000603",
+      "name": "Rand Paul",
+      "firstName": "Rand",
+      "lastName": "Paul",
+      "chamber": "senate",
+      "state": "KY",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000197",
+      "name": "Nancy Pelosi",
+      "firstName": "Nancy",
+      "lastName": "Pelosi",
+      "chamber": "house",
+      "state": "CA",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000595",
+      "name": "Gary C. Peters",
+      "firstName": "Gary",
+      "lastName": "Peters",
+      "chamber": "senate",
+      "state": "MI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000597",
+      "name": "Chellie Pingree",
+      "firstName": "Chellie",
+      "lastName": "Pingree",
+      "chamber": "house",
+      "state": "ME",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "Q000023",
+      "name": "Mike Quigley",
+      "firstName": "Mike",
+      "lastName": "Quigley",
+      "chamber": "house",
+      "state": "IL",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000395",
+      "name": "Harold Rogers",
+      "firstName": "Harold",
+      "lastName": "Rogers",
+      "chamber": "house",
+      "state": "KY",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000575",
+      "name": "Mike Rogers",
+      "firstName": "Mike",
+      "lastName": "Rogers",
+      "chamber": "house",
+      "state": "AL",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001176",
+      "name": "Steve Scalise",
+      "firstName": "Steve",
+      "lastName": "Scalise",
+      "chamber": "house",
+      "state": "LA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001145",
+      "name": "Janice D. Schakowsky",
+      "firstName": "Janice",
+      "lastName": "Schakowsky",
+      "chamber": "house",
+      "state": "IL",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001150",
+      "name": "Adam B. Schiff",
+      "firstName": "Adam",
+      "lastName": "Schiff",
+      "chamber": "senate",
+      "state": "CA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S000148",
+      "name": "Charles E. Schumer",
+      "firstName": "Charles",
+      "lastName": "Schumer",
+      "chamber": "senate",
+      "state": "NY",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001183",
+      "name": "David Schweikert",
+      "firstName": "David",
+      "lastName": "Schweikert",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001189",
+      "name": "Austin Scott",
+      "firstName": "Austin",
+      "lastName": "Scott",
+      "chamber": "house",
+      "state": "GA",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S000185",
+      "name": "Robert C. \"Bobby\" Scott",
+      "firstName": "Robert",
+      "lastName": "Scott",
+      "chamber": "house",
+      "state": "VA",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001184",
+      "name": "Tim Scott",
+      "firstName": "Tim",
+      "lastName": "Scott",
+      "chamber": "senate",
+      "state": "SC",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001185",
+      "name": "Terri A. Sewell",
+      "firstName": "Terri",
+      "lastName": "Sewell",
+      "chamber": "house",
+      "state": "AL",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S000344",
+      "name": "Brad Sherman",
+      "firstName": "Brad",
+      "lastName": "Sherman",
+      "chamber": "house",
+      "state": "CA",
+      "district": "32",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001148",
+      "name": "Michael K. Simpson",
+      "firstName": "Michael",
+      "lastName": "Simpson",
+      "chamber": "house",
+      "state": "ID",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S000510",
+      "name": "Adam Smith",
+      "firstName": "Adam",
+      "lastName": "Smith",
+      "chamber": "house",
+      "state": "WA",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001172",
+      "name": "Adrian Smith",
+      "firstName": "Adrian",
+      "lastName": "Smith",
+      "chamber": "house",
+      "state": "NE",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S000522",
+      "name": "Christopher H. Smith",
+      "firstName": "Christopher",
+      "lastName": "Smith",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001156",
+      "name": "Linda T. Sánchez",
+      "firstName": "Linda",
+      "lastName": "Sánchez",
+      "chamber": "house",
+      "state": "CA",
+      "district": "38",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000193",
+      "name": "Bennie G. Thompson",
+      "firstName": "Bennie",
+      "lastName": "Thompson",
+      "chamber": "house",
+      "state": "MS",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000460",
+      "name": "Mike Thompson",
+      "firstName": "Mike",
+      "lastName": "Thompson",
+      "chamber": "house",
+      "state": "CA",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000467",
+      "name": "Glenn Thompson",
+      "firstName": "Glenn",
+      "lastName": "Thompson",
+      "chamber": "house",
+      "state": "PA",
+      "district": "15",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000250",
+      "name": "John Thune",
+      "firstName": "John",
+      "lastName": "Thune",
+      "chamber": "senate",
+      "state": "SD",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000469",
+      "name": "Paul Tonko",
+      "firstName": "Paul",
+      "lastName": "Tonko",
+      "chamber": "house",
+      "state": "NY",
+      "district": "20",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000463",
+      "name": "Michael R. Turner",
+      "firstName": "Michael",
+      "lastName": "Turner",
+      "chamber": "house",
+      "state": "OH",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "V000128",
+      "name": "Chris Van Hollen",
+      "firstName": "Chris",
+      "lastName": "Van Hollen",
+      "chamber": "senate",
+      "state": "MD",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000081",
+      "name": "Nydia M. Velázquez",
+      "firstName": "Nydia",
+      "lastName": "Velázquez",
+      "chamber": "house",
+      "state": "NY",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000798",
+      "name": "Tim Walberg",
+      "firstName": "Tim",
+      "lastName": "Walberg",
+      "chamber": "house",
+      "state": "MI",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000797",
+      "name": "Debbie Wasserman Schultz",
+      "firstName": "Debbie",
+      "lastName": "Wasserman Schultz",
+      "chamber": "house",
+      "state": "FL",
+      "district": "25",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000187",
+      "name": "Maxine Waters",
+      "firstName": "Maxine",
+      "lastName": "Waters",
+      "chamber": "house",
+      "state": "CA",
+      "district": "43",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000806",
+      "name": "Daniel Webster",
+      "firstName": "Daniel",
+      "lastName": "Webster",
+      "chamber": "house",
+      "state": "FL",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000800",
+      "name": "Peter Welch",
+      "firstName": "Peter",
+      "lastName": "Welch",
+      "chamber": "senate",
+      "state": "VT",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000795",
+      "name": "Joe Wilson",
+      "firstName": "Joe",
+      "lastName": "Wilson",
+      "chamber": "house",
+      "state": "SC",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000808",
+      "name": "Frederica S. Wilson",
+      "firstName": "Frederica",
+      "lastName": "Wilson",
+      "chamber": "house",
+      "state": "FL",
+      "district": "24",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000804",
+      "name": "Robert J. Wittman",
+      "firstName": "Robert",
+      "lastName": "Wittman",
+      "chamber": "house",
+      "state": "VA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000809",
+      "name": "Steve Womack",
+      "firstName": "Steve",
+      "lastName": "Womack",
+      "chamber": "house",
+      "state": "AR",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000779",
+      "name": "Ron Wyden",
+      "firstName": "Ron",
+      "lastName": "Wyden",
+      "chamber": "senate",
+      "state": "OR",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "Y000064",
+      "name": "Todd Young",
+      "firstName": "Todd",
+      "lastName": "Young",
+      "chamber": "senate",
+      "state": "IN",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "A000369",
+      "name": "Mark E. Amodei",
+      "firstName": "Mark",
+      "lastName": "Amodei",
+      "chamber": "house",
+      "state": "NV",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001278",
+      "name": "Suzanne Bonamici",
+      "firstName": "Suzanne",
+      "lastName": "Bonamici",
+      "chamber": "house",
+      "state": "OR",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000617",
+      "name": "Suzan K. DelBene",
+      "firstName": "Suzan",
+      "lastName": "DelBene",
+      "chamber": "house",
+      "state": "WA",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001184",
+      "name": "Thomas Massie",
+      "firstName": "Thomas",
+      "lastName": "Massie",
+      "chamber": "house",
+      "state": "KY",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001194",
+      "name": "Brian Schatz",
+      "firstName": "Brian",
+      "lastName": "Schatz",
+      "chamber": "senate",
+      "state": "HI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000454",
+      "name": "Bill Foster",
+      "firstName": "Bill",
+      "lastName": "Foster",
+      "chamber": "house",
+      "state": "IL",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000468",
+      "name": "Dina Titus",
+      "firstName": "Dina",
+      "lastName": "Titus",
+      "chamber": "house",
+      "state": "NV",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001095",
+      "name": "Tom Cotton",
+      "firstName": "Tom",
+      "lastName": "Cotton",
+      "chamber": "senate",
+      "state": "AR",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001068",
+      "name": "Jared Huffman",
+      "firstName": "Jared",
+      "lastName": "Huffman",
+      "chamber": "house",
+      "state": "CA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001287",
+      "name": "Ami Bera",
+      "firstName": "Ami",
+      "lastName": "Bera",
+      "chamber": "house",
+      "state": "CA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001285",
+      "name": "Julia Brownley",
+      "firstName": "Julia",
+      "lastName": "Brownley",
+      "chamber": "house",
+      "state": "CA",
+      "district": "26",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000599",
+      "name": "Raul Ruiz",
+      "firstName": "Raul",
+      "lastName": "Ruiz",
+      "chamber": "house",
+      "state": "CA",
+      "district": "25",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000472",
+      "name": "Mark Takano",
+      "firstName": "Mark",
+      "lastName": "Takano",
+      "chamber": "house",
+      "state": "CA",
+      "district": "39",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000130",
+      "name": "Juan Vargas",
+      "firstName": "Juan",
+      "lastName": "Vargas",
+      "chamber": "house",
+      "state": "CA",
+      "district": "52",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000608",
+      "name": "Scott H. Peters",
+      "firstName": "Scott",
+      "lastName": "Peters",
+      "chamber": "house",
+      "state": "CA",
+      "district": "50",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000462",
+      "name": "Lois Frankel",
+      "firstName": "Lois",
+      "lastName": "Frankel",
+      "chamber": "house",
+      "state": "FL",
+      "district": "22",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000622",
+      "name": "Tammy Duckworth",
+      "firstName": "Tammy",
+      "lastName": "Duckworth",
+      "chamber": "senate",
+      "state": "IL",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001282",
+      "name": "Andy Barr",
+      "firstName": "Garland",
+      "lastName": "Barr",
+      "chamber": "house",
+      "state": "KY",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000817",
+      "name": "Elizabeth Warren",
+      "firstName": "Elizabeth",
+      "lastName": "Warren",
+      "chamber": "senate",
+      "state": "MA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000383",
+      "name": "Angus S. King, Jr.",
+      "firstName": "Angus",
+      "lastName": "King",
+      "chamber": "senate",
+      "state": "ME",
+      "district": null,
+      "party": "Independent"
+    },
+    {
+      "bioguideId": "W000812",
+      "name": "Ann Wagner",
+      "firstName": "Ann",
+      "lastName": "Wagner",
+      "chamber": "house",
+      "state": "MO",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000618",
+      "name": "Steve Daines",
+      "firstName": "Steve",
+      "lastName": "Daines",
+      "chamber": "senate",
+      "state": "MT",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001067",
+      "name": "Richard Hudson",
+      "firstName": "Richard",
+      "lastName": "Hudson",
+      "chamber": "house",
+      "state": "NC",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001096",
+      "name": "Kevin Cramer",
+      "firstName": "Kevin",
+      "lastName": "Cramer",
+      "chamber": "senate",
+      "state": "ND",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000463",
+      "name": "Deb Fischer",
+      "firstName": "Deb",
+      "lastName": "Fischer",
+      "chamber": "senate",
+      "state": "NE",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001188",
+      "name": "Grace Meng",
+      "firstName": "Grace",
+      "lastName": "Meng",
+      "chamber": "house",
+      "state": "NY",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "J000294",
+      "name": "Hakeem S. Jeffries",
+      "firstName": "Hakeem",
+      "lastName": "Jeffries",
+      "chamber": "house",
+      "state": "NY",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001281",
+      "name": "Joyce Beatty",
+      "firstName": "Joyce",
+      "lastName": "Beatty",
+      "chamber": "house",
+      "state": "OH",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "J000295",
+      "name": "David P. Joyce",
+      "firstName": "David",
+      "lastName": "Joyce",
+      "chamber": "house",
+      "state": "OH",
+      "district": "14",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000605",
+      "name": "Scott Perry",
+      "firstName": "Scott",
+      "lastName": "Perry",
+      "chamber": "house",
+      "state": "PA",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001098",
+      "name": "Ted Cruz",
+      "firstName": "Ted",
+      "lastName": "Cruz",
+      "chamber": "senate",
+      "state": "TX",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000814",
+      "name": "Randy K. Weber, Sr.",
+      "firstName": "Randy",
+      "lastName": "Weber",
+      "chamber": "house",
+      "state": "TX",
+      "district": "14",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001091",
+      "name": "Joaquin Castro",
+      "firstName": "Joaquin",
+      "lastName": "Castro",
+      "chamber": "house",
+      "state": "TX",
+      "district": "20",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000816",
+      "name": "Roger Williams",
+      "firstName": "Roger",
+      "lastName": "Williams",
+      "chamber": "house",
+      "state": "TX",
+      "district": "25",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "V000131",
+      "name": "Marc A. Veasey",
+      "firstName": "Marc",
+      "lastName": "Veasey",
+      "chamber": "house",
+      "state": "TX",
+      "district": "33",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000384",
+      "name": "Tim Kaine",
+      "firstName": "Timothy",
+      "lastName": "Kaine",
+      "chamber": "senate",
+      "state": "VA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000607",
+      "name": "Mark Pocan",
+      "firstName": "Mark",
+      "lastName": "Pocan",
+      "chamber": "house",
+      "state": "WI",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000385",
+      "name": "Robin L. Kelly",
+      "firstName": "Robin",
+      "lastName": "Kelly",
+      "chamber": "house",
+      "state": "IL",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001195",
+      "name": "Jason Smith",
+      "firstName": "Jason",
+      "lastName": "Smith",
+      "chamber": "house",
+      "state": "MO",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001288",
+      "name": "Cory A. Booker",
+      "firstName": "Cory",
+      "lastName": "Booker",
+      "chamber": "senate",
+      "state": "NJ",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001101",
+      "name": "Katherine M. Clark",
+      "firstName": "Katherine",
+      "lastName": "Clark",
+      "chamber": "house",
+      "state": "MA",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000188",
+      "name": "Donald Norcross",
+      "firstName": "Donald",
+      "lastName": "Norcross",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000370",
+      "name": "Alma S. Adams",
+      "firstName": "Alma",
+      "lastName": "Adams",
+      "chamber": "house",
+      "state": "NC",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000609",
+      "name": "Gary J. Palmer",
+      "firstName": "Gary",
+      "lastName": "Palmer",
+      "chamber": "house",
+      "state": "AL",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001072",
+      "name": "J. French Hill",
+      "firstName": "J.",
+      "lastName": "Hill",
+      "chamber": "house",
+      "state": "AR",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000821",
+      "name": "Bruce Westerman",
+      "firstName": "Bruce",
+      "lastName": "Westerman",
+      "chamber": "house",
+      "state": "AR",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000574",
+      "name": "Ruben Gallego",
+      "firstName": "Ruben",
+      "lastName": "Gallego",
+      "chamber": "senate",
+      "state": "AZ",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000623",
+      "name": "Mark DeSaulnier",
+      "firstName": "Mark",
+      "lastName": "DeSaulnier",
+      "chamber": "house",
+      "state": "CA",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000371",
+      "name": "Pete Aguilar",
+      "firstName": "Pete",
+      "lastName": "Aguilar",
+      "chamber": "house",
+      "state": "CA",
+      "district": "33",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000582",
+      "name": "Ted Lieu",
+      "firstName": "Ted",
+      "lastName": "Lieu",
+      "chamber": "house",
+      "state": "CA",
+      "district": "36",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000474",
+      "name": "Norma J. Torres",
+      "firstName": "Norma",
+      "lastName": "Torres",
+      "chamber": "house",
+      "state": "CA",
+      "district": "35",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001103",
+      "name": "Earl L. \"Buddy\" Carter",
+      "firstName": "Earl",
+      "lastName": "Carter",
+      "chamber": "house",
+      "state": "GA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000583",
+      "name": "Barry Loudermilk",
+      "firstName": "Barry",
+      "lastName": "Loudermilk",
+      "chamber": "house",
+      "state": "GA",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "A000372",
+      "name": "Rick W. Allen",
+      "firstName": "Rick",
+      "lastName": "Allen",
+      "chamber": "house",
+      "state": "GA",
+      "district": "12",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001295",
+      "name": "Mike Bost",
+      "firstName": "Mike",
+      "lastName": "Bost",
+      "chamber": "house",
+      "state": "IL",
+      "district": "12",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001196",
+      "name": "Seth Moulton",
+      "firstName": "Seth",
+      "lastName": "Moulton",
+      "chamber": "house",
+      "state": "MA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001194",
+      "name": "John R. Moolenaar",
+      "firstName": "John",
+      "lastName": "Moolenaar",
+      "chamber": "house",
+      "state": "MI",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000624",
+      "name": "Debbie Dingell",
+      "firstName": "Debbie",
+      "lastName": "Dingell",
+      "chamber": "house",
+      "state": "MI",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000294",
+      "name": "Tom Emmer",
+      "firstName": "Tom",
+      "lastName": "Emmer",
+      "chamber": "house",
+      "state": "MN",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000603",
+      "name": "David Rouzer",
+      "firstName": "David",
+      "lastName": "Rouzer",
+      "chamber": "house",
+      "state": "NC",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000822",
+      "name": "Bonnie Watson Coleman",
+      "firstName": "Bonnie",
+      "lastName": "Watson Coleman",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001196",
+      "name": "Elise M. Stefanik",
+      "firstName": "Elise",
+      "lastName": "Stefanik",
+      "chamber": "house",
+      "state": "NY",
+      "district": "21",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001296",
+      "name": "Brendan F. Boyle",
+      "firstName": "Brendan",
+      "lastName": "Boyle",
+      "chamber": "house",
+      "state": "PA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001291",
+      "name": "Brian Babin",
+      "firstName": "Brian",
+      "lastName": "Babin",
+      "chamber": "house",
+      "state": "TX",
+      "district": "36",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001292",
+      "name": "Donald S. Beyer, Jr.",
+      "firstName": "Donald",
+      "lastName": "Beyer",
+      "chamber": "house",
+      "state": "VA",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000610",
+      "name": "Stacey E. Plaskett",
+      "firstName": "Stacey",
+      "lastName": "Plaskett",
+      "chamber": "house",
+      "state": "VI",
+      "district": "At-Large",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000189",
+      "name": "Dan Newhouse",
+      "firstName": "Dan",
+      "lastName": "Newhouse",
+      "chamber": "house",
+      "state": "WA",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000576",
+      "name": "Glenn Grothman",
+      "firstName": "Glenn",
+      "lastName": "Grothman",
+      "chamber": "house",
+      "state": "WI",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000600",
+      "name": "Aumua Amata Coleman Radewagen",
+      "firstName": "Aumua Amata",
+      "lastName": "Radewagen",
+      "chamber": "house",
+      "state": "AS",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001198",
+      "name": "Dan Sullivan",
+      "firstName": "Dan",
+      "lastName": "Sullivan",
+      "chamber": "senate",
+      "state": "AK",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "E000295",
+      "name": "Joni Ernst",
+      "firstName": "Joni",
+      "lastName": "Ernst",
+      "chamber": "senate",
+      "state": "IA",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000476",
+      "name": "Thom Tillis",
+      "firstName": "Thom",
+      "lastName": "Tillis",
+      "chamber": "senate",
+      "state": "NC",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000605",
+      "name": "Mike Rounds",
+      "firstName": "Mike",
+      "lastName": "Rounds",
+      "chamber": "senate",
+      "state": "SD",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000388",
+      "name": "Trent Kelly",
+      "firstName": "Trent",
+      "lastName": "Kelly",
+      "chamber": "house",
+      "state": "MS",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000585",
+      "name": "Darin LaHood",
+      "firstName": "Darin",
+      "lastName": "LaHood",
+      "chamber": "house",
+      "state": "IL",
+      "district": "16",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000626",
+      "name": "Warren Davidson",
+      "firstName": "Warren",
+      "lastName": "Davidson",
+      "chamber": "house",
+      "state": "OH",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001108",
+      "name": "James Comer",
+      "firstName": "James",
+      "lastName": "Comer",
+      "chamber": "house",
+      "state": "KY",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "E000296",
+      "name": "Dwight Evans",
+      "firstName": "Dwight",
+      "lastName": "Evans",
+      "chamber": "house",
+      "state": "PA",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000393",
+      "name": "John Kennedy",
+      "firstName": "John",
+      "lastName": "Kennedy",
+      "chamber": "senate",
+      "state": "LA",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001076",
+      "name": "Margaret Wood Hassan",
+      "firstName": "Margaret",
+      "lastName": "Hassan",
+      "chamber": "senate",
+      "state": "NH",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001113",
+      "name": "Catherine Cortez Masto",
+      "firstName": "Catherine",
+      "lastName": "Cortez Masto",
+      "chamber": "senate",
+      "state": "NV",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001190",
+      "name": "Bradley Scott Schneider",
+      "firstName": "Bradley",
+      "lastName": "Schneider",
+      "chamber": "house",
+      "state": "IL",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001302",
+      "name": "Andy Biggs",
+      "firstName": "Andy",
+      "lastName": "Biggs",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000389",
+      "name": "Ro Khanna",
+      "firstName": "Ro",
+      "lastName": "Khanna",
+      "chamber": "house",
+      "state": "CA",
+      "district": "17",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000613",
+      "name": "Jimmy Panetta",
+      "firstName": "Jimmy",
+      "lastName": "Panetta",
+      "chamber": "house",
+      "state": "CA",
+      "district": "19",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001112",
+      "name": "Salud O. Carbajal",
+      "firstName": "Salud",
+      "lastName": "Carbajal",
+      "chamber": "house",
+      "state": "CA",
+      "district": "24",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001300",
+      "name": "Nanette Diaz Barragán",
+      "firstName": "Nanette",
+      "lastName": "Barragán",
+      "chamber": "house",
+      "state": "CA",
+      "district": "44",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001110",
+      "name": "J. Luis Correa",
+      "firstName": "J.",
+      "lastName": "Correa",
+      "chamber": "house",
+      "state": "CA",
+      "district": "46",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001303",
+      "name": "Lisa Blunt Rochester",
+      "firstName": "Lisa",
+      "lastName": "Blunt Rochester",
+      "chamber": "senate",
+      "state": "DE",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000628",
+      "name": "Neal P. Dunn",
+      "firstName": "Neal",
+      "lastName": "Dunn",
+      "chamber": "house",
+      "state": "FL",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000609",
+      "name": "John H. Rutherford",
+      "firstName": "John",
+      "lastName": "Rutherford",
+      "chamber": "house",
+      "state": "FL",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001200",
+      "name": "Darren Soto",
+      "firstName": "Darren",
+      "lastName": "Soto",
+      "chamber": "house",
+      "state": "FL",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001199",
+      "name": "Brian J. Mast",
+      "firstName": "Brian",
+      "lastName": "Mast",
+      "chamber": "house",
+      "state": "FL",
+      "district": "21",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000391",
+      "name": "Raja Krishnamoorthi",
+      "firstName": "Raja",
+      "lastName": "Krishnamoorthi",
+      "chamber": "house",
+      "state": "IL",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001299",
+      "name": "Jim Banks",
+      "firstName": "Jim",
+      "lastName": "Banks",
+      "chamber": "senate",
+      "state": "IN",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001198",
+      "name": "Roger Marshall",
+      "firstName": "Roger",
+      "lastName": "Marshall",
+      "chamber": "senate",
+      "state": "KS",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001077",
+      "name": "Clay Higgins",
+      "firstName": "Clay",
+      "lastName": "Higgins",
+      "chamber": "house",
+      "state": "LA",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000299",
+      "name": "Mike Johnson",
+      "firstName": "Mike",
+      "lastName": "Johnson",
+      "chamber": "house",
+      "state": "LA",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000606",
+      "name": "Jamie Raskin",
+      "firstName": "Jamie",
+      "lastName": "Raskin",
+      "chamber": "house",
+      "state": "MD",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001301",
+      "name": "Jack Bergman",
+      "firstName": "Jack",
+      "lastName": "Bergman",
+      "chamber": "house",
+      "state": "MI",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001305",
+      "name": "Ted Budd",
+      "firstName": "Ted",
+      "lastName": "Budd",
+      "chamber": "senate",
+      "state": "NC",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001298",
+      "name": "Don Bacon",
+      "firstName": "Don",
+      "lastName": "Bacon",
+      "chamber": "house",
+      "state": "NE",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000583",
+      "name": "Josh Gottheimer",
+      "firstName": "Josh",
+      "lastName": "Gottheimer",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000608",
+      "name": "Jacky Rosen",
+      "firstName": "Jacky",
+      "lastName": "Rosen",
+      "chamber": "senate",
+      "state": "NV",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000297",
+      "name": "Adriano Espaillat",
+      "firstName": "Adriano",
+      "lastName": "Espaillat",
+      "chamber": "house",
+      "state": "NY",
+      "district": "13",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000466",
+      "name": "Brian K. Fitzpatrick",
+      "firstName": "Brian",
+      "lastName": "Fitzpatrick",
+      "chamber": "house",
+      "state": "PA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001199",
+      "name": "Lloyd Smucker",
+      "firstName": "Lloyd",
+      "lastName": "Smucker",
+      "chamber": "house",
+      "state": "PA",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000392",
+      "name": "David Kustoff",
+      "firstName": "David",
+      "lastName": "Kustoff",
+      "chamber": "house",
+      "state": "TN",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000581",
+      "name": "Vicente Gonzalez",
+      "firstName": "Vicente",
+      "lastName": "Gonzalez",
+      "chamber": "house",
+      "state": "TX",
+      "district": "34",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000375",
+      "name": "Jodey C. Arrington",
+      "firstName": "Jodey",
+      "lastName": "Arrington",
+      "chamber": "house",
+      "state": "TX",
+      "district": "19",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000298",
+      "name": "Pramila Jayapal",
+      "firstName": "Pramila",
+      "lastName": "Jayapal",
+      "chamber": "house",
+      "state": "WA",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000298",
+      "name": "Ron Estes",
+      "firstName": "Ron",
+      "lastName": "Estes",
+      "chamber": "house",
+      "state": "KS",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "N000190",
+      "name": "Ralph Norman",
+      "firstName": "Ralph",
+      "lastName": "Norman",
+      "chamber": "house",
+      "state": "SC",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000585",
+      "name": "Jimmy Gomez",
+      "firstName": "Jimmy",
+      "lastName": "Gomez",
+      "chamber": "house",
+      "state": "CA",
+      "district": "34",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001114",
+      "name": "John R. Curtis",
+      "firstName": "John",
+      "lastName": "Curtis",
+      "chamber": "senate",
+      "state": "UT",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001203",
+      "name": "Tina Smith",
+      "firstName": "Tina",
+      "lastName": "Smith",
+      "chamber": "senate",
+      "state": "MN",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001079",
+      "name": "Cindy Hyde-Smith",
+      "firstName": "Cindy",
+      "lastName": "Hyde-Smith",
+      "chamber": "senate",
+      "state": "MS",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001115",
+      "name": "Michael Cloud",
+      "firstName": "Michael",
+      "lastName": "Cloud",
+      "chamber": "house",
+      "state": "TX",
+      "district": "27",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001306",
+      "name": "Troy Balderson",
+      "firstName": "Troy",
+      "lastName": "Balderson",
+      "chamber": "house",
+      "state": "OH",
+      "district": "12",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001082",
+      "name": "Kevin Hern",
+      "firstName": "Kevin",
+      "lastName": "Hern",
+      "chamber": "house",
+      "state": "OK",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001206",
+      "name": "Joseph D. Morelle",
+      "firstName": "Joseph",
+      "lastName": "Morelle",
+      "chamber": "house",
+      "state": "NY",
+      "district": "25",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001205",
+      "name": "Mary Gay Scanlon",
+      "firstName": "Mary",
+      "lastName": "Scanlon",
+      "chamber": "house",
+      "state": "PA",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001055",
+      "name": "Ed Case",
+      "firstName": "Ed",
+      "lastName": "Case",
+      "chamber": "house",
+      "state": "HI",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001066",
+      "name": "Steven Horsford",
+      "firstName": "Steven",
+      "lastName": "Horsford",
+      "chamber": "house",
+      "state": "NV",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001211",
+      "name": "Greg Stanton",
+      "firstName": "Greg",
+      "lastName": "Stanton",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001090",
+      "name": "Josh Harder",
+      "firstName": "Josh",
+      "lastName": "Harder",
+      "chamber": "house",
+      "state": "CA",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000593",
+      "name": "Mike Levin",
+      "firstName": "Mike",
+      "lastName": "Levin",
+      "chamber": "house",
+      "state": "CA",
+      "district": "49",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000191",
+      "name": "Joe Neguse",
+      "firstName": "Joe",
+      "lastName": "Neguse",
+      "chamber": "house",
+      "state": "CO",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001121",
+      "name": "Jason Crow",
+      "firstName": "Jason",
+      "lastName": "Crow",
+      "chamber": "house",
+      "state": "CO",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001081",
+      "name": "Jahana Hayes",
+      "firstName": "Jahana",
+      "lastName": "Hayes",
+      "chamber": "house",
+      "state": "CT",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001214",
+      "name": "W. Gregory Steube",
+      "firstName": "W.",
+      "lastName": "Steube",
+      "chamber": "house",
+      "state": "FL",
+      "district": "17",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001208",
+      "name": "Lucy McBath",
+      "firstName": "Lucy",
+      "lastName": "McBath",
+      "chamber": "house",
+      "state": "GA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000469",
+      "name": "Russ Fulcher",
+      "firstName": "Russ",
+      "lastName": "Fulcher",
+      "chamber": "house",
+      "state": "ID",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000586",
+      "name": "Jesús G. \"Chuy\" García",
+      "firstName": "Jesús",
+      "lastName": "García",
+      "chamber": "house",
+      "state": "IL",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001117",
+      "name": "Sean Casten",
+      "firstName": "Sean",
+      "lastName": "Casten",
+      "chamber": "house",
+      "state": "IL",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "U000040",
+      "name": "Lauren Underwood",
+      "firstName": "Lauren",
+      "lastName": "Underwood",
+      "chamber": "house",
+      "state": "IL",
+      "district": "14",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001307",
+      "name": "James R. Baird",
+      "firstName": "James",
+      "lastName": "Baird",
+      "chamber": "house",
+      "state": "IN",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000629",
+      "name": "Sharice Davids",
+      "firstName": "Sharice",
+      "lastName": "Davids",
+      "chamber": "house",
+      "state": "KS",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000482",
+      "name": "Lori Trahan",
+      "firstName": "Lori",
+      "lastName": "Trahan",
+      "chamber": "house",
+      "state": "MA",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000617",
+      "name": "Ayanna Pressley",
+      "firstName": "Ayanna",
+      "lastName": "Pressley",
+      "chamber": "house",
+      "state": "MA",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001208",
+      "name": "Elissa Slotkin",
+      "firstName": "Elissa",
+      "lastName": "Slotkin",
+      "chamber": "senate",
+      "state": "MI",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001215",
+      "name": "Haley M. Stevens",
+      "firstName": "Haley",
+      "lastName": "Stevens",
+      "chamber": "house",
+      "state": "MI",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000481",
+      "name": "Rashida Tlaib",
+      "firstName": "Rashida",
+      "lastName": "Tlaib",
+      "chamber": "house",
+      "state": "MI",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001119",
+      "name": "Angie Craig",
+      "firstName": "Angie",
+      "lastName": "Craig",
+      "chamber": "house",
+      "state": "MN",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "O000173",
+      "name": "Ilhan Omar",
+      "firstName": "Ilhan",
+      "lastName": "Omar",
+      "chamber": "house",
+      "state": "MN",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001212",
+      "name": "Pete Stauber",
+      "firstName": "Pete",
+      "lastName": "Stauber",
+      "chamber": "house",
+      "state": "MN",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000591",
+      "name": "Michael Guest",
+      "firstName": "Michael",
+      "lastName": "Guest",
+      "chamber": "house",
+      "state": "MS",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000614",
+      "name": "Chris Pappas",
+      "firstName": "Chris",
+      "lastName": "Pappas",
+      "chamber": "house",
+      "state": "NH",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000133",
+      "name": "Jefferson Van Drew",
+      "firstName": "Jefferson",
+      "lastName": "Van Drew",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000394",
+      "name": "Andy Kim",
+      "firstName": "Andy",
+      "lastName": "Kim",
+      "chamber": "senate",
+      "state": "NJ",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000590",
+      "name": "Susie Lee",
+      "firstName": "Susie",
+      "lastName": "Lee",
+      "chamber": "house",
+      "state": "NV",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "O000172",
+      "name": "Alexandria Ocasio-Cortez",
+      "firstName": "Alexandria",
+      "lastName": "Ocasio-Cortez",
+      "chamber": "house",
+      "state": "NY",
+      "district": "14",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000631",
+      "name": "Madeleine Dean",
+      "firstName": "Madeleine",
+      "lastName": "Dean",
+      "chamber": "house",
+      "state": "PA",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001085",
+      "name": "Chrissy Houlahan",
+      "firstName": "Chrissy",
+      "lastName": "Houlahan",
+      "chamber": "house",
+      "state": "PA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001204",
+      "name": "Daniel Meuser",
+      "firstName": "Daniel",
+      "lastName": "Meuser",
+      "chamber": "house",
+      "state": "PA",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000302",
+      "name": "John Joyce",
+      "firstName": "John",
+      "lastName": "Joyce",
+      "chamber": "house",
+      "state": "PA",
+      "district": "13",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000610",
+      "name": "Guy Reschenthaler",
+      "firstName": "Guy",
+      "lastName": "Reschenthaler",
+      "chamber": "house",
+      "state": "PA",
+      "district": "14",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000480",
+      "name": "William R. Timmons IV",
+      "firstName": "William",
+      "lastName": "Timmons",
+      "chamber": "house",
+      "state": "SC",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000301",
+      "name": "Dusty Johnson",
+      "firstName": "Dusty",
+      "lastName": "Johnson",
+      "chamber": "house",
+      "state": "SD",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001309",
+      "name": "Tim Burchett",
+      "firstName": "Tim",
+      "lastName": "Burchett",
+      "chamber": "house",
+      "state": "TN",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000612",
+      "name": "John W. Rose",
+      "firstName": "John",
+      "lastName": "Rose",
+      "chamber": "house",
+      "state": "TN",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001120",
+      "name": "Dan Crenshaw",
+      "firstName": "Dan",
+      "lastName": "Crenshaw",
+      "chamber": "house",
+      "state": "TX",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000589",
+      "name": "Lance Gooden",
+      "firstName": "Lance",
+      "lastName": "Gooden",
+      "chamber": "house",
+      "state": "TX",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000468",
+      "name": "Lizzie Fletcher",
+      "firstName": "Lizzie",
+      "lastName": "Fletcher",
+      "chamber": "house",
+      "state": "TX",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000299",
+      "name": "Veronica Escobar",
+      "firstName": "Veronica",
+      "lastName": "Escobar",
+      "chamber": "house",
+      "state": "TX",
+      "district": "16",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000614",
+      "name": "Chip Roy",
+      "firstName": "Chip",
+      "lastName": "Roy",
+      "chamber": "house",
+      "state": "TX",
+      "district": "21",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000587",
+      "name": "Sylvia R. Garcia",
+      "firstName": "Sylvia",
+      "lastName": "Garcia",
+      "chamber": "house",
+      "state": "TX",
+      "district": "29",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001118",
+      "name": "Ben Cline",
+      "firstName": "Ben",
+      "lastName": "Cline",
+      "chamber": "house",
+      "state": "VA",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001216",
+      "name": "Kim Schrier",
+      "firstName": "Kim",
+      "lastName": "Schrier",
+      "chamber": "house",
+      "state": "WA",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001213",
+      "name": "Bryan Steil",
+      "firstName": "Bryan",
+      "lastName": "Steil",
+      "chamber": "house",
+      "state": "WI",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001205",
+      "name": "Carol D. Miller",
+      "firstName": "Carol",
+      "lastName": "Miller",
+      "chamber": "house",
+      "state": "WV",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001217",
+      "name": "Rick Scott",
+      "firstName": "Rick",
+      "lastName": "Scott",
+      "chamber": "senate",
+      "state": "FL",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001089",
+      "name": "Josh Hawley",
+      "firstName": "Joshua",
+      "lastName": "Hawley",
+      "chamber": "senate",
+      "state": "MO",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000592",
+      "name": "Jared F. Golden",
+      "firstName": "Jared",
+      "lastName": "Golden",
+      "chamber": "house",
+      "state": "ME",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001210",
+      "name": "Gregory F. Murphy",
+      "firstName": "Gregory",
+      "lastName": "Murphy",
+      "chamber": "house",
+      "state": "NC",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M000687",
+      "name": "Kweisi Mfume",
+      "firstName": "Kweisi",
+      "lastName": "Mfume",
+      "chamber": "house",
+      "state": "MD",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000165",
+      "name": "Thomas P. Tiffany",
+      "firstName": "Thomas",
+      "lastName": "Tiffany",
+      "chamber": "house",
+      "state": "WI",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000377",
+      "name": "Mark Kelly",
+      "firstName": "Mark",
+      "lastName": "Kelly",
+      "chamber": "senate",
+      "state": "AZ",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000571",
+      "name": "Cynthia M. Lummis",
+      "firstName": "Cynthia",
+      "lastName": "Lummis",
+      "chamber": "senate",
+      "state": "WY",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "I000056",
+      "name": "Darrell Issa",
+      "firstName": "Darrell",
+      "lastName": "Issa",
+      "chamber": "house",
+      "state": "CA",
+      "district": "48",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S000250",
+      "name": "Pete Sessions",
+      "firstName": "Pete",
+      "lastName": "Sessions",
+      "chamber": "house",
+      "state": "TX",
+      "district": "17",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "V000129",
+      "name": "David G. Valadao",
+      "firstName": "David",
+      "lastName": "Valadao",
+      "chamber": "house",
+      "state": "CA",
+      "district": "22",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000278",
+      "name": "Tommy Tuberville",
+      "firstName": "Tommy",
+      "lastName": "Tuberville",
+      "chamber": "senate",
+      "state": "AL",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H000273",
+      "name": "John W. Hickenlooper",
+      "firstName": "John",
+      "lastName": "Hickenlooper",
+      "chamber": "senate",
+      "state": "CO",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H000601",
+      "name": "Bill Hagerty",
+      "firstName": "Bill",
+      "lastName": "Hagerty",
+      "chamber": "senate",
+      "state": "TN",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001212",
+      "name": "Barry Moore",
+      "firstName": "Barry",
+      "lastName": "Moore",
+      "chamber": "house",
+      "state": "AL",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "O000019",
+      "name": "Jay Obernolte",
+      "firstName": "Jay",
+      "lastName": "Obernolte",
+      "chamber": "house",
+      "state": "CA",
+      "district": "23",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000397",
+      "name": "Young Kim",
+      "firstName": "Young",
+      "lastName": "Kim",
+      "chamber": "house",
+      "state": "CA",
+      "district": "40",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000305",
+      "name": "Sara Jacobs",
+      "firstName": "Sara",
+      "lastName": "Jacobs",
+      "chamber": "house",
+      "state": "CA",
+      "district": "51",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B000825",
+      "name": "Lauren Boebert",
+      "firstName": "Lauren",
+      "lastName": "Boebert",
+      "chamber": "house",
+      "state": "CO",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001039",
+      "name": "Kat Cammack",
+      "firstName": "Katherine",
+      "lastName": "Cammack",
+      "chamber": "house",
+      "state": "FL",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000472",
+      "name": "Scott Franklin",
+      "firstName": "C.",
+      "lastName": "Franklin",
+      "chamber": "house",
+      "state": "FL",
+      "district": "18",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000032",
+      "name": "Byron Donalds",
+      "firstName": "Byron",
+      "lastName": "Donalds",
+      "chamber": "house",
+      "state": "FL",
+      "district": "19",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000593",
+      "name": "Carlos A. Gimenez",
+      "firstName": "Carlos",
+      "lastName": "Gimenez",
+      "chamber": "house",
+      "state": "FL",
+      "district": "28",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S000168",
+      "name": "Maria Elvira Salazar",
+      "firstName": "Maria",
+      "lastName": "Salazar",
+      "chamber": "house",
+      "state": "FL",
+      "district": "27",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000788",
+      "name": "Nikema Williams",
+      "firstName": "Nikema",
+      "lastName": "Williams",
+      "chamber": "house",
+      "state": "GA",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001116",
+      "name": "Andrew S. Clyde",
+      "firstName": "Andrew",
+      "lastName": "Clyde",
+      "chamber": "house",
+      "state": "GA",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001091",
+      "name": "Ashley Hinson",
+      "firstName": "Ashley",
+      "lastName": "Hinson",
+      "chamber": "house",
+      "state": "IA",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001215",
+      "name": "Mariannette Miller-Meeks",
+      "firstName": "Mariannette",
+      "lastName": "Miller-Meeks",
+      "chamber": "house",
+      "state": "IA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000446",
+      "name": "Randy Feenstra",
+      "firstName": "Randy",
+      "lastName": "Feenstra",
+      "chamber": "house",
+      "state": "IA",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001211",
+      "name": "Mary E. Miller",
+      "firstName": "Mary",
+      "lastName": "Miller",
+      "chamber": "house",
+      "state": "IL",
+      "district": "15",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001214",
+      "name": "Frank J. Mrvan",
+      "firstName": "Frank",
+      "lastName": "Mrvan",
+      "chamber": "house",
+      "state": "IN",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S000929",
+      "name": "Victoria Spartz",
+      "firstName": "Victoria",
+      "lastName": "Spartz",
+      "chamber": "house",
+      "state": "IN",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M000871",
+      "name": "Tracey Mann",
+      "firstName": "Tracey",
+      "lastName": "Mann",
+      "chamber": "house",
+      "state": "KS",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "A000148",
+      "name": "Jake Auchincloss",
+      "firstName": "Jake",
+      "lastName": "Auchincloss",
+      "chamber": "house",
+      "state": "MA",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001136",
+      "name": "Lisa C. McClain",
+      "firstName": "Lisa",
+      "lastName": "McClain",
+      "chamber": "house",
+      "state": "MI",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000470",
+      "name": "Michelle Fischbach",
+      "firstName": "Michelle",
+      "lastName": "Fischbach",
+      "chamber": "house",
+      "state": "MN",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000305",
+      "name": "Deborah K. Ross",
+      "firstName": "Deborah",
+      "lastName": "Ross",
+      "chamber": "house",
+      "state": "NC",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000273",
+      "name": "Teresa Leger Fernandez",
+      "firstName": "Teresa",
+      "lastName": "Leger Fernandez",
+      "chamber": "house",
+      "state": "NM",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000597",
+      "name": "Andrew R. Garbarino",
+      "firstName": "Andrew",
+      "lastName": "Garbarino",
+      "chamber": "house",
+      "state": "NY",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M000317",
+      "name": "Nicole Malliotakis",
+      "firstName": "Nicole",
+      "lastName": "Malliotakis",
+      "chamber": "house",
+      "state": "NY",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000486",
+      "name": "Ritchie Torres",
+      "firstName": "Ritchie",
+      "lastName": "Torres",
+      "chamber": "house",
+      "state": "NY",
+      "district": "15",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B000740",
+      "name": "Stephanie I. Bice",
+      "firstName": "Stephanie",
+      "lastName": "Bice",
+      "chamber": "house",
+      "state": "OK",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B000668",
+      "name": "Cliff Bentz",
+      "firstName": "Cliff",
+      "lastName": "Bentz",
+      "chamber": "house",
+      "state": "OR",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M000194",
+      "name": "Nancy Mace",
+      "firstName": "Nancy",
+      "lastName": "Mace",
+      "chamber": "house",
+      "state": "SC",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001086",
+      "name": "Diana Harshbarger",
+      "firstName": "Diana",
+      "lastName": "Harshbarger",
+      "chamber": "house",
+      "state": "TN",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000246",
+      "name": "Pat Fallon",
+      "firstName": "Patrick",
+      "lastName": "Fallon",
+      "chamber": "house",
+      "state": "TX",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000048",
+      "name": "August Pfluger",
+      "firstName": "August",
+      "lastName": "Pfluger",
+      "chamber": "house",
+      "state": "TX",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000304",
+      "name": "Ronny Jackson",
+      "firstName": "Ronny",
+      "lastName": "Jackson",
+      "chamber": "house",
+      "state": "TX",
+      "district": "13",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "N000026",
+      "name": "Troy E. Nehls",
+      "firstName": "Troy",
+      "lastName": "Nehls",
+      "chamber": "house",
+      "state": "TX",
+      "district": "22",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "V000134",
+      "name": "Beth Van Duyne",
+      "firstName": "Beth",
+      "lastName": "Van Duyne",
+      "chamber": "house",
+      "state": "TX",
+      "district": "24",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001213",
+      "name": "Blake D. Moore",
+      "firstName": "Blake",
+      "lastName": "Moore",
+      "chamber": "house",
+      "state": "UT",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "O000086",
+      "name": "Burgess Owens",
+      "firstName": "Clarence",
+      "lastName": "Owens",
+      "chamber": "house",
+      "state": "UT",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001159",
+      "name": "Marilyn Strickland",
+      "firstName": "Marilyn",
+      "lastName": "Strickland",
+      "chamber": "house",
+      "state": "WA",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000471",
+      "name": "Scott Fitzgerald",
+      "firstName": "Scott",
+      "lastName": "Fitzgerald",
+      "chamber": "house",
+      "state": "WI",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000145",
+      "name": "Alex Padilla",
+      "firstName": "Alejandro",
+      "lastName": "Padilla",
+      "chamber": "senate",
+      "state": "CA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "O000174",
+      "name": "Jon Ossoff",
+      "firstName": "Jon",
+      "lastName": "Ossoff",
+      "chamber": "senate",
+      "state": "GA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000790",
+      "name": "Raphael G. Warnock",
+      "firstName": "Raphael",
+      "lastName": "Warnock",
+      "chamber": "senate",
+      "state": "GA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000478",
+      "name": "Claudia Tenney",
+      "firstName": "Claudia",
+      "lastName": "Tenney",
+      "chamber": "house",
+      "state": "NY",
+      "district": "24",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000595",
+      "name": "Julia Letlow",
+      "firstName": "Julia",
+      "lastName": "Letlow",
+      "chamber": "house",
+      "state": "LA",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001125",
+      "name": "Troy A. Carter",
+      "firstName": "Troy",
+      "lastName": "Carter",
+      "chamber": "house",
+      "state": "LA",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001218",
+      "name": "Melanie A. Stansbury",
+      "firstName": "Melanie",
+      "lastName": "Stansbury",
+      "chamber": "house",
+      "state": "NM",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000071",
+      "name": "Jake Ellzey",
+      "firstName": "Jake",
+      "lastName": "Ellzey",
+      "chamber": "house",
+      "state": "TX",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001313",
+      "name": "Shontel M. Brown",
+      "firstName": "Shontel",
+      "lastName": "Brown",
+      "chamber": "house",
+      "state": "OH",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001126",
+      "name": "Mike Carey",
+      "firstName": "Mike",
+      "lastName": "Carey",
+      "chamber": "house",
+      "state": "OH",
+      "district": "15",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000474",
+      "name": "Mike Flood",
+      "firstName": "Mike",
+      "lastName": "Flood",
+      "chamber": "house",
+      "state": "NE",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000475",
+      "name": "Brad Finstad",
+      "firstName": "Brad",
+      "lastName": "Finstad",
+      "chamber": "house",
+      "state": "MN",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000579",
+      "name": "Patrick Ryan",
+      "firstName": "Patrick",
+      "lastName": "Ryan",
+      "chamber": "house",
+      "state": "NY",
+      "district": "18",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "Y000067",
+      "name": "Rudy Yakym III",
+      "firstName": "Rudy",
+      "lastName": "Yakym",
+      "chamber": "house",
+      "state": "IN",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "Z000018",
+      "name": "Ryan K. Zinke",
+      "firstName": "Ryan",
+      "lastName": "Zinke",
+      "chamber": "house",
+      "state": "MT",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001319",
+      "name": "Katie Boyd Britt",
+      "firstName": "Katie",
+      "lastName": "Britt",
+      "chamber": "senate",
+      "state": "AL",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001227",
+      "name": "Eric Schmitt",
+      "firstName": "Eric",
+      "lastName": "Schmitt",
+      "chamber": "senate",
+      "state": "MO",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000479",
+      "name": "John Fetterman",
+      "firstName": "John",
+      "lastName": "Fetterman",
+      "chamber": "senate",
+      "state": "PA",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001220",
+      "name": "Dale W. Strong",
+      "firstName": "Dale",
+      "lastName": "Strong",
+      "chamber": "house",
+      "state": "AL",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001132",
+      "name": "Elijah Crane",
+      "firstName": "Eli",
+      "lastName": "Crane",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001133",
+      "name": "Juan Ciscomani",
+      "firstName": "Juan",
+      "lastName": "Ciscomani",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000401",
+      "name": "Kevin Kiley",
+      "firstName": "Kevin",
+      "lastName": "Kiley",
+      "chamber": "house",
+      "state": "CA",
+      "district": "3",
+      "party": "Independent"
+    },
+    {
+      "bioguideId": "M001225",
+      "name": "Kevin Mullin",
+      "firstName": "Kevin",
+      "lastName": "Mullin",
+      "chamber": "house",
+      "state": "CA",
+      "district": "15",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000400",
+      "name": "Sydney Kamlager-Dove",
+      "firstName": "Sydney",
+      "lastName": "Kamlager-Dove",
+      "chamber": "house",
+      "state": "CA",
+      "district": "37",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000598",
+      "name": "Robert Garcia",
+      "firstName": "Robert",
+      "lastName": "Garcia",
+      "chamber": "house",
+      "state": "CA",
+      "district": "42",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000620",
+      "name": "Brittany Pettersen",
+      "firstName": "Brittany",
+      "lastName": "Pettersen",
+      "chamber": "house",
+      "state": "CO",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001314",
+      "name": "Aaron Bean",
+      "firstName": "Aaron",
+      "lastName": "Bean",
+      "chamber": "house",
+      "state": "FL",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001216",
+      "name": "Cory Mills",
+      "firstName": "Cory",
+      "lastName": "Mills",
+      "chamber": "house",
+      "state": "FL",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000476",
+      "name": "Maxwell Frost",
+      "firstName": "Maxwell",
+      "lastName": "Frost",
+      "chamber": "house",
+      "state": "FL",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000596",
+      "name": "Anna Paulina Luna",
+      "firstName": "Anna",
+      "lastName": "Luna",
+      "chamber": "house",
+      "state": "FL",
+      "district": "13",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000597",
+      "name": "Laurel M. Lee",
+      "firstName": "Laurel",
+      "lastName": "Lee",
+      "chamber": "house",
+      "state": "FL",
+      "district": "15",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001217",
+      "name": "Jared Moskowitz",
+      "firstName": "Jared",
+      "lastName": "Moskowitz",
+      "chamber": "house",
+      "state": "FL",
+      "district": "23",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001218",
+      "name": "Richard McCormick",
+      "firstName": "Rich",
+      "lastName": "McCormick",
+      "chamber": "house",
+      "state": "GA",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001129",
+      "name": "Mike Collins",
+      "firstName": "Mike",
+      "lastName": "Collins",
+      "chamber": "house",
+      "state": "GA",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001219",
+      "name": "James C. Moylan",
+      "firstName": "James (Jim)",
+      "lastName": "Moylan",
+      "chamber": "house",
+      "state": "GU",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000487",
+      "name": "Jill N. Tokuda",
+      "firstName": "Jill",
+      "lastName": "Tokuda",
+      "chamber": "house",
+      "state": "HI",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "N000193",
+      "name": "Zachary Nunn",
+      "firstName": "Zachary (Zach)",
+      "lastName": "Nunn",
+      "chamber": "house",
+      "state": "IA",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000309",
+      "name": "Jonathan L. Jackson",
+      "firstName": "Jonathan",
+      "lastName": "Jackson",
+      "chamber": "house",
+      "state": "IL",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000617",
+      "name": "Delia C. Ramirez",
+      "firstName": "Delia",
+      "lastName": "Ramirez",
+      "chamber": "house",
+      "state": "IL",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001315",
+      "name": "Nikki Budzinski",
+      "firstName": "Nicole (Nikki)",
+      "lastName": "Budzinski",
+      "chamber": "house",
+      "state": "IL",
+      "district": "13",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001225",
+      "name": "Eric Sorensen",
+      "firstName": "Eric",
+      "lastName": "Sorensen",
+      "chamber": "house",
+      "state": "IL",
+      "district": "17",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001093",
+      "name": "Erin Houchin",
+      "firstName": "Erin",
+      "lastName": "Houchin",
+      "chamber": "house",
+      "state": "IN",
+      "district": "9",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001220",
+      "name": "Morgan McGarvey",
+      "firstName": "Morgan",
+      "lastName": "McGarvey",
+      "chamber": "house",
+      "state": "KY",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "I000058",
+      "name": "Glenn Ivey",
+      "firstName": "Glenn",
+      "lastName": "Ivey",
+      "chamber": "house",
+      "state": "MD",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001221",
+      "name": "Hillary J. Scholten",
+      "firstName": "Hillary",
+      "lastName": "Scholten",
+      "chamber": "house",
+      "state": "MI",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "J000307",
+      "name": "John James",
+      "firstName": "John",
+      "lastName": "James",
+      "chamber": "house",
+      "state": "MI",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "T000488",
+      "name": "Shri Thanedar",
+      "firstName": "Shri",
+      "lastName": "Thanedar",
+      "chamber": "house",
+      "state": "MI",
+      "district": "13",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000379",
+      "name": "Mark Alford",
+      "firstName": "Mark",
+      "lastName": "Alford",
+      "chamber": "house",
+      "state": "MO",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001316",
+      "name": "Eric Burlison",
+      "firstName": "Eric",
+      "lastName": "Burlison",
+      "chamber": "house",
+      "state": "MO",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "E000235",
+      "name": "Mike Ezell",
+      "firstName": "Mike",
+      "lastName": "Ezell",
+      "chamber": "house",
+      "state": "MS",
+      "district": "4",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000230",
+      "name": "Donald G. Davis",
+      "firstName": "Donald",
+      "lastName": "Davis",
+      "chamber": "house",
+      "state": "NC",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000477",
+      "name": "Valerie P. Foushee",
+      "firstName": "Valerie",
+      "lastName": "Foushee",
+      "chamber": "house",
+      "state": "NC",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000246",
+      "name": "Chuck Edwards",
+      "firstName": "Charles (Chuck)",
+      "lastName": "Edwards",
+      "chamber": "house",
+      "state": "NC",
+      "district": "11",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000398",
+      "name": "Thomas H. Kean, Jr.",
+      "firstName": "Thomas",
+      "lastName": "Kean",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001226",
+      "name": "Robert Menendez",
+      "firstName": "Robert",
+      "lastName": "Menendez",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000136",
+      "name": "Gabe Vasquez",
+      "firstName": "Gabriel (Gabe)",
+      "lastName": "Vasquez",
+      "chamber": "house",
+      "state": "NM",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000598",
+      "name": "Nick LaLota",
+      "firstName": "Nicolas",
+      "lastName": "LaLota",
+      "chamber": "house",
+      "state": "NY",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000599",
+      "name": "Daniel S. Goldman",
+      "firstName": "Dan",
+      "lastName": "Goldman",
+      "chamber": "house",
+      "state": "NY",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000599",
+      "name": "Michael Lawler",
+      "firstName": "Michael",
+      "lastName": "Lawler",
+      "chamber": "house",
+      "state": "NY",
+      "district": "17",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000600",
+      "name": "Nicholas A. Langworthy",
+      "firstName": "Nicholas",
+      "lastName": "Langworthy",
+      "chamber": "house",
+      "state": "NY",
+      "district": "23",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000601",
+      "name": "Greg Landsman",
+      "firstName": "Greg",
+      "lastName": "Landsman",
+      "chamber": "house",
+      "state": "OH",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001222",
+      "name": "Max L. Miller",
+      "firstName": "Max",
+      "lastName": "Miller",
+      "chamber": "house",
+      "state": "OH",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001223",
+      "name": "Emilia Strong Sykes",
+      "firstName": "Emilia",
+      "lastName": "Sykes",
+      "chamber": "house",
+      "state": "OH",
+      "district": "13",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001317",
+      "name": "Josh Brecheen",
+      "firstName": "Josh",
+      "lastName": "Brecheen",
+      "chamber": "house",
+      "state": "OK",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001094",
+      "name": "Val T. Hoyle",
+      "firstName": "Valerie",
+      "lastName": "Hoyle",
+      "chamber": "house",
+      "state": "OR",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001226",
+      "name": "Andrea Salinas",
+      "firstName": "Andrea",
+      "lastName": "Salinas",
+      "chamber": "house",
+      "state": "OR",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000602",
+      "name": "Summer L. Lee",
+      "firstName": "Summer",
+      "lastName": "Lee",
+      "chamber": "house",
+      "state": "PA",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "D000530",
+      "name": "Christopher R. Deluzio",
+      "firstName": "Chris",
+      "lastName": "Deluzio",
+      "chamber": "house",
+      "state": "PA",
+      "district": "17",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001223",
+      "name": "Seth Magaziner",
+      "firstName": "Seth",
+      "lastName": "Magaziner",
+      "chamber": "house",
+      "state": "RI",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000478",
+      "name": "Russell Fry",
+      "firstName": "Russell",
+      "lastName": "Fry",
+      "chamber": "house",
+      "state": "SC",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "O000175",
+      "name": "Andrew Ogles",
+      "firstName": "Andrew",
+      "lastName": "Ogles",
+      "chamber": "house",
+      "state": "TN",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001224",
+      "name": "Nathaniel Moran",
+      "firstName": "Nathaniel",
+      "lastName": "Moran",
+      "chamber": "house",
+      "state": "TX",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001224",
+      "name": "Keith Self",
+      "firstName": "Keith",
+      "lastName": "Self",
+      "chamber": "house",
+      "state": "TX",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "L000603",
+      "name": "Morgan Luttrell",
+      "firstName": "Morgan",
+      "lastName": "Luttrell",
+      "chamber": "house",
+      "state": "TX",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000594",
+      "name": "Monica De La Cruz",
+      "firstName": "Mónica",
+      "lastName": "De La Cruz",
+      "chamber": "house",
+      "state": "TX",
+      "district": "15",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001130",
+      "name": "Jasmine Crockett",
+      "firstName": "Jasmine",
+      "lastName": "Crockett",
+      "chamber": "house",
+      "state": "TX",
+      "district": "30",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001131",
+      "name": "Greg Casar",
+      "firstName": "Gregorio",
+      "lastName": "Casar",
+      "chamber": "house",
+      "state": "TX",
+      "district": "35",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001095",
+      "name": "Wesley Hunt",
+      "firstName": "Wesley",
+      "lastName": "Hunt",
+      "chamber": "house",
+      "state": "TX",
+      "district": "38",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000399",
+      "name": "Jennifer A. Kiggans",
+      "firstName": "Jennifer",
+      "lastName": "Kiggans",
+      "chamber": "house",
+      "state": "VA",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001318",
+      "name": "Becca Balint",
+      "firstName": "Becca",
+      "lastName": "Balint",
+      "chamber": "house",
+      "state": "VT",
+      "district": "At-Large",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000600",
+      "name": "Marie Gluesenkamp Perez",
+      "firstName": "Marie",
+      "lastName": "Gluesenkamp Perez",
+      "chamber": "house",
+      "state": "WA",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000135",
+      "name": "Derrick Van Orden",
+      "firstName": "Derrick",
+      "lastName": "Van Orden",
+      "chamber": "house",
+      "state": "WI",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001096",
+      "name": "Harriet M. Hageman",
+      "firstName": "Harriet",
+      "lastName": "Hageman",
+      "chamber": "house",
+      "state": "WY",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000618",
+      "name": "Pete Ricketts",
+      "firstName": "Pete",
+      "lastName": "Ricketts",
+      "chamber": "senate",
+      "state": "NE",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001227",
+      "name": "Jennifer L. McClellan",
+      "firstName": "Jennifer",
+      "lastName": "McClellan",
+      "chamber": "house",
+      "state": "VA",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000380",
+      "name": "Gabe Amo",
+      "firstName": "Gabe",
+      "lastName": "Amo",
+      "chamber": "house",
+      "state": "RI",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001228",
+      "name": "Celeste Maloy",
+      "firstName": "Celeste",
+      "lastName": "Maloy",
+      "chamber": "house",
+      "state": "UT",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001201",
+      "name": "Thomas R. Suozzi",
+      "firstName": "Thomas",
+      "lastName": "Suozzi",
+      "chamber": "house",
+      "state": "NY",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000402",
+      "name": "Timothy M. Kennedy",
+      "firstName": "Timothy",
+      "lastName": "Kennedy",
+      "chamber": "house",
+      "state": "NY",
+      "district": "26",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000480",
+      "name": "Vince Fong",
+      "firstName": "Vince",
+      "lastName": "Fong",
+      "chamber": "house",
+      "state": "CA",
+      "district": "20",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000619",
+      "name": "Michael A. Rulli",
+      "firstName": "Michael",
+      "lastName": "Rulli",
+      "chamber": "house",
+      "state": "OH",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001229",
+      "name": "LaMonica McIver",
+      "firstName": "LaMonica",
+      "lastName": "McIver",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000829",
+      "name": "Tony Wied",
+      "firstName": "Tony",
+      "lastName": "Wied",
+      "chamber": "house",
+      "state": "WI",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000110",
+      "name": "Cleo Fields",
+      "firstName": "Cleo",
+      "lastName": "Fields",
+      "chamber": "house",
+      "state": "LA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001188",
+      "name": "Marlin A. Stutzman",
+      "firstName": "Marlin",
+      "lastName": "Stutzman",
+      "chamber": "house",
+      "state": "IN",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001123",
+      "name": "Gilbert Ray Cisneros, Jr.",
+      "firstName": "Gilbert",
+      "lastName": "Cisneros",
+      "chamber": "house",
+      "state": "CA",
+      "district": "31",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000382",
+      "name": "Angela D. Alsobrooks",
+      "firstName": "Angela",
+      "lastName": "Alsobrooks",
+      "chamber": "senate",
+      "state": "MD",
+      "district": null,
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001232",
+      "name": "Tim Sheehy",
+      "firstName": "Tim",
+      "lastName": "Sheehy",
+      "chamber": "senate",
+      "state": "MT",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001242",
+      "name": "Bernie Moreno",
+      "firstName": "Bernie",
+      "lastName": "Moreno",
+      "chamber": "senate",
+      "state": "OH",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001243",
+      "name": "David McCormick",
+      "firstName": "Dave",
+      "lastName": "McCormick",
+      "chamber": "senate",
+      "state": "PA",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001323",
+      "name": "Nicholas J. Begich III",
+      "firstName": "Nicholas",
+      "lastName": "Begich",
+      "chamber": "house",
+      "state": "AK",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000481",
+      "name": "Shomari Figures",
+      "firstName": "Shomari",
+      "lastName": "Figures",
+      "chamber": "house",
+      "state": "AL",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000381",
+      "name": "Yassamin Ansari",
+      "firstName": "Yassamin",
+      "lastName": "Ansari",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001098",
+      "name": "Abraham J. Hamadeh",
+      "firstName": "Abraham",
+      "lastName": "Hamadeh",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001231",
+      "name": "Lateefah Simon",
+      "firstName": "Lateefah",
+      "lastName": "Simon",
+      "chamber": "house",
+      "state": "CA",
+      "district": "12",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000605",
+      "name": "Adam Gray",
+      "firstName": "Adam",
+      "lastName": "Gray",
+      "chamber": "house",
+      "state": "CA",
+      "district": "13",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000607",
+      "name": "Sam T. Liccardo",
+      "firstName": "Sam",
+      "lastName": "Liccardo",
+      "chamber": "house",
+      "state": "CA",
+      "district": "16",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "W000830",
+      "name": "George Whitesides",
+      "firstName": "George",
+      "lastName": "Whitesides",
+      "chamber": "house",
+      "state": "CA",
+      "district": "27",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000620",
+      "name": "Luz M. Rivas",
+      "firstName": "Luz",
+      "lastName": "Rivas",
+      "chamber": "house",
+      "state": "CA",
+      "district": "29",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "F000483",
+      "name": "Laura Friedman",
+      "firstName": "Laura",
+      "lastName": "Friedman",
+      "chamber": "house",
+      "state": "CA",
+      "district": "30",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000491",
+      "name": "Derek Tran",
+      "firstName": "Derek",
+      "lastName": "Tran",
+      "chamber": "house",
+      "state": "CA",
+      "district": "45",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001241",
+      "name": "Dave Min",
+      "firstName": "Dave",
+      "lastName": "Min",
+      "chamber": "house",
+      "state": "CA",
+      "district": "47",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001100",
+      "name": "Jeff Hurd",
+      "firstName": "Jeff",
+      "lastName": "Hurd",
+      "chamber": "house",
+      "state": "CO",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "C001137",
+      "name": "Jeff Crank",
+      "firstName": "Jeff",
+      "lastName": "Crank",
+      "chamber": "house",
+      "state": "CO",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "E000300",
+      "name": "Gabe Evans",
+      "firstName": "Gabe",
+      "lastName": "Evans",
+      "chamber": "house",
+      "state": "CO",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001238",
+      "name": "Sarah McBride",
+      "firstName": "Sarah",
+      "lastName": "McBride",
+      "chamber": "house",
+      "state": "DE",
+      "district": "At-Large",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "H001099",
+      "name": "Mike Haridopolos",
+      "firstName": "Mike",
+      "lastName": "Haridopolos",
+      "chamber": "house",
+      "state": "FL",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000311",
+      "name": "Brian Jack",
+      "firstName": "Brian",
+      "lastName": "Jack",
+      "chamber": "house",
+      "state": "GA",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001229",
+      "name": "Jefferson Shreve",
+      "firstName": "Jefferson",
+      "lastName": "Shreve",
+      "chamber": "house",
+      "state": "IN",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001233",
+      "name": "Mark B. Messmer",
+      "firstName": "Mark",
+      "lastName": "Messmer",
+      "chamber": "house",
+      "state": "IN",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "S001228",
+      "name": "Derek Schmidt",
+      "firstName": "Derek",
+      "lastName": "Schmidt",
+      "chamber": "house",
+      "state": "KS",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "O000176",
+      "name": "Johnny Olszewski, Jr.",
+      "firstName": "Johnny",
+      "lastName": "Olszewski",
+      "chamber": "house",
+      "state": "MD",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "E000301",
+      "name": "Sarah Elfreth",
+      "firstName": "Sarah",
+      "lastName": "Elfreth",
+      "chamber": "house",
+      "state": "MD",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001232",
+      "name": "April McClain Delaney",
+      "firstName": "April",
+      "lastName": "McClain Delaney",
+      "chamber": "house",
+      "state": "MD",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001321",
+      "name": "Tom Barrett",
+      "firstName": "Tom",
+      "lastName": "Barrett",
+      "chamber": "house",
+      "state": "MI",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001237",
+      "name": "Kristen McDonald Rivet",
+      "firstName": "Kristen",
+      "lastName": "McDonald Rivet",
+      "chamber": "house",
+      "state": "MI",
+      "district": "8",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001234",
+      "name": "Kelly Morrison",
+      "firstName": "Kelly",
+      "lastName": "Morrison",
+      "chamber": "house",
+      "state": "MN",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001324",
+      "name": "Wesley Bell",
+      "firstName": "Wesley",
+      "lastName": "Bell",
+      "chamber": "house",
+      "state": "MO",
+      "district": "1",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "O000177",
+      "name": "Robert F. Onder, Jr.",
+      "firstName": "Robert",
+      "lastName": "Onder",
+      "chamber": "house",
+      "state": "MO",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000404",
+      "name": "Kimberlyn King-Hinds",
+      "firstName": "Kimberlyn",
+      "lastName": "King-Hinds",
+      "chamber": "house",
+      "state": "MP",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000634",
+      "name": "Troy Downing",
+      "firstName": "Troy",
+      "lastName": "Downing",
+      "chamber": "house",
+      "state": "MT",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001240",
+      "name": "Addison P. McDowell",
+      "firstName": "Addison",
+      "lastName": "McDowell",
+      "chamber": "house",
+      "state": "NC",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001102",
+      "name": "Mark Harris",
+      "firstName": "Mark",
+      "lastName": "Harris",
+      "chamber": "house",
+      "state": "NC",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001101",
+      "name": "Pat Harrigan",
+      "firstName": "Pat",
+      "lastName": "Harrigan",
+      "chamber": "house",
+      "state": "NC",
+      "district": "10",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "K000405",
+      "name": "Brad Knott",
+      "firstName": "Brad",
+      "lastName": "Knott",
+      "chamber": "house",
+      "state": "NC",
+      "district": "13",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001236",
+      "name": "Tim Moore",
+      "firstName": "Tim",
+      "lastName": "Moore",
+      "chamber": "house",
+      "state": "NC",
+      "district": "14",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000482",
+      "name": "Julie Fedorchak",
+      "firstName": "Julie",
+      "lastName": "Fedorchak",
+      "chamber": "house",
+      "state": "ND",
+      "district": "At-Large",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000604",
+      "name": "Maggie Goodlander",
+      "firstName": "Maggie",
+      "lastName": "Goodlander",
+      "chamber": "house",
+      "state": "NH",
+      "district": "2",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "C001136",
+      "name": "Herbert C. Conaway, Jr.",
+      "firstName": "Herbert",
+      "lastName": "Conaway",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "P000621",
+      "name": "Nellie Pou",
+      "firstName": "Nellie",
+      "lastName": "Pou",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "9",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000602",
+      "name": "Laura Gillen",
+      "firstName": "Laura",
+      "lastName": "Gillen",
+      "chamber": "house",
+      "state": "NY",
+      "district": "4",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "L000606",
+      "name": "George Latimer",
+      "firstName": "George",
+      "lastName": "Latimer",
+      "chamber": "house",
+      "state": "NY",
+      "district": "16",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "R000622",
+      "name": "Josh Riley",
+      "firstName": "Josh",
+      "lastName": "Riley",
+      "chamber": "house",
+      "state": "NY",
+      "district": "19",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001231",
+      "name": "John W. Mannion",
+      "firstName": "John",
+      "lastName": "Mannion",
+      "chamber": "house",
+      "state": "NY",
+      "district": "22",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "T000490",
+      "name": "David J. Taylor",
+      "firstName": "David",
+      "lastName": "Taylor",
+      "chamber": "house",
+      "state": "OH",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "D000635",
+      "name": "Maxine Dexter",
+      "firstName": "Maxine",
+      "lastName": "Dexter",
+      "chamber": "house",
+      "state": "OR",
+      "district": "3",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001326",
+      "name": "Janelle S. Bynum",
+      "firstName": "Janelle",
+      "lastName": "Bynum",
+      "chamber": "house",
+      "state": "OR",
+      "district": "5",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001230",
+      "name": "Ryan Mackenzie",
+      "firstName": "Ryan",
+      "lastName": "Mackenzie",
+      "chamber": "house",
+      "state": "PA",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "B001327",
+      "name": "Robert P. Bresnahan, Jr.",
+      "firstName": "Robert",
+      "lastName": "Bresnahan",
+      "chamber": "house",
+      "state": "PA",
+      "district": "8",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001103",
+      "name": "Pablo José Hernández",
+      "firstName": "Pablo José",
+      "lastName": "Hernández Rivera",
+      "chamber": "house",
+      "state": "PR",
+      "district": "At-Large",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001325",
+      "name": "Sheri Biggs",
+      "firstName": "Sheri",
+      "lastName": "Biggs",
+      "chamber": "house",
+      "state": "SC",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000601",
+      "name": "Craig A. Goldman",
+      "firstName": "Craig",
+      "lastName": "Goldman",
+      "chamber": "house",
+      "state": "TX",
+      "district": "12",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000603",
+      "name": "Brandon Gill",
+      "firstName": "Brandon",
+      "lastName": "Gill",
+      "chamber": "house",
+      "state": "TX",
+      "district": "26",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000310",
+      "name": "Julie Johnson",
+      "firstName": "Julie",
+      "lastName": "Johnson",
+      "chamber": "house",
+      "state": "TX",
+      "district": "32",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "K000403",
+      "name": "Mike Kennedy",
+      "firstName": "Mike",
+      "lastName": "Kennedy",
+      "chamber": "house",
+      "state": "UT",
+      "district": "3",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001239",
+      "name": "John J. McGuire III",
+      "firstName": "John",
+      "lastName": "McGuire",
+      "chamber": "house",
+      "state": "VA",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "V000138",
+      "name": "Eugene Simon Vindman",
+      "firstName": "Eugene",
+      "lastName": "Vindman",
+      "chamber": "house",
+      "state": "VA",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "S001230",
+      "name": "Suhas Subramanyam",
+      "firstName": "Suhas",
+      "lastName": "Subramanyam",
+      "chamber": "house",
+      "state": "VA",
+      "district": "10",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "B001322",
+      "name": "Michael Baumgartner",
+      "firstName": "Michael",
+      "lastName": "Baumgartner",
+      "chamber": "house",
+      "state": "WA",
+      "district": "5",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "R000621",
+      "name": "Emily Randall",
+      "firstName": "Emily",
+      "lastName": "Randall",
+      "chamber": "house",
+      "state": "WA",
+      "district": "6",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "M001235",
+      "name": "Riley M. Moore",
+      "firstName": "Riley",
+      "lastName": "Moore",
+      "chamber": "house",
+      "state": "WV",
+      "district": "2",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "J000312",
+      "name": "James C. Justice",
+      "firstName": "Jim",
+      "lastName": "Justice",
+      "chamber": "senate",
+      "state": "WV",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "H001104",
+      "name": "Jon Husted",
+      "firstName": "Jon",
+      "lastName": "Husted",
+      "chamber": "senate",
+      "state": "OH",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001244",
+      "name": "Ashley Moody",
+      "firstName": "Ashley",
+      "lastName": "Moody",
+      "chamber": "senate",
+      "state": "FL",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "P000622",
+      "name": "Jimmy Patronis",
+      "firstName": "Jimmy",
+      "lastName": "Patronis",
+      "chamber": "house",
+      "state": "FL",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000484",
+      "name": "Randy Fine",
+      "firstName": "Randall",
+      "lastName": "Fine",
+      "chamber": "house",
+      "state": "FL",
+      "district": "6",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "W000831",
+      "name": "James R. Walkinshaw",
+      "firstName": "James",
+      "lastName": "Walkinshaw",
+      "chamber": "house",
+      "state": "VA",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000606",
+      "name": "Adelita S. Grijalva",
+      "firstName": "Adelita",
+      "lastName": "Grijalva",
+      "chamber": "house",
+      "state": "AZ",
+      "district": "7",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "V000139",
+      "name": "Matt Van Epps",
+      "firstName": "Matt",
+      "lastName": "Van Epps",
+      "chamber": "house",
+      "state": "TN",
+      "district": "7",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001245",
+      "name": "Christian D. Menefee",
+      "firstName": "Christian",
+      "lastName": "Menefee",
+      "chamber": "house",
+      "state": "TX",
+      "district": "18",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "A000383",
+      "name": "Alan Armstrong",
+      "firstName": "Alan",
+      "lastName": "Armstrong",
+      "chamber": "senate",
+      "state": "OK",
+      "district": null,
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "F000485",
+      "name": "Clay Fuller",
+      "firstName": "Clay",
+      "lastName": "Fuller",
+      "chamber": "house",
+      "state": "GA",
+      "district": "14",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "M001246",
+      "name": "Analilia Mejia",
+      "firstName": "Analilia",
+      "lastName": "Mejia",
+      "chamber": "house",
+      "state": "NJ",
+      "district": "11",
+      "party": "Democrat"
+    },
+    {
+      "bioguideId": "G000607",
+      "name": "James Gallagher",
+      "firstName": "James",
+      "lastName": "Gallagher",
+      "chamber": "house",
+      "state": "CA",
+      "district": "1",
+      "party": "Republican"
+    },
+    {
+      "bioguideId": "G000608",
+      "name": "Darline Graham",
+      "firstName": "Darline",
+      "lastName": "Graham Nordone",
+      "chamber": "senate",
+      "state": "SC",
+      "district": null,
+      "party": "Republican"
+    }
+  ]
+}
