@@ -5,6 +5,7 @@ import {
   buildHistoryPoints,
   compareProxyRows,
   dollarChange,
+  latestQuarterForInstitution,
   metricsAtQuarter,
   pctChange,
   shiftQuartersBack,
@@ -174,6 +175,36 @@ describe("portfolio performance proxy math", () => {
     });
     assert.equal(filtered.length, 1);
     assert.equal(filtered[0].name, "B");
+  });
+
+  it("latestQuarterForInstitution uses the filer's own last quarter", () => {
+    const q = latestQuarterForInstitution(
+      [
+        {
+          institutionId: "0001067983",
+          quarter: "2025-Q4",
+          filingDate: null,
+          holdingsCount: 1,
+          portfolioValueUsd: 1,
+        },
+        {
+          institutionId: "0001067983",
+          quarter: "2026-Q1",
+          filingDate: null,
+          holdingsCount: 1,
+          portfolioValueUsd: 2,
+        },
+        {
+          institutionId: "0001910344",
+          quarter: "2026-Q2",
+          filingDate: null,
+          holdingsCount: 1,
+          portfolioValueUsd: 3,
+        },
+      ],
+      "1067983"
+    );
+    assert.equal(q, "2026-Q1");
   });
 });
 

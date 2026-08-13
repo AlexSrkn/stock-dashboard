@@ -56,9 +56,20 @@ function lookupTicker(issuer: string, map: Map<string, string>): string | null {
   return null;
 }
 
+const issuerLookupMemo = new Map<string, string | null>();
+
+function lookupTickerMemo(issuer: string, map: Map<string, string>): string | null {
+  const key = normalizeIssuerKey(issuer);
+  if (!key) return null;
+  if (issuerLookupMemo.has(key)) return issuerLookupMemo.get(key)!;
+  const resolved = lookupTicker(issuer, map);
+  issuerLookupMemo.set(key, resolved);
+  return resolved;
+}
+
 export async function resolveTickerFromIssuer(issuer: string): Promise<string | null> {
   const map = await loadIssuerToTickerMap();
-  return lookupTicker(issuer, map);
+  return lookupTickerMemo(issuer, map);
 }
 
 export async function enrichRowsWithTickers<T extends { ticker: string | null; issuer: string }>(
@@ -68,8 +79,11 @@ export async function enrichRowsWithTickers<T extends { ticker: string | null; i
   const map = await loadIssuerToTickerMap();
   return rows.map((row) => {
     const existing = row.ticker ? String(row.ticker).trim().toUpperCase() : "";
-    if (existing) return { ...row, ticker: existing };
-    const resolved = lookupTicker(row.issuer, map);
+    if (existing) {
+      if (row.ticker === existing) return row;
+      return { ...row, ticker: existing };
+    }
+    const resolved = lookupTickerMemo(row.issuer, map);
     return { ...row, ticker: resolved };
   });
 }

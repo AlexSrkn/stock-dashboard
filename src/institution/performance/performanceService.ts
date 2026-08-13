@@ -29,13 +29,20 @@ export interface InstitutionPerformanceServiceOptions extends InstitutionPerform
   institutionIds?: string[];
   /** Inject a precomputed returns matrix (tests only). */
   returnsMatrix?: ReturnsMatrix;
+  /** Limit 13F holdings load to the latest N quarters (bulk jobs). */
+  maxLoadQuarters?: number;
 }
 
 export class InstitutionPerformanceService {
   constructor(private readonly pool: pg.Pool = getPool()) {}
 
-  async loadHoldings(institutionIds?: string[]): Promise<Awaited<ReturnType<typeof loadInstitutionHoldings>>> {
-    return loadInstitutionHoldings(this.pool, institutionIds);
+  async loadHoldings(
+    institutionIds?: string[],
+    options: Pick<InstitutionPerformanceServiceOptions, "maxLoadQuarters"> = {}
+  ): Promise<Awaited<ReturnType<typeof loadInstitutionHoldings>>> {
+    return loadInstitutionHoldings(this.pool, institutionIds, {
+      maxQuarters: options.maxLoadQuarters,
+    });
   }
 
   computePerformanceSync(
@@ -56,7 +63,7 @@ export class InstitutionPerformanceService {
   async computePerformance(
     options: InstitutionPerformanceServiceOptions = {}
   ): Promise<InstitutionPerformanceSummary[]> {
-    const holdings = await this.loadHoldings(options.institutionIds);
+    const holdings = await this.loadHoldings(options.institutionIds, options);
     return this.computePerformanceSync(holdings, options);
   }
 

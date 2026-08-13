@@ -1,7 +1,6 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
 import { queryInsiderTransactionsByTicker } from "../db/insiderTransactions.js";
-import { fetchInstitutionalOwnership } from "../market/institutionalOwnership.js";
 import { getCongressTradesForTicker } from "../politicians/byTicker.js";
 import type { PoliticianTrade } from "../politicians/types.js";
 import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
@@ -146,23 +145,20 @@ export async function getOwnershipIntelligence(
 ): Promise<OwnershipIntelligenceResponse> {
   const sym = String(ticker || "").trim().toUpperCase();
 
-  const [yahooOwnership, politicianPayload] = await Promise.all([
-    fetchInstitutionalOwnership(sym).catch(() => null),
-    Promise.resolve(getCongressTradesForTicker(sym)),
-  ]);
+  const politicianPayload = getCongressTradesForTicker(sym);
 
   let meta = {
     ticker: sym,
     currentQuarter: null as string | null,
     previousQuarter: null as string | null,
     trackedFundCount: 0,
-    institutionalOwnership: yahooOwnership,
+    institutionalOwnership: null as number | null,
     politicianDataAt: politicianPayload.fetchedAt,
   };
 
   let institutional = {
     trend: "neutral" as ActivityTrend,
-    ownershipPct: yahooOwnership != null ? round2(yahooOwnership * 100) : null,
+    ownershipPct: null as number | null,
     institutionCountChange: null as number | null,
     newPositions: 0,
     netShares: 0,

@@ -42,6 +42,31 @@ HAVING SUM(h.shares) > 0
 ORDER BY h.filer_cik, h.quarter;
 `.trim();
 
+/** Same as batch holdings query, restricted to specific quarters ($2). */
+export const SELECT_INSTITUTION_HOLDINGS_BATCH_QUARTERS_SQL = `
+WITH ${CTE_LATEST_FILINGS_BATCH}
+SELECT
+  h.filer_cik AS institution_id,
+  h.quarter,
+  h.cusip,
+  MAX(h.ticker) AS ticker,
+  MAX(h.issuer) AS issuer,
+  SUM(h.shares)::float8 AS shares,
+  SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS market_value
+FROM sec_holding h
+INNER JOIN latest_filings lf
+  ON h.filing_id = lf.filing_id
+  AND h.filer_cik = lf.filer_cik
+  AND h.quarter = lf.quarter
+WHERE h.filer_cik = ANY($1::char(10)[])
+  AND h.quarter = ANY($2::text[])
+  ${sqlCommonStockOnly("h")}
+GROUP BY h.filer_cik, h.quarter, h.cusip
+HAVING SUM(h.shares) > 0
+  AND SUM(COALESCE(h.value, h.value_usd_thousands * 1000)) > 0
+ORDER BY h.filer_cik, h.quarter;
+`.trim();
+
 /** Distinct quarters available for a set of filers. */
 export const SELECT_INSTITUTION_QUARTERS_BATCH_SQL = `
 WITH ${CTE_LATEST_FILINGS_BATCH}

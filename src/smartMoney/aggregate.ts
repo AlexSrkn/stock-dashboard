@@ -66,7 +66,7 @@ export async function loadInstitutionalFlowByTicker(pool: pg.Pool): Promise<Map<
   const out = new Map<string, number>();
   try {
     const [holdings, aumByFilerQuarter] = await Promise.all([
-      loadInstitutionHoldings(pool),
+      loadInstitutionHoldings(pool, undefined, { maxQuarters: 2 }),
       loadFilerAumByQuarter(pool, ciks),
     ]);
     if (!holdings.length) return out;

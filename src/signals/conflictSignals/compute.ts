@@ -262,7 +262,7 @@ export async function computeConflictSignals(
   insiderWindowDays = DEFAULT_INSIDER_WINDOW_DAYS
 ): Promise<ConflictSignalsCachePayload> {
   const [holdings, insiderByTicker, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 2 }),
     aggregateInsiders(pool, insiderWindowDays),
     loadSharesOutstanding(pool),
   ]);

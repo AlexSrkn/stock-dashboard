@@ -2,7 +2,7 @@
  * Compute institutional performance summaries from cached ticker-quarter returns.
  *
  * Usage:
- *   npm run performance:warm-cache   # once daily — batch Yahoo fetch
+ *   npm run performance:warm-cache   # summaries from disk returns cache
  *   npx tsx scripts/compute-institution-performance.ts
  */
 import { loadEnvFile } from "../src/db/pool.js";

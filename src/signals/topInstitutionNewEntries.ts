@@ -1,9 +1,21 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
-import { getInstitutionActivity, listTrackedInstitutions } from "../institution/institutionAnalytics.js";
+import { formatSecCik } from "../sec/http.js";
+import { INSTITUTIONAL_13F_MANAGERS } from "../sec/seed/institutional-ciks.js";
+import { getInstitutionActivity } from "../institution/institutionAnalytics.js";
 import { getInstitutionPerformanceService } from "../institution/performance/performanceService.js";
 
 export const TOP_PERFORMER_COUNT = 10;
+
+function curatedRankingFunds() {
+  return INSTITUTIONAL_13F_MANAGERS.filter((m) => m.cik)
+    .map((m) => ({
+      name: m.name,
+      cik: formatSecCik(m.cik!),
+      type: m.type,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export interface TopInstitutionNewEntryRow {
   ticker: string;
@@ -42,7 +54,7 @@ export async function computeTopInstitutionNewEntries(
   pool: pg.Pool = getPool(),
   topN = TOP_PERFORMER_COUNT
 ): Promise<TopInstitutionNewEntriesPayload> {
-  const funds = listTrackedInstitutions();
+  const funds = curatedRankingFunds();
   const perfService = getInstitutionPerformanceService();
   const rankings = await perfService.getRankings("rolling_1y", funds);
 

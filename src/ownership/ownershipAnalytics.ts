@@ -33,7 +33,6 @@ import {
   TRACKED_INSTITUTIONAL_MANAGERS,
 } from "./trackedInstitutions.js";
 import { formatSecCik } from "../sec/http.js";
-import { fetchImpliedSharesOutstanding } from "../market/impliedSharesOutstanding.js";
 import { fetchStockPrice } from "../market/stockPrice.js";
 
 interface FundAggRow {
@@ -140,17 +139,13 @@ export async function loadOwnershipMeta(
 ): Promise<OwnershipQueryMeta> {
   const stock = await resolveStockIdentifiers(pool, ticker);
   const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, stock.ticker);
-  const [quarters, impliedSharesOutstanding, quote] = await Promise.all([
+  const [quarters, quote] = await Promise.all([
     cacheSnapshot?.currentQuarter
       ? Promise.resolve([cacheSnapshot.currentQuarter, cacheSnapshot.previousQuarter].filter(Boolean) as string[])
       : loadRecentQuarters(pool, stock.cusips, 2),
-    cacheSnapshot?.sharesOutstanding
-      ? Promise.resolve(cacheSnapshot.sharesOutstanding)
-      : fetchImpliedSharesOutstanding(stock.ticker),
     fetchStockPrice(stock.ticker),
   ]);
-  const sharesOutstanding =
-    cacheSnapshot?.sharesOutstanding ?? impliedSharesOutstanding;
+  const sharesOutstanding = cacheSnapshot?.sharesOutstanding ?? null;
   return {
     ticker: stock.ticker,
     cusips: stock.cusips,

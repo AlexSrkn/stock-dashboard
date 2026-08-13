@@ -8,7 +8,7 @@ import {
 import { ChartExtensions } from "./chart/chart.js";
 import { setupChartToolbar, closeChartDrawMenu, closeChartCompareMenu, closeChartIndicatorsMenu, setChartDrawMenuHooks, setChartCompareMenuHooks, setChartIndicatorsMenuHooks } from "./chart/chartUi.js";
 import { IndicatorManager } from "./chart/indicatorManager.js";
-import { initMarketStrip } from "./marketStrip.js";
+import { initLandingPage } from "./landingPage.js";
 import { buildSparklineSvg } from "./sparkline.js";
 import { createDcfCalculatorController } from "./dcfCalculatorPage.js";
 import { createWaccCalculatorController } from "./waccCalculatorPage.js";
@@ -143,7 +143,7 @@ let activeInstitutionHubView = "directory";
 /** @type {ReturnType<typeof createInstitutionPerformanceProxyController> | null} */
 let institutionProxyPerformance = null;
 let activeInsiderHubView = "trades";
-let activeSignalsHubView = "smart-money";
+let activeSignalsHubView = "directory";
 let activeToolsHubView = "directory";
 /** @type {ReturnType<typeof createDcfCalculatorController> | null} */
 let dcfCalculator = null;
@@ -1050,8 +1050,8 @@ function isLandingPath(pathname) {
   return p === "/" || p === "";
 }
 
-const LANDING_PAGE_TITLE = "Tradepile — Stock & institutional research";
-const APP_PAGE_TITLE = "Tradepile";
+const LANDING_PAGE_TITLE = "TradeAtlant — Stock & institutional research";
+const APP_PAGE_TITLE = "TradeAtlant";
 
 function showLandingView(visible) {
   const landing = document.getElementById("view-landing");
@@ -1163,6 +1163,18 @@ async function enterAppFromLanding(mode) {
     activePoliticianKey = null;
     activePoliticianHubView = "trades";
     setExploreMode("politicians", { navigate: true });
+    void refreshSidebarMarketPanels();
+    return;
+  }
+  if (mode === "signals") {
+    setExploreMode("signals", { navigate: false });
+    navigateToSignalsHub();
+    void refreshSidebarMarketPanels();
+    return;
+  }
+  if (mode === "tools") {
+    setExploreMode("tools", { navigate: false });
+    navigateToToolsHub();
     void refreshSidebarMarketPanels();
     return;
   }
@@ -1314,8 +1326,11 @@ function parseAppRoute(pathname) {
   if (pathname === "/signals/screener") {
     return { mode: "stocks", screener: true, redirectFrom: "/signals/screener" };
   }
-  if (pathname === "/signals" || pathname === "/signals/smart-money" || pathname.startsWith("/signals/")) {
+  if (pathname === "/signals/smart-money") {
     return { mode: "signals", hub: true, signalsHubView: "smart-money" };
+  }
+  if (pathname === "/signals" || pathname.startsWith("/signals/")) {
+    return { mode: "signals", hub: true, signalsHubView: "directory" };
   }
   if (pathname === "/tools/dcf" || pathname.startsWith("/tools/dcf/")) {
     return { mode: "tools", hub: true, toolsHubView: "dcf" };
@@ -4573,6 +4588,7 @@ function navigateToHeavySelling() {
 }
 
 function signalsHubPath(view = activeSignalsHubView) {
+  if (view === "directory") return "/signals";
   if (view === "top-institution-entries") return "/signals/top-institution-new-entries";
   if (view === "double-signal") {
     return activeDoubleSignalTicker
@@ -4591,11 +4607,22 @@ function signalsHubPath(view = activeSignalsHubView) {
   return "/signals/smart-money";
 }
 
+function navigateToSignalsHub() {
+  activeSignalsHubView = "directory";
+  activeDoubleSignalTicker = null;
+  activeTripleSignalTicker = null;
+  if (window.location.pathname !== "/signals") {
+    history.pushState({ explore: "signals", signalsHubView: "directory" }, "", "/signals");
+  }
+  setExploreMode("signals", { navigate: false });
+  updateSignalsView();
+}
+
 function navigateToSignalsSmartMoney() {
   activeSignalsHubView = "smart-money";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
-  if (window.location.pathname !== "/signals/smart-money" && window.location.pathname !== "/signals") {
+  if (window.location.pathname !== "/signals/smart-money") {
     history.pushState({ explore: "signals", signalsHubView: "smart-money" }, "", "/signals/smart-money");
   }
   setExploreMode("signals", { navigate: false });
@@ -5018,6 +5045,7 @@ function updateSignalsView() {
   showMainEntityView();
   window.scrollTo({ top: 0, behavior: "instant" });
 
+  const directory = document.getElementById("signals-directory-hub");
   const smartMoney = document.getElementById("signals-smart-money-hub");
   const topEntries = document.getElementById("signals-top-institution-entries-hub");
   const doubleSignal = document.getElementById("signals-double-signal-hub");
@@ -5034,7 +5062,17 @@ function updateSignalsView() {
   const showHiddenGems = activeSignalsHubView === "hidden-gems";
   const showConvictionScore = activeSignalsHubView === "conviction-score";
   const showInstitutionalDiscovery = activeSignalsHubView === "institutional-discovery";
+  const showDirectory =
+    !showSmartMoney &&
+    !showTopEntries &&
+    !showDoubleSignal &&
+    !showTripleSignal &&
+    !showConflictSignals &&
+    !showHiddenGems &&
+    !showConvictionScore &&
+    !showInstitutionalDiscovery;
 
+  if (directory) directory.hidden = !showDirectory;
   if (smartMoney) smartMoney.hidden = !showSmartMoney;
   if (topEntries) topEntries.hidden = !showTopEntries;
   if (doubleSignal) doubleSignal.hidden = !showDoubleSignal;
@@ -5074,6 +5112,7 @@ function scrollInstitutionProfileIntoView() {
 
 function setExploreMode(mode, { navigate = true } = {}) {
   if (!EXPLORE_MODES.includes(mode)) mode = "stocks";
+  showLandingView(false);
   activeExploreMode = mode;
   updateExploreNav();
   updateTopSearchForMode();
@@ -5299,24 +5338,19 @@ function setExploreMode(mode, { navigate = true } = {}) {
             "/signals/institutional-discovery"
           );
         }
-      } else {
+      } else if (route.signalsHubView === "smart-money") {
         activeSignalsHubView = "smart-money";
         activeDoubleSignalTicker = null;
         activeTripleSignalTicker = null;
-        if (
-          window.location.pathname !== "/signals/smart-money" &&
-          window.location.pathname !== "/signals" &&
-          window.location.pathname !== "/signals/top-institution-new-entries" &&
-          window.location.pathname !== "/signals/conflict-signals" &&
-          window.location.pathname !== "/signals/hidden-gems" &&
-          window.location.pathname !== "/signals/conviction-score" &&
-          window.location.pathname !== "/signals/institutional-discovery" &&
-          !window.location.pathname.startsWith("/signals/double-signal") &&
-          !window.location.pathname.startsWith("/signals/triple-signal")
-        ) {
+        if (window.location.pathname !== "/signals/smart-money") {
           history.pushState({ explore: "signals", signalsHubView: "smart-money" }, "", "/signals/smart-money");
-        } else if (window.location.pathname === "/signals") {
-          history.replaceState({ explore: "signals", signalsHubView: "smart-money" }, "", "/signals/smart-money");
+        }
+      } else {
+        activeSignalsHubView = "directory";
+        activeDoubleSignalTicker = null;
+        activeTripleSignalTicker = null;
+        if (window.location.pathname !== "/signals") {
+          history.pushState({ explore: "signals", signalsHubView: "directory" }, "", "/signals");
         }
       }
     }
@@ -11190,7 +11224,7 @@ async function loadInstitutionPanel(tab, cik) {
         renderInstitutionPerformanceTable([]);
         const body = document.getElementById("institution-performance-body");
         if (body) {
-          body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No reported 13F portfolio value history for this institution.</td></tr>`;
+          body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No reported 13F portfolio value history for this institution (or they have not filed for the latest quarter yet).</td></tr>`;
         }
         return;
       }
@@ -12888,8 +12922,8 @@ function formatPercentValue(raw, assumeRatio = false, signed = false) {
   return `${pctStr}%`;
 }
 
-async function fetchFundamentals(symbol) {
-  return apiJson("/api/yahoo/fundamentals", { symbol });
+async function fetchFundamentals(_symbol) {
+  throw new Error("Yahoo fundamentals removed — use SEC filings fundamentals");
 }
 
 async function fetchFilingsFundamentals(symbol) {
@@ -17684,31 +17718,36 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-async function fetchQuote(symbol) {
-  const q = await apiJson("/api/yahoo/quote", { symbol });
-  const price = Number(q.price);
-  let changePct = Number(q.changePct);
-  if (!Number.isFinite(changePct)) changePct = 0;
-  if (!Number.isFinite(price)) throw new Error("Invalid quote");
+async function fetchQuote(_symbol) {
   return {
-    price,
-    changePct,
-    currency: q.currency || "USD",
-    name: q.name || symbol,
-    exchange: q.exchange || "",
-    sparkline: Array.isArray(q.sparkline) ? q.sparkline : [],
+    price: null,
+    changePct: 0,
+    currency: "USD",
+    name: _symbol,
+    exchange: "",
+    sparkline: [],
   };
 }
 
 async function fetchWatchlistEntry(symbol) {
-  const quote = await fetchQuote(symbol);
+  const sym = String(symbol || "").trim().toUpperCase();
+  let name = sym;
+  try {
+    const data = await apiJson("/api/stocks/search", { q: sym, limit: 8 });
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const exact = results.find((r) => String(r.symbol || "").toUpperCase() === sym);
+    const hit = exact || results[0];
+    name = hit?.name || hit?.description || sym;
+  } catch {
+    /* keep ticker as name */
+  }
   return {
-    symbol,
-    name: quote.name,
-    price: quote.price,
-    changePct: quote.changePct,
-    currency: quote.currency,
-    exchange: quote.exchange,
+    symbol: sym,
+    name,
+    price: null,
+    changePct: 0,
+    currency: "USD",
+    exchange: "",
     notifications: [],
     signals: [],
     latestActivity: null,
@@ -17870,45 +17909,9 @@ const RANGE_INTERVAL_LABELS = {
   MAX: "1mo",
 };
 
-async function fetchCandles(symbol, range) {
-  const uiRange = String(range || activeRange || "1D").toUpperCase();
-  const [displayResult, historyResult] = await Promise.allSettled([
-    apiJson("/api/yahoo/candles", { symbol, range: uiRange }),
-    apiJson("/api/yahoo/candles", { symbol, range: uiRange, maHistory: "1" }),
-  ]);
-
-  if (displayResult.status !== "fulfilled") {
-    throw displayResult.reason;
-  }
-
-  const data = displayResult.value;
-  const candleData = buildCandleDataFromPayload(data);
-  if (!candleData.length) return null;
-
-  const historyCandleData =
-    historyResult.status === "fulfilled"
-      ? buildCandleDataFromPayload(historyResult.value)
-      : candleData;
-  const maSourceCandleData = buildMaSourceCandleData(candleData, historyCandleData, MA_WARMUP_MAX);
-
-  const points = candleData.map((b) => ({
-    x: Number(b.time) * 1000,
-    y: Number(b.close),
-  }));
-  const volumeData = buildVolumeDataFromPayload(data, candleData);
-  const rangeChangePct = Number(data.rangeChangePct);
-  const pct = Number.isFinite(rangeChangePct) ? rangeChangePct : 0;
-  return {
-    points,
-    candleData,
-    maSourceCandleData,
-    volumeData,
-    rangeChangePct: pct,
-    positive: pct >= 0,
-    currency: data.currency || "USD",
-    range: data.uiRange || uiRange,
-    interval: data.interval || RANGE_INTERVAL_LABELS[String(range || "1D").toUpperCase()] || "",
-  };
+async function fetchCandles(_symbol, _range) {
+  // Lightweight-charts path retired with Yahoo; TradingView is the live chart.
+  return null;
 }
 
 function buildCandleDataFromPayload(data) {
@@ -18215,7 +18218,7 @@ function openWatchlistSearch() {
     input.focus();
   }
   renderSearchResults([]);
-  setSearchHint("Type to search stocks worldwide (Yahoo Finance)");
+  setSearchHint("Type to search US stocks");
 }
 
 function closeWatchlistSearch() {
@@ -19953,7 +19956,7 @@ async function loadActiveSymbolPanels() {
   ownershipExpanded = false;
   renderStockClassificationLabel(null);
   activeCurrency = stock.currency || activeCurrency;
-  setChartFootnote("Loading Yahoo Finance…");
+  setChartFootnote("Loading chart…");
   setOverviewDataSource("Loading SEC filings…");
   setOwnershipSubtitle("Loading 13F holdings…");
   setSecSubtitle("Loading SEC submissions…");
@@ -20457,10 +20460,8 @@ function setupExploreNav() {
         return;
       }
       if (mode === "signals") {
-        void (async () => {
-          setExploreMode("signals", { navigate: false });
-          navigateToSignalsSmartMoney();
-        })();
+        setExploreMode("signals", { navigate: false });
+        navigateToSignalsHub();
         return;
       }
       if (mode === "tools") {
@@ -20748,22 +20749,25 @@ function setupExploreNav() {
 }
 
 function setupLanding() {
-  document.getElementById("landing-enter-stocks")?.addEventListener("click", () => {
-    void enterAppFromLanding("stocks");
-  });
-  document.getElementById("landing-enter-institutions")?.addEventListener("click", () => {
-    void enterAppFromLanding("institutions");
-  });
-  document.getElementById("landing-enter-insiders")?.addEventListener("click", () => {
-    void enterAppFromLanding("insiders");
-  });
-  document.getElementById("landing-enter-politicians")?.addEventListener("click", () => {
-    void enterAppFromLanding("politicians");
+  const root = document.getElementById("view-landing");
+  root?.addEventListener("click", (e) => {
+    const enter = e.target.closest?.("[data-landing-enter]");
+    if (enter) {
+      void enterAppFromLanding(enter.getAttribute("data-landing-enter"));
+      return;
+    }
+    if (e.target.closest?.("#landing-see-how")) {
+      document.getElementById("landing-how")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
   });
   document.getElementById("logo-home-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     navigateToLanding();
   });
+  initLandingPage();
 }
 
 function setupEntityLinkDelegation() {
@@ -20874,7 +20878,7 @@ function setupWatchlistSearch() {
       clearTimeout(searchDebounceTimer);
       if (!q) {
         renderSearchResults([]);
-        setSearchHint("Type to search stocks worldwide (Yahoo Finance)");
+        setSearchHint("Type to search US stocks");
         return;
       }
       setSearchHint("Searching…");
@@ -21385,5 +21389,4 @@ setupTabs();
 setupDrawer();
 setupTopSearch();
 setupWatchlistSearch();
-initMarketStrip();
 void init();

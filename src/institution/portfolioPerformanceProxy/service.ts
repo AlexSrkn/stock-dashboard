@@ -9,6 +9,7 @@ import {
   compareProxyRows,
   defaultAsOfQuarter,
   dollarChange,
+  latestQuarterForInstitution,
   metricsAtQuarter,
   parseSortDir,
   parseSortKey,
@@ -123,14 +124,27 @@ export async function getPortfolioPerformanceProxyRankings(
   pool: pg.Pool = getPool()
 ): Promise<PortfolioProxyRankingsPayload> {
   const cache = await loadSnapshots(pool);
-  const asOfQuarter = defaultAsOfQuarter(cache.availableQuarters, filters.quarter);
+  let asOfQuarter = defaultAsOfQuarter(cache.availableQuarters, filters.quarter);
   const sort = parseSortKey(filters.sort);
   const sortDir = parseSortDir(filters.sortDir);
   const pageSize = Math.min(200, Math.max(1, Number(filters.pageSize) || 50));
   const page = Math.max(1, Number(filters.page) || 1);
+  const cikFilter = String(filters.cik || "").trim();
+  const explicitQuarter = String(filters.quarter || "").trim();
 
   let rows = asOfQuarter ? buildRowsForQuarter(cache.snapshots, asOfQuarter) : [];
   rows = applyProxyFilters(rows, filters);
+
+  // Profile tab passes `cik` without a quarter. If that filer hasn't reported for the
+  // global latest quarter yet, fall back to their own latest filing quarter.
+  if (cikFilter && !rows.length && !explicitQuarter) {
+    const fallbackQ = latestQuarterForInstitution(cache.snapshots, cikFilter);
+    if (fallbackQ && fallbackQ !== asOfQuarter) {
+      asOfQuarter = fallbackQ;
+      rows = applyProxyFilters(buildRowsForQuarter(cache.snapshots, fallbackQ), filters);
+    }
+  }
+
   rows.sort((a, b) => compareProxyRows(a, b, sort, sortDir));
   rows = rows.map((row, i) => ({ ...row, rank: i + 1 }));
 

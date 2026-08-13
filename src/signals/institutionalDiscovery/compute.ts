@@ -465,7 +465,7 @@ export async function computeInstitutionalDiscovery(
   void TRACKED_INSTITUTIONAL_MANAGERS; // ensure seed linked for name resolution
 
   const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 8 }),
     loadSharesOutstanding(pool),
   ]);
 

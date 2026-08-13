@@ -268,7 +268,7 @@ export async function computeHiddenGems(
   thresholds: HiddenGemThresholds = DEFAULT_HIDDEN_GEM_THRESHOLDS
 ): Promise<HiddenGemsCachePayload> {
   const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 2 }),
     loadSharesOutstanding(pool),
   ]);
 

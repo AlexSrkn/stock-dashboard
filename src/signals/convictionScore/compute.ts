@@ -486,7 +486,7 @@ export async function computeConvictionScores(
   thresholds: ConvictionScoreThresholds = DEFAULT_CONVICTION_THRESHOLDS
 ): Promise<ConvictionScoreCachePayload> {
   const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 8 }),
     loadSharesOutstanding(pool),
   ]);
 

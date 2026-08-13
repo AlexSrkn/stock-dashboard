@@ -208,8 +208,8 @@ function resolvePriceDateBoundsFromQuarters(quarters: string[]): { minDate: stri
 }
 
 /**
- * Batch warmup: fetch prices once, build returns matrix, persist to disk.
- * Only place where Yahoo Finance is called for performance.
+ * Batch warmup for ticker-quarter returns from live prices.
+ * Yahoo Finance was removed — this now only works if a price provider is reintroduced.
  */
 export async function warmReturnsMatrix(
   pool?: pg.Pool,
@@ -263,7 +263,7 @@ export async function warmReturnsMatrix(
   return warmInflight;
 }
 
-/** Load disk cache on startup only — never triggers Yahoo batch fetch. */
+/** Load disk cache on startup only — never triggers a live price batch. */
 export function ensureReturnsMatrixOnStartup(): void {
   const disk = tryLoadDiskCache(null);
   if (disk) {

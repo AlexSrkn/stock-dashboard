@@ -6,9 +6,9 @@ export interface OwnershipQueryMeta {
   previousQuarter: string | null;
   /** Number of curated institutional filers tracked in institutional-ciks.ts */
   trackedFundCount: number;
-  /** Yahoo key-statistics implied shares outstanding (denominator for % Outstanding). */
+  /** Shares outstanding used as denominator for % Outstanding (ownership cache / SEC). */
   impliedSharesOutstanding: number | null;
-  /** Yahoo live price used for position value (shares × price). */
+  /** Live share price for position value when available (shares × price); null without a price provider. */
   stockPrice: number | null;
   currency: string;
 }

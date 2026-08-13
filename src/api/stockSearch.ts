@@ -27,8 +27,7 @@ function parseLimit(url: URL): number {
 /**
  * GET /api/stocks/search?q=apple&limit=20
  *
- * Local SEC-backed symbol search. Returns a Yahoo-compatible result shape so it
- * is a drop-in replacement for the previous /api/symbols endpoint.
+ * Local SEC-backed symbol search.
  */
 export async function tryHandleStockSearch(
   url: URL,

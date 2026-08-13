@@ -205,3 +205,21 @@ export function defaultAsOfQuarter(
   if (q && sorted.includes(q)) return q;
   return sorted[sorted.length - 1] ?? null;
 }
+
+/** Strip to comparable CIK digits (leading zeros removed). */
+export function normalizeCikDigits(cik: string): string {
+  return String(cik || "").replace(/\D/g, "").replace(/^0+/, "") || "0";
+}
+
+/** Latest quarter that has a portfolio snapshot for one institution. */
+export function latestQuarterForInstitution(
+  snapshots: RawPortfolioSnapshot[],
+  cik: string
+): string | null {
+  const want = normalizeCikDigits(cik);
+  const quarters = snapshots
+    .filter((s) => normalizeCikDigits(s.institutionId) === want)
+    .map((s) => s.quarter);
+  const sorted = sortQuarters(quarters);
+  return sorted[sorted.length - 1] ?? null;
+}

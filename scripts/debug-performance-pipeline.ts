@@ -49,11 +49,11 @@ async function main() {
 
   const runCompute = process.argv.includes("--compute");
   if (!runCompute) {
-    console.log("\nHoldings pipeline OK. Re-run with --compute to test Yahoo price + summaries.");
+    console.log("\nHoldings pipeline OK. Re-run with --compute to test summaries from disk returns cache.");
     return;
   }
 
-  console.log("\nComputing performance (may take a while — Yahoo prices)…");
+  console.log("\nComputing performance (uses on-disk ticker-quarter returns)…");
   const service = getInstitutionPerformanceService();
   const summaries = await service.computePerformance();
   console.log("summaries:", summaries.length);

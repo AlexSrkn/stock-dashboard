@@ -3,23 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tradepile</title>
+    <title>TradeAtlant</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=landing-cards-2" />
+    <link rel="stylesheet" href="/styles.css?v=tradepile-chart-1" />
+    <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
   <body>
     <div class="app">
       <header class="topbar">
         <div class="topbar__start">
           <div class="topbar__brand">
-            <a href="/" class="logo-lockup logo-lockup--link" id="logo-home-link" aria-label="Tradepile home">
-              <img src="/assets/tradepile-chart.png" alt="" class="logo-chart" />
-              <span class="logo-wordmark">Tradepile</span>
+            <a href="/" class="logo-lockup logo-lockup--link" id="logo-home-link" aria-label="TradeAtlant home">
+              <img class="logo-chart" src="/assets/tradepile-chart.png" alt="" decoding="async" />
+              <span class="logo-wordmark">Tradeatlant</span>
             </a>
           </div>
 
@@ -205,99 +206,445 @@
       </header>
 
       <div id="view-landing" class="landing" hidden>
-        <div class="landing__hero">
+        <section class="landing-hero" aria-labelledby="landing-title">
           <p class="landing__eyebrow">US equities research</p>
-          <h1 class="landing__title">Stocks and the institutions behind them.</h1>
+          <h1 id="landing-title" class="landing__title">Stocks and the institutions behind them.</h1>
           <p class="landing__lead">
             Charts, fundamentals, insider trades, SEC filings, and curated 13F ownership from
             BlackRock, Vanguard, Berkshire Hathaway, and more — in one workspace.
           </p>
+          <div class="landing-hero__actions">
+            <button type="button" class="btn btn--primary" data-landing-enter="stocks" id="landing-enter-stocks">
+              Get started
+            </button>
+            <button type="button" class="btn btn--ghost" id="landing-see-how">
+              See how it works
+            </button>
+          </div>
+        </section>
+
+        <div class="landing-frame landing-frame--hero" aria-hidden="true">
+          <div class="landing-frame__chrome">
+            <div class="landing-frame__dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <span class="landing-frame__path">tradeatlant.app / stock / NVDA</span>
+          </div>
+          <div class="landing-frame__body">
+            <aside class="landing-mini-watch">
+              <p class="landing-mini-watch__label">Watchlist</p>
+              <div class="landing-mini-watch__item is-active">
+                <span class="landing-mini-watch__sym">NVDA</span>
+                <span class="landing-mini-watch__name">NVIDIA Corp</span>
+                <div class="landing-pills">
+                  <span class="landing-pill landing-pill--buy">Institutions Buying</span>
+                  <span class="landing-pill landing-pill--buy">Insider Purchase</span>
+                </div>
+              </div>
+              <div class="landing-mini-watch__item">
+                <span class="landing-mini-watch__sym">AAPL</span>
+                <span class="landing-mini-watch__name">Apple Inc</span>
+                <div class="landing-pills">
+                  <span class="landing-pill landing-pill--buy">Congress Buy</span>
+                </div>
+              </div>
+              <div class="landing-mini-watch__item">
+                <span class="landing-mini-watch__sym">META</span>
+                <span class="landing-mini-watch__name">Meta Platforms</span>
+                <div class="landing-pills">
+                  <span class="landing-pill landing-pill--sell">Institutions Selling</span>
+                </div>
+              </div>
+            </aside>
+            <div class="landing-mini-main">
+              <div class="landing-mini-head">
+                <div>
+                  <span class="landing-mini-head__sym">NVDA</span>
+                  <span class="landing-mini-head__name">NVIDIA Corporation</span>
+                </div>
+                <div class="landing-mini-head__price">
+                  178.42
+                  <span class="landing-mini-head__chg">+2.14%</span>
+                </div>
+              </div>
+              <svg class="landing-chart" viewBox="0 0 640 160" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3ee6b0" stop-opacity="0.32" />
+                    <stop offset="100%" stop-color="#3ee6b0" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <path fill="url(#landingChartFill)" d="M0 118C70 112 110 88 170 92S280 48 350 58 470 96 540 42L640 28V160H0Z" />
+                <path fill="none" stroke="#3ee6b0" stroke-width="2.2" d="M0 118C70 112 110 88 170 92S280 48 350 58 470 96 540 42L640 28" />
+              </svg>
+              <div class="landing-tabs">
+                <span class="is-active">Overview</span>
+                <span>Ownership</span>
+                <span>Institutional Activity</span>
+                <span>Insider Activity</span>
+                <span>Congress Activity</span>
+              </div>
+              <table class="landing-table">
+                <thead>
+                  <tr>
+                    <th>Institution</th>
+                    <th class="num">Shares</th>
+                    <th class="num">QoQ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Vanguard Group</td>
+                    <td class="num">82.4M</td>
+                    <td class="num landing-pos">+3.1%</td>
+                  </tr>
+                  <tr>
+                    <td>BlackRock</td>
+                    <td class="num">71.8M</td>
+                    <td class="num landing-pos">+1.8%</td>
+                  </tr>
+                  <tr>
+                    <td>Berkshire Hathaway</td>
+                    <td class="num">—</td>
+                    <td class="num landing-neg">exited</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="landing__grid">
-          <article class="landing-card landing-card--stocks">
-            <div class="landing-card__icon" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M4 19V5M4 19h16M8 17V11M12 17V7M16 17v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </div>
-            <h2 class="landing-card__title">Stock research</h2>
-            <p class="landing-card__desc">
-              Price charts with indicators, Yahoo fundamentals, insider Form 4 activity, institutional
-              holders, and SEC filing history for any US ticker.
+
+        <section class="landing-section landing-reveal" aria-labelledby="landing-product-title">
+          <header class="landing-section__head landing-section__head--center">
+            <p class="landing-kicker">The workspace</p>
+            <h2 id="landing-product-title" class="landing-section__title">One ticker. Three books of activity.</h2>
+            <p class="landing-section__copy">
+              Open a stock and read 13F holders, open-market Form 4 trades, and congressional
+              disclosures beside the chart — the same panels you use in the app.
             </p>
-            <ul class="landing-card__list">
-              <li>Interactive charts &amp; compare mode</li>
-              <li>Ownership, activity &amp; options bias</li>
-              <li>Insider trades &amp; SEC filings</li>
-            </ul>
-            <button type="button" class="btn btn--primary landing-card__cta" id="landing-enter-stocks">
-              Open stocks
-            </button>
-          </article>
-          <article class="landing-card landing-card--institutions">
-            <div class="landing-card__icon" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M3 21h18M5 21V9l7-4 7 4v12M9 21v-6h6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+          </header>
+          <div class="landing-frame landing-demo">
+            <div class="landing-frame__chrome">
+              <div class="landing-tabs" role="tablist" aria-label="Product demonstration">
+                <button type="button" class="landing-demo__tab" role="tab" aria-selected="true" data-landing-demo="landing-demo-own" id="landing-demo-tab-own">Ownership</button>
+                <button type="button" class="landing-demo__tab" role="tab" aria-selected="false" data-landing-demo="landing-demo-signals" id="landing-demo-tab-signals" tabindex="-1">Signals</button>
+                <button type="button" class="landing-demo__tab" role="tab" aria-selected="false" data-landing-demo="landing-demo-insider" id="landing-demo-tab-insider" tabindex="-1">Insiders</button>
+              </div>
             </div>
-            <h2 class="landing-card__title">Institutional intel</h2>
-            <p class="landing-card__desc">
-              Track what major funds hold, how positions change quarter over quarter, and where
-              options exposure tilts bullish or bearish.
-            </p>
-            <ul class="landing-card__list">
-              <li>Curated 13F filers &amp; holdings</li>
-              <li>Quarter-over-quarter activity</li>
-              <li>Portfolio history &amp; filing links</li>
-            </ul>
-            <button type="button" class="btn btn--ghost landing-card__cta" id="landing-enter-institutions">
-              Browse institutions
-            </button>
-          </article>
-          <article class="landing-card landing-card--insiders">
-            <div class="landing-card__icon" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+            <div class="landing-mini-main">
+              <div class="landing-demo__panel" id="landing-demo-own" role="tabpanel" aria-labelledby="landing-demo-tab-own">
+                <table class="landing-table">
+                  <thead>
+                    <tr>
+                      <th>Filer</th>
+                      <th>Type</th>
+                      <th class="num">Value</th>
+                      <th class="num">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Vanguard Group Inc</td>
+                      <td>Asset manager</td>
+                      <td class="num">$14.2B</td>
+                      <td class="num landing-pos">+4.6%</td>
+                    </tr>
+                    <tr>
+                      <td>FMR LLC</td>
+                      <td>Asset manager</td>
+                      <td class="num">$6.1B</td>
+                      <td class="num landing-pos">new</td>
+                    </tr>
+                    <tr>
+                      <td>Renaissance Technologies</td>
+                      <td>Quant</td>
+                      <td class="num">$890M</td>
+                      <td class="num landing-neg">−12.4%</td>
+                    </tr>
+                    <tr>
+                      <td>T. Rowe Price</td>
+                      <td>Asset manager</td>
+                      <td class="num">$1.4B</td>
+                      <td class="num landing-pos">+8.0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="landing-demo__panel" id="landing-demo-signals" role="tabpanel" aria-labelledby="landing-demo-tab-signals" hidden>
+                <div class="landing-signal-row">
+                  <div>
+                    <strong>NVDA</strong> · Triple Signal
+                    <div class="landing-signal-row__meta">Institutions + insiders + Congress buying · 180d</div>
+                  </div>
+                  <span class="landing-badge">Aligned</span>
+                </div>
+                <div class="landing-signal-row">
+                  <div>
+                    <strong>UNH</strong> · Double Signal
+                    <div class="landing-signal-row__meta">13F accumulation and open-market Form 4 purchases</div>
+                  </div>
+                  <span class="landing-badge">Double</span>
+                </div>
+                <div class="landing-signal-row">
+                  <div>
+                    <strong>AVGO</strong> · Smart money
+                    <div class="landing-signal-row__meta">Conviction score when all three books agree on direction</div>
+                  </div>
+                  <span class="landing-badge">100</span>
+                </div>
+              </div>
+              <div class="landing-demo__panel" id="landing-demo-insider" role="tabpanel" aria-labelledby="landing-demo-tab-insider" hidden>
+                <table class="landing-table">
+                  <thead>
+                    <tr>
+                      <th>Insider</th>
+                      <th>Role</th>
+                      <th>Type</th>
+                      <th class="num">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>C. Officer</td>
+                      <td>CEO</td>
+                      <td>Open-market P</td>
+                      <td class="num landing-pos">$2.4M</td>
+                    </tr>
+                    <tr>
+                      <td>J. Director</td>
+                      <td>Director</td>
+                      <td>Open-market P</td>
+                      <td class="num landing-pos">$410K</td>
+                    </tr>
+                    <tr>
+                      <td>A. Officer</td>
+                      <td>CFO</td>
+                      <td>Open-market S</td>
+                      <td class="num landing-neg">$1.1M</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <h2 class="landing-card__title">Insider trades</h2>
-            <p class="landing-card__desc">
-              Follow open-market Form 4 purchases and sales — clusters, conviction buys, repeat
-              buyers, and heavy selling across executives and directors.
-            </p>
-            <ul class="landing-card__list">
-              <li>Recent Form 4 trade feed</li>
-              <li>Cluster &amp; conviction buying</li>
-              <li>Sentiment, first-time &amp; heavy selling</li>
-            </ul>
-            <button type="button" class="btn btn--ghost landing-card__cta" id="landing-enter-insiders">
-              Browse insider trades
-            </button>
-          </article>
-          <article class="landing-card landing-card--congress">
-            <div class="landing-card__icon" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M4 20h16M6 20V10l6-4 6 4v10M9 14h6M12 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+          </div>
+        </section>
+
+        <section class="landing-section landing-reveal" aria-labelledby="landing-13f-title">
+          <div class="landing-split">
+            <div class="landing-split__copy">
+              <p class="landing-kicker">13F filings</p>
+              <h2 id="landing-13f-title" class="landing-section__title">See who actually owns the stock.</h2>
+              <p class="landing-section__copy">
+                Tracked institutions, quarter-over-quarter activity, new positions, and complete
+                exits — from the same 13F universe you research in Institutions.
+              </p>
+              <ul class="landing-split__list">
+                <li>Holdings, new buys, and fully sold names</li>
+                <li>Ownership changes and holder overlap</li>
+                <li>Fund performance rankings from reported 13Fs</li>
+              </ul>
+              <button type="button" class="btn btn--ghost" data-landing-enter="institutions" id="landing-enter-institutions">
+                Browse institutions
+              </button>
             </div>
-            <h2 class="landing-card__title">Congress trades</h2>
-            <p class="landing-card__desc">
-              Track disclosed House and Senate trades from periodic transaction reports — buys,
-              sells, largest portfolios, and sector exposure.
-            </p>
-            <ul class="landing-card__list">
-              <li>House &amp; Senate PTR disclosures</li>
-              <li>Most accumulated &amp; large portfolios</li>
-              <li>Repeat buyers &amp; sector maps</li>
-            </ul>
-            <button type="button" class="btn btn--ghost landing-card__cta" id="landing-enter-politicians">
-              Browse congress trades
+            <div class="landing-frame">
+              <div class="landing-mini-main">
+                <table class="landing-table">
+                  <thead>
+                    <tr>
+                      <th>New 13F entry</th>
+                      <th>Fund</th>
+                      <th class="num">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>CRWD</td>
+                      <td>Top 10 · 1Y</td>
+                      <td class="num">$186M</td>
+                    </tr>
+                    <tr>
+                      <td>CEG</td>
+                      <td>Top 10 · 1Y</td>
+                      <td class="num">$94M</td>
+                    </tr>
+                    <tr>
+                      <td>VRT</td>
+                      <td>Top 10 · 1Y</td>
+                      <td class="num">$61M</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-section landing-reveal" aria-labelledby="landing-signals-title">
+          <div class="landing-split landing-split--flip">
+            <div class="landing-frame">
+              <div class="landing-mini-main">
+                <div class="landing-signal-row">
+                  <div><strong>Double Signal</strong><div class="landing-signal-row__meta">Institutions + insider purchases</div></div>
+                  <span class="landing-badge">1,280</span>
+                </div>
+                <div class="landing-signal-row">
+                  <div><strong>Triple Signal</strong><div class="landing-signal-row__meta">Plus politician buys in-window</div></div>
+                  <span class="landing-badge">51</span>
+                </div>
+                <div class="landing-signal-row">
+                  <div><strong>Conflict</strong><div class="landing-signal-row__meta">When the books disagree</div></div>
+                  <span class="landing-badge">558</span>
+                </div>
+              </div>
+            </div>
+            <div class="landing-split__copy">
+              <p class="landing-kicker">Signals</p>
+              <h2 id="landing-signals-title" class="landing-section__title">Alignment is the product.</h2>
+              <p class="landing-section__copy">
+                Smart Money, Double and Triple Signal, Hidden Gems, Conviction Score, and
+                Institutional Discovery — screens computed from the filings, not a news headline.
+              </p>
+              <ul class="landing-split__list">
+                <li>Open-market Form 4 P/S only — not awards or exercises</li>
+                <li>House and Senate PTR buys in the same window</li>
+                <li>Conflict signals when institutions and insiders diverge</li>
+              </ul>
+              <button type="button" class="btn btn--ghost" data-landing-enter="signals">
+                Open signals
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-section landing-reveal" aria-labelledby="landing-flow-title">
+          <div class="landing-split">
+            <div class="landing-split__copy">
+              <p class="landing-kicker">Form 4 &amp; PTR</p>
+              <h2 id="landing-flow-title" class="landing-section__title">Insiders and Congress, in the same tape.</h2>
+              <p class="landing-section__copy">
+                Cluster buying, conviction buys, repeat buyers, heavy selling, and disclosed
+                House and Senate trades — linked back to the ticker you already have open.
+              </p>
+              <div class="landing-hero__actions landing-hero__actions--start">
+                <button type="button" class="btn btn--ghost" data-landing-enter="insiders" id="landing-enter-insiders">
+                  Insider trades
+                </button>
+                <button type="button" class="btn btn--ghost" data-landing-enter="politicians" id="landing-enter-politicians">
+                  Congress trades
+                </button>
+              </div>
+            </div>
+            <div class="landing-frame">
+              <div class="landing-mini-main">
+                <table class="landing-table">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Name</th>
+                      <th>Side</th>
+                      <th>Ticker</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Form 4</td>
+                      <td>CEO</td>
+                      <td class="landing-pos">Buy</td>
+                      <td class="mono">UNH</td>
+                    </tr>
+                    <tr>
+                      <td>Senate PTR</td>
+                      <td>Disclosed filer</td>
+                      <td class="landing-pos">Buy</td>
+                      <td class="mono">NVDA</td>
+                    </tr>
+                    <tr>
+                      <td>Form 4</td>
+                      <td>CFO</td>
+                      <td class="landing-neg">Sell</td>
+                      <td class="mono">META</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-section landing-reveal" id="landing-how" aria-labelledby="landing-how-title">
+          <header class="landing-section__head landing-section__head--center">
+            <p class="landing-kicker">How it works</p>
+            <h2 id="landing-how-title" class="landing-section__title">Three steps. Same workspace.</h2>
+          </header>
+          <div class="landing-steps">
+            <article class="landing-step">
+              <span class="landing-step__n">1</span>
+              <h3>Search a ticker</h3>
+              <p>Use the top bar to open any US name. Chart, fundamentals, and filings load in one place.</p>
+            </article>
+            <article class="landing-step">
+              <span class="landing-step__n">2</span>
+              <h3>Read the three books</h3>
+              <p>13F ownership, open-market insider trades, and congressional PTRs — side by side on the stock.</p>
+            </article>
+            <article class="landing-step">
+              <span class="landing-step__n">3</span>
+              <h3>Follow alignment</h3>
+              <p>When institutions, insiders, and Congress agree, Signals surfaces it. When they don’t, Conflict does.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="landing-section landing-reveal" aria-labelledby="landing-more-title">
+          <header class="landing-section__head landing-section__head--center">
+            <p class="landing-kicker">In the product</p>
+            <h2 id="landing-more-title" class="landing-section__title">Screens and tools, not a feed.</h2>
+            <p class="landing-section__copy">The same boxes you open from Signals and Tools.</p>
+          </header>
+          <div class="landing-showcase">
+            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
+              <span class="landing-showcase__title">Smart money</span>
+              <span class="landing-showcase__desc">Conviction when institutions, insiders, and Congress align.</span>
             </button>
-          </article>
-        </div>
+            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
+              <span class="landing-showcase__title">Double Signal</span>
+              <span class="landing-showcase__desc">13F buying plus open-market insider purchases.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
+              <span class="landing-showcase__title">Triple Signal</span>
+              <span class="landing-showcase__desc">The same window, with politician buys included.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
+              <span class="landing-showcase__title">Institutional Discovery</span>
+              <span class="landing-showcase__desc">New holders and growing ownership breadth.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
+              <span class="landing-showcase__title">DCF Calculator</span>
+              <span class="landing-showcase__desc">Intrinsic value from filing-derived free cash flow.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
+              <span class="landing-showcase__title">WACC Calculator</span>
+              <span class="landing-showcase__desc">Cost of capital from SEC data and CAPM inputs.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
+              <span class="landing-showcase__title">EPV Calculator</span>
+              <span class="landing-showcase__desc">Earnings power value — no growth assumptions.</span>
+            </button>
+            <button type="button" class="landing-showcase__card" data-landing-enter="stocks">
+              <span class="landing-showcase__title">Screener</span>
+              <span class="landing-showcase__desc">Filter the universe you already research.</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="landing-final landing-reveal" aria-labelledby="landing-final-title">
+          <h2 id="landing-final-title">Open the workspace.</h2>
+          <p>Start with a ticker, a fund, or a signal. Everything else is one tab away.</p>
+          <button type="button" class="btn btn--primary" data-landing-enter="stocks">Get started</button>
+        </section>
+
         <p class="landing__footnote muted small">
-          Data from Yahoo Finance and SEC EDGAR. Set <code class="inline-code">SEC_USER_AGENT</code> in
-          <code class="inline-code">.env</code> for US filings.
+          Holdings from SEC 13F filings. Insider trades from Form 4. Congress trades from House and Senate
+          periodic transaction reports. Market data from SEC filings and TradingView.
         </p>
       </div>
 
@@ -4935,10 +5282,70 @@
           </div>
 
           <div id="view-signals" hidden>
+            <section class="institution-hub signals-hub" id="signals-directory-hub" aria-labelledby="signals-hub-heading">
+              <header class="institution-hub__header">
+                <h2 id="signals-hub-heading" class="institution-hub__title">Signals</h2>
+                <p class="institution-hub__subtitle">
+                  Screens built from 13F filings, Form 4 insider trades, and congressional disclosures.
+                </p>
+              </header>
+              <div class="tools-hub__grid" role="list">
+                <button type="button" class="tools-hub__card" data-signals-view="smart-money" role="listitem">
+                  <span class="tools-hub__card-title">Smart money</span>
+                  <span class="tools-hub__card-desc muted">
+                    Conviction scores when institutions, insiders, and Congress align on direction.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="top-institution-entries" role="listitem">
+                  <span class="tools-hub__card-title">New entries from top institutions</span>
+                  <span class="tools-hub__card-desc muted">
+                    New 13F positions opened by the top institutions on rolling 1-year performance.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="double-signal" role="listitem">
+                  <span class="tools-hub__card-title">Double Signal</span>
+                  <span class="tools-hub__card-desc muted">
+                    Tickers with both institutional buying and open-market insider purchases in the same window.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="triple-signal" role="listitem">
+                  <span class="tools-hub__card-title">Triple Signal</span>
+                  <span class="tools-hub__card-desc muted">
+                    Institutions, insiders, and politicians all buying the same ticker.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="conflict-signals" role="listitem">
+                  <span class="tools-hub__card-title">Conflict Signals</span>
+                  <span class="tools-hub__card-desc muted">
+                    Cases where institutions and insiders disagree on the same stock.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="hidden-gems" role="listitem">
+                  <span class="tools-hub__card-title">Hidden Gems</span>
+                  <span class="tools-hub__card-desc muted">
+                    Under-owned names seeing accelerating institutional accumulation.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="conviction-score" role="listitem">
+                  <span class="tools-hub__card-title">Conviction Score</span>
+                  <span class="tools-hub__card-desc muted">
+                    How concentrated and persistent institutional holdings are in each stock.
+                  </span>
+                </button>
+                <button type="button" class="tools-hub__card" data-signals-view="institutional-discovery" role="listitem">
+                  <span class="tools-hub__card-title">Institutional Discovery</span>
+                  <span class="tools-hub__card-desc muted">
+                    Names attracting new institutional holders and growing ownership breadth.
+                  </span>
+                </button>
+              </div>
+            </section>
+
             <section
               class="institution-most-accumulated trades-card signals-hub smart-money-hub"
               id="signals-smart-money-hub"
               aria-labelledby="signals-smart-money-heading"
+              hidden
             >
               <header class="institution-most-accumulated__head">
                 <div>
@@ -7144,6 +7551,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=landing-cards-2"></script>
+    <script type="module" src="/app.js?v=tradeatlant-logo-1"></script>
   </body>
 </html>
