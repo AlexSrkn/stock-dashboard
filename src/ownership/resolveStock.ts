@@ -1,7 +1,11 @@
 import type pg from "pg";
 import { secFetchJson } from "../sec/http.js";
 import { normalizeCusip } from "../sec/thirteenF/normalizeHoldings.js";
-import { SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL, SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL } from "./queries.js";
+import {
+  SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
+  SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL,
+  SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL,
+} from "./queries.js";
 import { TRACKED_INSTITUTIONAL_CIK_PADDED } from "./trackedInstitutions.js";
 
 const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
@@ -30,6 +34,101 @@ export function issuerPatternFromTitle(title: string): string {
   return `%${token.toUpperCase()}%`;
 }
 
+async function resolveCusipsFromIssuerPattern(
+  pool: pg.Pool,
+  sym: string,
+  issuerPattern: string,
+  issuerHint: string | null
+): Promise<ResolvedStock | null> {
+  const res = await pool.query<{ cusip: string; issuer: string }>(
+    SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
+    [issuerPattern, [...TRACKED_INSTITUTIONAL_CIK_PADDED]]
+  );
+
+  const cusips = [
+    ...new Set(
+      res.rows
+        .map((r) => normalizeCusip(String(r.cusip).trim()))
+        .filter((c) => c.length > 0)
+    ),
+  ];
+  if (!cusips.length) return null;
+
+  let resolvedCusips = cusips;
+  if (cusips.length > 1) {
+    const primary = await pool.query<{ cusip: string }>(SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL, [
+      cusips,
+      [...TRACKED_INSTITUTIONAL_CIK_PADDED],
+    ]);
+    const top = primary.rows[0]?.cusip;
+    if (top) {
+      resolvedCusips = [normalizeCusip(String(top))];
+    }
+  }
+
+  return {
+    ticker: sym,
+    cusips: resolvedCusips,
+    issuerHint: res.rows[0]?.issuer ?? issuerHint ?? sym,
+  };
+}
+
+async function resolveFromOwnershipCache(pool: pg.Pool, sym: string): Promise<ResolvedStock | null> {
+  const cacheRes = await pool.query<{ primary_cusip: string | null; company_name: string | null }>(
+    `SELECT oc.primary_cusip, s.company_name
+     FROM ownership_cache oc
+     LEFT JOIN stocks s ON s.ticker = oc.ticker
+     WHERE oc.ticker = UPPER(BTRIM($1::text))
+     LIMIT 1`,
+    [sym]
+  );
+  const row = cacheRes.rows[0];
+  if (!row) return null;
+
+  const stored = row.primary_cusip ? normalizeCusip(String(row.primary_cusip).trim()) : "";
+  if (stored) {
+    return {
+      ticker: sym,
+      cusips: [stored],
+      issuerHint: row.company_name ?? sym,
+    };
+  }
+
+  const topHolder = await pool.query<{ cusip: string; issuer: string }>(
+    SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL,
+    [sym]
+  );
+  const matched = topHolder.rows[0];
+  if (matched?.cusip) {
+    const cusip = normalizeCusip(String(matched.cusip).trim());
+    if (cusip) {
+      void pool.query(`UPDATE ownership_cache SET primary_cusip = $2 WHERE ticker = $1`, [sym, cusip]);
+      return {
+        ticker: sym,
+        cusips: [cusip],
+        issuerHint: matched.issuer ?? row.company_name ?? sym,
+      };
+    }
+  }
+
+  if (row.company_name) {
+    return resolveCusipsFromIssuerPattern(
+      pool,
+      sym,
+      issuerPatternFromTitle(row.company_name),
+      row.company_name
+    );
+  }
+
+  const titles = await loadTickerTitles();
+  const title = titles.get(sym);
+  if (title) {
+    return resolveCusipsFromIssuerPattern(pool, sym, issuerPatternFromTitle(title), title);
+  }
+
+  return null;
+}
+
 export interface ResolvedStock {
   ticker: string;
   cusips: string[];
@@ -47,6 +146,12 @@ export async function resolveStockIdentifiers(
 
   const cached = resolvedTickerCache.get(sym);
   if (cached) return cached;
+
+  const fromCache = await resolveFromOwnershipCache(pool, sym);
+  if (fromCache) {
+    resolvedTickerCache.set(sym, fromCache);
+    return fromCache;
+  }
 
   const titles = await loadTickerTitles();
   const title = titles.get(sym) ?? null;

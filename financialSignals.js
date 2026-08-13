@@ -12,7 +12,7 @@
 
 /** @typedef {{ signal: SignalColor, label: string, score: number, value?: number }} SignalResult */
 
-/** @typedef {{ metric: string, signal: SignalColor, label: string, score: number, value: number | null }} MetricSignal */
+/** @typedef {{ metric: string, displayMetric?: string, signal: SignalColor, label: string, score: number, value: number | null }} MetricSignal */
 
 /* * @typedef {{
  *   revenueGrowth?: number | null;
@@ -22,6 +22,8 @@
  *   netMargin?: number | null;
  *   roa?: number | null;
  *   roe?: number | null;
+ *   roePeriodLabel?: string | null;
+ *   roaPeriodLabel?: string | null;
  *   fcfMargin?: number | null;
  *   currentRatio?: number | null;
  *   debtToEquity?: number | null;
@@ -358,8 +360,15 @@ export function generateSignals(stockData) {
   /** @type {MetricSignal[]} */
   const signals = METRIC_REGISTRY.map(({ metric, evaluate }) => {
     const result = evaluate(data);
+    let displayMetric = metric;
+    if (metric === "ROE" && data.roePeriodLabel) {
+      displayMetric = `ROE (${data.roePeriodLabel})`;
+    } else if (metric === "ROA" && data.roaPeriodLabel) {
+      displayMetric = `ROA (${data.roaPeriodLabel})`;
+    }
     return {
       metric,
+      displayMetric,
       signal: result.signal,
       label: result.label,
       score: result.score,

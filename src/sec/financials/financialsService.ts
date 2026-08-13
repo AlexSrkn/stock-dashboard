@@ -71,6 +71,8 @@ export async function getFilingsFundamentals(
   });
   const stored = await getStocksRepository().getByTicker(sym);
 
+    const derived = pickDerivedLatest(annual, quarterly);
+
   const response: FilingsFundamentalsResponse = {
     ticker: sym,
     cik: formatSecCik(cik),
@@ -115,7 +117,8 @@ export async function getFilingsFundamentals(
         ),
       },
     },
-    derivedLatest: pickDerivedLatest(annual, quarterly),
+    derivedLatest: derived.values,
+    derivedPeriodLabels: derived.periodLabels,
     earningsReleases,
     filings,
   };

@@ -26,10 +26,18 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function filingValueUsd(valueThousands: number | null | undefined): number | null {
-  const x = Number(valueThousands);
+/**
+ * Convert a sec_holding value field to USD dollars.
+ *
+ * Despite the historical `value_usd_thousands` column name, `sec_holding.value`
+ * in this database is already stored as USD dollars (see sectorAnalytics:
+ * `COALESCE(h.value, h.value_usd_thousands * 1000)` — `h.value` is the dollar path).
+ * Do not multiply by 1,000 again.
+ */
+function filingValueUsd(valueFromDb: number | null | undefined): number | null {
+  const x = Number(valueFromDb);
   if (!Number.isFinite(x) || x <= 0) return null;
-  return round2(x * 1000);
+  return round2(x);
 }
 
 function pctChange(current: number, previous: number): number | null {
@@ -144,10 +152,91 @@ function resolveValueChangeUsd(
   curShares: number,
   prevShares: number
 ): number | null {
-  if (curVal != null && prevVal != null) return round2(curVal - prevVal);
-  if (prevShares === 0 && curVal != null) return curVal;
-  if (curShares === 0 && prevVal != null) return round2(-prevVal);
-  return null;
+  return valueAttributableToShareChange(prevShares, curShares, prevVal, curVal);
+}
+
+/**
+ * Dollar value attributable to the share-count change (excludes pure price drift
+ * on the unchanged share base). Uses current quarter-end implied price when
+ * available, otherwise the prior quarter-end price.
+ */
+export function valueAttributableToShareChange(
+  priorShares: number,
+  currentShares: number,
+  priorValueUsd: number | null,
+  currentValueUsd: number | null
+): number | null {
+  const prior = Number(priorShares) || 0;
+  const current = Number(currentShares) || 0;
+  const delta = current - prior;
+  if (delta === 0) return 0;
+
+  if (prior === 0 && current > 0) {
+    return currentValueUsd != null && Number.isFinite(currentValueUsd) ? round2(currentValueUsd) : null;
+  }
+  if (current === 0 && prior > 0) {
+    return priorValueUsd != null && Number.isFinite(priorValueUsd) ? round2(-priorValueUsd) : null;
+  }
+
+  const curPrice =
+    current > 0 && currentValueUsd != null && Number.isFinite(currentValueUsd) && currentValueUsd > 0
+      ? currentValueUsd / current
+      : null;
+  const prevPrice =
+    prior > 0 && priorValueUsd != null && Number.isFinite(priorValueUsd) && priorValueUsd > 0
+      ? priorValueUsd / prior
+      : null;
+  const price = curPrice ?? prevPrice;
+  if (price == null || !Number.isFinite(price)) return null;
+  return round2(delta * price);
+}
+
+export type InstitutionActivityKind = "add" | "trim" | "new" | "closed" | "unchanged";
+
+/** Classify a QoQ position change from share counts only (never from market-value delta). */
+export function classifyInstitutionActivity(
+  priorShares: number,
+  currentShares: number
+): InstitutionActivityKind {
+  const prior = Number(priorShares) || 0;
+  const current = Number(currentShares) || 0;
+  if (prior === 0 && current > 0) return "new";
+  if (prior > 0 && current === 0) return "closed";
+  if (prior > 0 && current > prior) return "add";
+  if (prior > 0 && current > 0 && current < prior) return "trim";
+  return "unchanged";
+}
+
+export function partitionInstitutionActivity(rows: InstitutionActivityRow[]): {
+  adds: InstitutionActivityRow[];
+  trims: InstitutionActivityRow[];
+  newPositions: InstitutionActivityRow[];
+  completelySold: InstitutionActivityRow[];
+  activity: InstitutionActivityRow[];
+} {
+  const adds: InstitutionActivityRow[] = [];
+  const trims: InstitutionActivityRow[] = [];
+  const newPositions: InstitutionActivityRow[] = [];
+  const completelySold: InstitutionActivityRow[] = [];
+
+  for (const row of rows) {
+    const kind = classifyInstitutionActivity(row.previousShares, row.currentShares);
+    if (kind === "add") adds.push(row);
+    else if (kind === "trim") trims.push(row);
+    else if (kind === "new") newPositions.push(row);
+    else if (kind === "closed") completelySold.push(row);
+  }
+
+  adds.sort((a, b) => (b.valueChangeUsd ?? 0) - (a.valueChangeUsd ?? 0));
+  trims.sort((a, b) => Math.abs(b.valueChangeUsd ?? 0) - Math.abs(a.valueChangeUsd ?? 0));
+  newPositions.sort((a, b) => (b.currentValueUsd ?? 0) - (a.currentValueUsd ?? 0));
+  completelySold.sort((a, b) => (b.previousValueUsd ?? 0) - (a.previousValueUsd ?? 0));
+
+  const activity = [...rows]
+    .filter((r) => classifyInstitutionActivity(r.previousShares, r.currentShares) !== "unchanged")
+    .sort((a, b) => Math.abs(b.sharesChange) - Math.abs(a.sharesChange));
+
+  return { adds, trims, newPositions, completelySold, activity };
 }
 
 export async function getInstitutionActivity(
@@ -256,28 +345,17 @@ export async function getInstitutionActivity(
   const prevTotalK = prevRes.rows.reduce((s, r) => s + (Number(r.value_usd_thousands) || 0), 0);
   const previousPortfolioValueUsd = filingValueUsd(prevTotalK);
 
-  const newPositions = enriched
-    .filter((r) => r.previousShares === 0 && r.currentShares > 0)
-    .sort((a, b) => (b.currentValueUsd ?? 0) - (a.currentValueUsd ?? 0));
+  const partitioned = partitionInstitutionActivity(enriched);
 
-  // Full exit: held in prior quarter, absent from latest filing (CUSIP not in current holdings).
-  const completelySold = enriched
-    .filter((r) => r.previousShares > 0 && r.currentShares === 0)
-    .sort((a, b) => (b.previousValueUsd ?? 0) - (a.previousValueUsd ?? 0));
-
-  const adds = enriched
-    .filter((r) => r.previousShares > 0 && (r.valueChangeUsd ?? 0) > 0)
-    .sort((a, b) => (b.valueChangeUsd ?? 0) - (a.valueChangeUsd ?? 0));
-
-  const trims = enriched
-    .filter((r) => (r.valueChangeUsd ?? 0) < 0)
-    .sort((a, b) => (a.valueChangeUsd ?? 0) - (b.valueChangeUsd ?? 0));
-
-  const activitySorted = [...enriched]
-    .sort((a, b) => Math.abs(b.sharesChange) - Math.abs(a.sharesChange))
-    .slice(0, limit);
-
-  return { meta, activity: activitySorted, adds, trims, newPositions, completelySold, previousPortfolioValueUsd };
+  return {
+    meta,
+    activity: partitioned.activity.slice(0, limit),
+    adds: partitioned.adds,
+    trims: partitioned.trims,
+    newPositions: partitioned.newPositions,
+    completelySold: partitioned.completelySold,
+    previousPortfolioValueUsd,
+  };
 }
 
 interface FilerOptionDbRow {

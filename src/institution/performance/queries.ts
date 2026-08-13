@@ -16,7 +16,8 @@ latest_filings AS (
 /**
  * Common-stock holdings aggregated by filer, quarter, and CUSIP.
  * Tickers are resolved from issuer names after load (same as institution holdings UI).
- * market_value is USD (value column is thousands in legacy rows).
+ * market_value is USD dollars: prefer h.value (already USD); fall back to
+ * value_usd_thousands * 1000 only when value is null.
  */
 export const SELECT_INSTITUTION_HOLDINGS_BATCH_SQL = `
 WITH ${CTE_LATEST_FILINGS_BATCH}
@@ -27,7 +28,7 @@ SELECT
   MAX(h.ticker) AS ticker,
   MAX(h.issuer) AS issuer,
   SUM(h.shares)::float8 AS shares,
-  SUM(COALESCE(h.value, h.value_usd_thousands) * 1000)::float8 AS market_value
+  SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS market_value
 FROM sec_holding h
 INNER JOIN latest_filings lf
   ON h.filing_id = lf.filing_id
@@ -37,7 +38,7 @@ WHERE h.filer_cik = ANY($1::char(10)[])
   ${sqlCommonStockOnly("h")}
 GROUP BY h.filer_cik, h.quarter, h.cusip
 HAVING SUM(h.shares) > 0
-  AND SUM(COALESCE(h.value, h.value_usd_thousands)) > 0
+  AND SUM(COALESCE(h.value, h.value_usd_thousands * 1000)) > 0
 ORDER BY h.filer_cik, h.quarter;
 `.trim();
 

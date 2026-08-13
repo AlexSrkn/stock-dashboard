@@ -1,11 +1,11 @@
 import type { FinancialMetricDefinition } from "./types.js";
 import type { SecCompanyFacts, XbrlFactConcept, XbrlFactObservation } from "./types.js";
+import { resolveAnnualFiscalYear } from "./fiscalYear.js";
 import {
   is10KForm,
   is10QForm,
   isInstantObservation,
   isValidFilingDate,
-  normalizeFiscalPeriod,
   observationEnd,
   parseIsoDate,
   periodCanonicalKey,
@@ -19,6 +19,13 @@ export interface InstantMetricPick {
   obs: XbrlFactObservation;
   gaapTag: string;
   namespace: string;
+}
+
+/** Duration (income/cash-flow) period identity for an exact period end. */
+export interface DurationPeriodAnchor {
+  fy: number;
+  fp: NormalizedFiscalPeriod;
+  key: string;
 }
 
 function findConcept(
@@ -93,7 +100,9 @@ function collectInstantCandidates(
     );
 
     for (const obs of pool) {
-      if (scope === "quarterly" && normalizeFiscalPeriod(obs, "quarterly") == null) continue;
+      // Quarterly scope: keep 10-Q instants (including comparatives); period
+      // assignment uses exact instant date vs duration period ends below.
+      if (scope === "quarterly" && !is10QForm(obs.form)) continue;
       const key = obsFingerprint(obs);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -105,48 +114,86 @@ function collectInstantCandidates(
 }
 
 /**
- * Instant balance-sheet facts: fact.end must equal period end; most recent filing wins.
+ * Instant balance-sheet facts bind by exact instant date only.
+ *
+ * Comparative figures in a later 10-Q often carry that filing's `fp`/`fy` while
+ * the instant date is a prior period end (e.g. FYE assets tagged Q1). Those must
+ * NOT create or attach to Q1/Q2/Q3 rows whose period end differs from the instant.
+ *
+ * Quarterly: only emit picks for instant dates that match a duration period end.
+ * Annual: group by instant date; resolve fy from the original 10-K.
  */
 export function collectInstantMetricsByPeriod(
   facts: SecCompanyFacts,
   def: FinancialMetricDefinition,
   scope: "annual" | "quarterly",
-  periodAccessions: Map<string, string> = new Map()
+  periodAccessions: Map<string, string> = new Map(),
+  durationPeriodByEnd: Map<string, DurationPeriodAnchor> = new Map()
 ): Map<string, InstantMetricPick> {
   const candidates = collectInstantCandidates(facts, def, scope);
-  const byPeriod = new Map<string, Array<{ obs: XbrlFactObservation; gaapTag: string; namespace: string }>>();
+  const byPeriod = new Map<
+    string,
+    Array<{ obs: XbrlFactObservation; gaapTag: string; namespace: string }>
+  >();
 
-  for (const candidate of candidates) {
-    const end = observationEnd(candidate.obs);
-    if (!end) continue;
-    const fy = candidate.obs.fy != null ? Number(candidate.obs.fy) : NaN;
-    if (!Number.isFinite(fy)) continue;
-
-    const fp: NormalizedFiscalPeriod | null =
-      scope === "annual" ? "FY" : normalizeFiscalPeriod(candidate.obs, "quarterly");
-    if (!fp) continue;
-
-    const periodKey = periodCanonicalKey(fy, fp, end);
-    const list = byPeriod.get(periodKey) ?? [];
-    list.push(candidate);
-    byPeriod.set(periodKey, list);
+  if (scope === "annual") {
+    const byEnd = new Map<
+      string,
+      Array<{ obs: XbrlFactObservation; gaapTag: string; namespace: string }>
+    >();
+    for (const candidate of candidates) {
+      const end = observationEnd(candidate.obs);
+      if (!end) continue;
+      const list = byEnd.get(end) ?? [];
+      list.push(candidate);
+      byEnd.set(end, list);
+    }
+    for (const [end, pool] of byEnd) {
+      const fy = resolveAnnualFiscalYear(
+        pool.map((c) => c.obs),
+        end
+      );
+      if (fy == null) continue;
+      byPeriod.set(periodCanonicalKey(fy, "FY", end), pool);
+    }
+  } else {
+    for (const candidate of candidates) {
+      const end = observationEnd(candidate.obs);
+      if (!end) continue;
+      // Exact instant date must equal a known quarterly period end.
+      const anchor = durationPeriodByEnd.get(end);
+      if (!anchor) continue;
+      const list = byPeriod.get(anchor.key) ?? [];
+      list.push(candidate);
+      byPeriod.set(anchor.key, list);
+    }
   }
 
   const picks = new Map<string, InstantMetricPick>();
   for (const [periodKey, pool] of byPeriod) {
     const preferredAccn = periodAccessions.get(periodKey);
-    const fpEnd = periodKey.split("|").slice(1).join("|");
-    const anchorKey = [...periodAccessions.keys()].find((k) => k.endsWith(`|${fpEnd}`));
-    const accnHint = preferredAccn ?? (anchorKey ? periodAccessions.get(anchorKey) : undefined);
-    let filtered = accnHint
-      ? pool.filter((c) => String(c.obs.accn ?? "") === accnHint)
+    const parts = periodKey.split("|");
+    const periodEnd = parts[2];
+    let filtered = preferredAccn
+      ? pool.filter((c) => String(c.obs.accn ?? "") === preferredAccn)
       : pool;
     if (!filtered.length) filtered = pool;
 
-    let best = filtered[0];
-    for (const candidate of filtered.slice(1)) {
-      if (isBetterInstantCandidate(candidate.obs, best.obs)) best = candidate;
-    }
+    // Instant date must still equal the period end (XBRL instant semantics).
+    filtered = filtered.filter((c) => observationEnd(c.obs) === periodEnd);
+    if (!filtered.length) continue;
+
+    const tagRank = new Map(def.tags.map((tag, i) => [tag, i]));
+    filtered = [...filtered].sort((a, b) => {
+      const ra = tagRank.get(a.gaapTag) ?? 999;
+      const rb = tagRank.get(b.gaapTag) ?? 999;
+      if (ra !== rb) return ra - rb;
+      if (isBetterInstantCandidate(a.obs, b.obs)) return -1;
+      if (isBetterInstantCandidate(b.obs, a.obs)) return 1;
+      return 0;
+    });
+
+    const best = filtered[0];
     if (!best) continue;
     picks.set(periodKey, {
       value: Number(best.obs.val),

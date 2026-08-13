@@ -26,6 +26,7 @@ import { tryHandleHiddenGems } from "./src/api/hiddenGems.ts";
 import { tryHandleConvictionScore } from "./src/api/convictionScore.ts";
 import { tryHandleInstitutionalDiscovery } from "./src/api/institutionalDiscovery.ts";
 import { tryHandleStockCompare } from "./src/api/stockCompare.ts";
+import { tryHandleWatchlistActivity } from "./src/api/watchlistActivity.ts";
 import { tryHandleToolsDcf } from "./src/api/toolsDcf.ts";
 import { tryHandleToolsWacc } from "./src/api/toolsWacc.ts";
 import { tryHandleToolsEpv } from "./src/api/toolsEpv.ts";
@@ -93,19 +94,8 @@ const AV_KEY = (process.env.ALPHAVANTAGE_API_KEY || "").trim();
 const fundamentalsCache = new Map();
 const FUNDAMENTALS_CACHE_MS = 15 * 60 * 1000;
 
-/** @type {Map<string, { loadedAt: number; data: object }>} */
-const earningsCache = new Map();
-const EARNINGS_CACHE_MS = 15 * 60 * 1000;
 
 /** @type {{ loadedAt: number; data: object } | null} */
-let earningsCalendarCache = null;
-let earningsCalendarCacheAt = 0;
-const EARNINGS_CALENDAR_CACHE_MS = 20 * 60 * 1000;
-
-/** @type {{ loadedAt: number; data: object } | null} */
-let marketMoversCache = null;
-let marketMoversCacheAt = 0;
-const MARKET_MOVERS_CACHE_MS = 5 * 60 * 1000;
 
 /** SEC requires a descriptive User-Agent with contact info for programmatic access. */
 const SEC_USER_AGENT_DEFAULT =
@@ -505,17 +495,6 @@ async function fetchYahooFundamentals(symbol) {
   return payload;
 }
 
-function formatEarningsQuarterLabel(value) {
-  const d = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 function formatEarningsEventDate(startValue, endValue) {
   const start = startValue instanceof Date ? startValue : new Date(startValue);
   const end = endValue instanceof Date ? endValue : new Date(endValue);
@@ -571,304 +550,6 @@ function parseNextEarningsDate(calendarEvents) {
     epsLow: yahooNum(earnings.earningsLow),
     epsHigh: yahooNum(earnings.earningsHigh),
   };
-}
-
-async function fetchYahooEarningsHistory(symbol) {
-  const sym = String(symbol || "").trim().toUpperCase();
-  if (!sym) {
-    const err = new Error("Missing symbol");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const cacheKey = `earnings:${sym}`;
-  const cached = earningsCache.get(cacheKey);
-  if (cached && Date.now() - cached.loadedAt < EARNINGS_CACHE_MS) {
-    return cached.data;
-  }
-
-  const data = await yahooFinance.quoteSummary(
-    sym,
-    { modules: ["earningsHistory", "calendarEvents"] },
-    { validateResult: false }
-  );
-
-  const history = Array.isArray(data?.earningsHistory?.history) ? data.earningsHistory.history : [];
-  const quarters = history
-    .filter((row) => row?.quarter)
-    .sort((a, b) => new Date(a.quarter).getTime() - new Date(b.quarter).getTime())
-    .slice(-4)
-    .map((row) => ({
-      quarter: row.quarter,
-      quarterLabel: formatEarningsQuarterLabel(row.quarter),
-      currency: row.currency || "USD",
-      epsEstimate: yahooNum(row.epsEstimate),
-      epsActual: yahooNum(row.epsActual),
-      epsDifference: yahooNum(row.epsDifference),
-      surprisePercent: yahooNum(row.surprisePercent),
-    }));
-
-  const nextEarnings = parseNextEarningsDate(data?.calendarEvents);
-
-  const payload = {
-    symbol: sym,
-    currency: quarters[0]?.currency || "USD",
-    quarters,
-    nextEarnings,
-  };
-
-  if (quarters.length || nextEarnings) {
-    earningsCache.set(cacheKey, { loadedAt: Date.now(), data: payload });
-  }
-
-  return payload;
-}
-
-async function fetchYahooNextEarnings(symbol) {
-  const sym = String(symbol || "").trim().toUpperCase();
-  if (!sym) return { symbol: sym, error: true };
-
-  const cacheKey = `earnings:${sym}`;
-  const cached = earningsCache.get(cacheKey);
-  if (cached && Date.now() - cached.loadedAt < EARNINGS_CACHE_MS && cached.data?.nextEarnings) {
-    return { symbol: sym, ...cached.data.nextEarnings };
-  }
-
-  try {
-    const data = await yahooFinance.quoteSummary(
-      sym,
-      { modules: ["calendarEvents"] },
-      { validateResult: false }
-    );
-    const next = parseNextEarningsDate(data?.calendarEvents);
-    if (!next) return { symbol: sym };
-
-    if (cached?.data) {
-      cached.data.nextEarnings = next;
-    }
-
-    return { symbol: sym, ...next };
-  } catch {
-    return { symbol: sym, error: true };
-  }
-}
-
-async function fetchWatchlistUpcomingEarnings(symbols) {
-  const unique = [
-    ...new Set(
-      (Array.isArray(symbols) ? symbols : String(symbols || "").split(","))
-        .map((s) => String(s || "").trim().toUpperCase())
-        .filter(Boolean)
-    ),
-  ];
-
-  if (!unique.length) return { events: [] };
-
-  const rows = await mapPool(
-    unique,
-    async (sym) => {
-      const row = await fetchYahooNextEarnings(sym);
-      if (!row?.start || row.error) return null;
-      return row;
-    },
-    3
-  );
-
-  const events = rows
-    .filter(Boolean)
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-
-  return { events };
-}
-
-const YAHOO_EARNINGS_CALENDAR_FIELDS = [
-  "ticker",
-  "companyshortname",
-  "startdatetime",
-  "epsestimate",
-  "epsactual",
-  "epssurprisepct",
-  "dateIsEstimate",
-  "fiscalYear",
-  "quarter",
-  "startDateTimeType",
-].join(",");
-
-function easternDateKey(date = new Date()) {
-  return date.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-}
-
-function utcDayStartSec(date = new Date()) {
-  const d = date instanceof Date ? new Date(date) : new Date(date);
-  d.setUTCHours(0, 0, 0, 0);
-  return Math.floor(d.getTime() / 1000);
-}
-
-async function enrichEarningsEventsWithMarketCap(events) {
-  const symbols = [...new Set(events.map((e) => e.symbol).filter(Boolean))];
-  if (!symbols.length) return events;
-
-  const quoteBySymbol = new Map();
-  const chunkSize = 40;
-  for (let i = 0; i < symbols.length; i += chunkSize) {
-    const chunk = symbols.slice(i, i + chunkSize);
-    try {
-      const quoteObj = await yahooFinance.quote(
-        chunk,
-        { return: "object", fields: ["symbol", "marketCap", "shortName", "longName"] },
-        { validateResult: false }
-      );
-      for (const sym of chunk) {
-        const q = findMarketQuote(quoteObj, sym);
-        quoteBySymbol.set(sym, q);
-      }
-    } catch {
-      /* keep events without enrichment */
-    }
-  }
-
-  return events.map((event) => {
-    const q = quoteBySymbol.get(event.symbol);
-    const quoteName = String(q?.shortName || q?.longName || "").trim();
-    const currentName = String(event.name || "").trim();
-    const resolvedName =
-      currentName && currentName.toUpperCase() !== event.symbol.toUpperCase()
-        ? currentName
-        : quoteName || currentName || event.symbol;
-    return {
-      ...event,
-      name: resolvedName,
-      marketCap: yahooNum(q?.marketCap) ?? event.marketCap ?? null,
-    };
-  });
-}
-
-async function fetchYahooEarningsCalendar(days = 14) {
-  const span = Math.min(62, Math.max(1, Number(days) || 14));
-  if (
-    earningsCalendarCache &&
-    earningsCalendarCache.days === span &&
-    Date.now() - earningsCalendarCacheAt < EARNINGS_CALENDAR_CACHE_MS
-  ) {
-    return earningsCalendarCache.data;
-  }
-
-  const period1 = utcDayStartSec(new Date());
-  const end = new Date();
-  end.setUTCDate(end.getUTCDate() + span);
-  const period2 = utcDayStartSec(end);
-  const url =
-    `https://query2.finance.yahoo.com/ws/screeners/v1/finance/calendar-events` +
-    `?period1=${period1}&period2=${period2}&entityIdType=earnings` +
-    `&includeFields=${encodeURIComponent(YAHOO_EARNINGS_CALENDAR_FIELDS)}`;
-
-  const data = await yahooRequest(url);
-  const buckets = Array.isArray(data?.finance?.result?.earnings) ? data.finance.result.earnings : [];
-  const todayKey = easternDateKey();
-  let todayTotalCount = 0;
-
-  const events = [];
-  for (const bucket of buckets) {
-    const dateKey = String(bucket.timestampString || "");
-    if (!dateKey) continue;
-    if (dateKey === todayKey) {
-      todayTotalCount = Number(bucket.totalCount) || bucket.records?.length || 0;
-    }
-    if (dateKey < todayKey) continue;
-
-    for (const row of bucket.records || []) {
-      const symbol = String(row.ticker || "").trim();
-      if (!symbol) continue;
-      const epsActual = yahooNum(row.epsActual);
-      const reported = epsActual != null;
-      events.push({
-        symbol,
-        name: String(row.companyShortName || row.companyshortname || symbol).trim(),
-        dateKey,
-        start: row.startDateTime ? new Date(row.startDateTime).toISOString() : null,
-        epsEstimate: yahooNum(row.epsEstimate),
-        epsActual,
-        surprisePercent: yahooNum(row.surprisePercent),
-        isEstimate: Boolean(row.dateIsEstimate),
-        timing: row.startDateTimeType || null,
-        quarter: row.quarter || null,
-        fiscalYear: row.fiscalYear || null,
-        reported,
-      });
-    }
-  }
-
-  events.sort((a, b) => {
-    const byDate = a.dateKey.localeCompare(b.dateKey);
-    if (byDate !== 0) return byDate;
-    if (a.reported !== b.reported) return a.reported ? -1 : 1;
-    return (b.marketCap ?? 0) - (a.marketCap ?? 0) || a.name.localeCompare(b.name);
-  });
-
-  const enrichedEvents = await enrichEarningsEventsWithMarketCap(events);
-  enrichedEvents.sort((a, b) => {
-    const byDate = a.dateKey.localeCompare(b.dateKey);
-    if (byDate !== 0) return byDate;
-    if (a.reported !== b.reported) return a.reported ? -1 : 1;
-    return (b.marketCap ?? 0) - (a.marketCap ?? 0) || a.name.localeCompare(b.name);
-  });
-
-  const payload = {
-    todayKey,
-    todayTotalCount,
-    days: span,
-    events: enrichedEvents,
-    source: "Yahoo Finance",
-  };
-
-  earningsCalendarCache = { days: span, data: payload };
-  earningsCalendarCacheAt = Date.now();
-  return payload;
-}
-
-function mapScreenerQuote(row) {
-  const symbol = String(row?.symbol || "").trim().toUpperCase();
-  if (!symbol) return null;
-  return {
-    symbol,
-    name: String(row.shortName || row.longName || symbol).trim(),
-    price: yahooNum(row.regularMarketPrice),
-    changePct: yahooNum(row.regularMarketChangePercent),
-    volume: yahooNum(row.regularMarketVolume),
-    currency: row.currency || "USD",
-  };
-}
-
-async function fetchYahooScreenerList(scrId, count = 15) {
-  const cap = Math.min(25, Math.max(1, Number(count) || 15));
-  const data = await yahooFinance.screener(scrId, { count: cap }, { validateResult: false });
-  const quotes = Array.isArray(data?.quotes) ? data.quotes : [];
-  return quotes.map(mapScreenerQuote).filter(Boolean);
-}
-
-async function fetchYahooMarketMovers(count = 15) {
-  const cap = Math.min(25, Math.max(1, Number(count) || 15));
-  if (marketMoversCache && Date.now() - marketMoversCacheAt < MARKET_MOVERS_CACHE_MS) {
-    return marketMoversCache.data;
-  }
-
-  const [gainers, losers, volume] = await Promise.all([
-    fetchYahooScreenerList("day_gainers", cap),
-    fetchYahooScreenerList("day_losers", cap),
-    fetchYahooScreenerList("most_actives", cap),
-  ]);
-
-  const payload = {
-    gainers,
-    losers,
-    volume,
-    count: cap,
-    source: "Yahoo Finance",
-  };
-
-  marketMoversCache = { data: payload };
-  marketMoversCacheAt = Date.now();
-  return payload;
 }
 
 /** Yahoo Finance chart ranges with adaptive intervals. */
@@ -1191,8 +872,8 @@ async function fetchYahooChart(symbol, range, options = {}) {
   for (const params of tryParams) {
     attempted.push(params);
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${params.range}&interval=${params.interval}&includePrePost=false`;
-    const data = await yahooRequest(url);
-    const result = data?.chart?.result?.[0];
+  const data = await yahooRequest(url);
+  const result = data?.chart?.result?.[0];
     if (!result) continue;
     lastMeta = result.meta || {};
     parsed = parseYahooChartData(result);
@@ -1565,91 +1246,6 @@ http
       return;
     }
 
-    if (u.pathname === "/api/yahoo/earnings") {
-      const symbol = u.searchParams.get("symbol") || "";
-      void (async () => {
-        try {
-          const payload = await fetchYahooEarningsHistory(symbol);
-          clientRes.writeHead(200, {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "private, max-age=900",
-          });
-          clientRes.end(JSON.stringify(payload));
-        } catch (e) {
-          const status = e.statusCode && Number.isFinite(e.statusCode) ? e.statusCode : 502;
-          clientRes.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
-          clientRes.end(
-            JSON.stringify({ error: "yahoo_earnings_error", message: String(e.message || e) })
-          );
-        }
-      })();
-      return;
-    }
-
-    if (u.pathname === "/api/yahoo/earnings-calendar") {
-      const days = Math.min(62, Math.max(1, Number(u.searchParams.get("days") || "14") || 14));
-      void (async () => {
-        try {
-          const payload = await fetchYahooEarningsCalendar(days);
-          clientRes.writeHead(200, {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "private, max-age=600",
-          });
-          clientRes.end(JSON.stringify(payload));
-        } catch (e) {
-          clientRes.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
-          clientRes.end(
-            JSON.stringify({ error: "yahoo_earnings_calendar_error", message: String(e.message || e) })
-          );
-        }
-      })();
-      return;
-    }
-
-    if (u.pathname === "/api/yahoo/market-movers") {
-      const count = Math.min(25, Math.max(1, Number(u.searchParams.get("count") || "15") || 15));
-      void (async () => {
-        try {
-          const payload = await fetchYahooMarketMovers(count);
-          clientRes.writeHead(200, {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "private, max-age=300",
-          });
-          clientRes.end(JSON.stringify(payload));
-        } catch (e) {
-          clientRes.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
-          clientRes.end(
-            JSON.stringify({ error: "yahoo_market_movers_error", message: String(e.message || e) })
-          );
-        }
-      })();
-      return;
-    }
-
-    if (u.pathname === "/api/yahoo/upcoming-earnings") {
-      const symbolsParam = u.searchParams.get("symbols") || "";
-      const symbols = symbolsParam
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      void (async () => {
-        try {
-          const payload = await fetchWatchlistUpcomingEarnings(symbols);
-          clientRes.writeHead(200, {
-            "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "private, max-age=900",
-          });
-          clientRes.end(JSON.stringify(payload));
-        } catch (e) {
-          clientRes.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
-          clientRes.end(
-            JSON.stringify({ error: "yahoo_upcoming_earnings_error", message: String(e.message || e) })
-          );
-        }
-      })();
-      return;
-    }
-
     if (u.pathname === "/api/alphavantage/fundamentals") {
       const symbol = u.searchParams.get("symbol") || "";
       void (async () => {
@@ -1694,6 +1290,7 @@ http
     void (async () => {
       if (await tryHandleStockSearch(u, clientRes)) return;
       if (await tryHandleStockCompare(u, clientRes)) return;
+      if (await tryHandleWatchlistActivity(u, clientRes)) return;
       if (await tryHandleToolsDcf(u, req, clientRes)) return;
       if (await tryHandleToolsWacc(u, req, clientRes)) return;
       if (await tryHandleToolsEpv(u, req, clientRes)) return;
@@ -1733,8 +1330,6 @@ http
         u.pathname.startsWith("/stocks/") ||
         u.pathname === "/earnings-calendar" ||
         u.pathname.startsWith("/earnings-calendar/") ||
-        u.pathname === "/market-movers" ||
-        u.pathname.startsWith("/market-movers/") ||
         u.pathname === "/institutions" ||
         u.pathname.startsWith("/institutions/") ||
         u.pathname === "/insiders" ||

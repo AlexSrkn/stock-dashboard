@@ -140,7 +140,7 @@ export async function getPortfolioPerformanceProxyRankings(
   const rankings = rows.slice(start, start + pageSize);
 
   return {
-    label: "13F Portfolio Performance Proxy",
+    label: "Performance",
     disclaimer: PORTFOLIO_PROXY_DISCLAIMER,
     methodology: PORTFOLIO_PROXY_METHODOLOGY,
     computedAt: new Date().toISOString(),

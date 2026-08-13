@@ -56,6 +56,7 @@ export interface OwnershipChangesResponse {
 
 export interface PositionEventRow {
   fundName: string;
+  filerCik?: string;
   shares: number;
   valueUsd: number | null;
   pctOutstanding: number | null;

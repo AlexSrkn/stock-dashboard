@@ -2,6 +2,7 @@ import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import {
   getCachedCompletelySold,
+  saveCompletelySoldToDisk,
   setCompletelySoldMemoryCache,
 } from "./cache.js";
 import { computeCompletelySoldPositions } from "./compute.js";
@@ -21,6 +22,7 @@ export async function loadCompletelySoldPositions(
     inflight = computeCompletelySoldPositions(pool)
       .then((payload) => {
         setCompletelySoldMemoryCache(payload);
+        if (payload.positions.length) saveCompletelySoldToDisk(payload);
         return payload;
       })
       .finally(() => {

@@ -56,6 +56,26 @@ export function classifyDuration(days: number | null): DurationBucket {
   return "unknown";
 }
 
+/** Display label for a duration bucket (not the SEC fiscal-period tag). */
+export function durationBucketLabel(bucket: DurationBucket | null | undefined): string | null {
+  switch (bucket) {
+    case "quarter":
+      return null; // use fiscal period (Q1/Q2/Q3) instead
+    case "h1_ytd":
+      return "6M YTD";
+    case "nine_m_ytd":
+      return "9M YTD";
+    case "annual_ytd":
+      return "FY";
+    default:
+      return null;
+  }
+}
+
+export function isYtdDurationBucket(bucket: DurationBucket | null | undefined): boolean {
+  return bucket === "h1_ytd" || bucket === "nine_m_ytd" || bucket === "annual_ytd";
+}
+
 export function isInstantObservation(obs: XbrlFactObservation): boolean {
   if (obs.start) return false;
   const days = durationDays(obs);

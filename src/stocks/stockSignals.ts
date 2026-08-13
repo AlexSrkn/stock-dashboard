@@ -5,11 +5,23 @@ import { getCongressTradesForTicker } from "../politicians/byTicker.js";
 import type { PoliticianTrade } from "../politicians/types.js";
 import { fetchQuarterPairMap, loadOwnershipMeta } from "../ownership/ownershipAnalytics.js";
 import { getStockSignalsRepository } from "./stockSignalsRepository.js";
+import { buildStockCachedSignals } from "./stockCachedSignals.js";
 
 /** Buying is "High" when one side is at least this multiple of the other. */
 const HIGH_RATIO = 2.5;
 
-export type SignalCategory = "institutional" | "insider" | "politician";
+export type SignalCategory =
+  | "institutional"
+  | "insider"
+  | "politician"
+  | "smart-money"
+  | "double-signal"
+  | "triple-signal"
+  | "top-institution-entry"
+  | "hidden-gem"
+  | "conflict-signal"
+  | "institutional-discovery"
+  | "conviction-score";
 export type SignalDirection = "buying" | "selling" | "neutral";
 export type SignalStrength = "high" | "normal" | "neutral";
 
@@ -24,6 +36,14 @@ export interface StockSignal {
   netValueUsd: number;
   /** Dominant-side ratio (buy/sell when buying, sell/buy when selling). */
   ratio: number | null;
+  /** Cached hub signals only — link to the signals hub. */
+  href?: string;
+  /** Cached hub signals — override stat column labels. */
+  statLabels?: { buy: string; sell: string; net: string };
+  /** Cached hub signals — format stats as numbers instead of USD. */
+  statValuesAreNumeric?: boolean;
+  /** Cached hub signals — short description shown under stats. */
+  hint?: string | null;
 }
 
 export interface StockSignalsResponse {
@@ -123,7 +143,8 @@ async function computeInstitutionalSignal(pool: pg.Pool, ticker: string): Promis
         meta.currentQuarter,
         meta.previousQuarter,
         meta.impliedSharesOutstanding,
-        meta.stockPrice
+        meta.stockPrice,
+        meta.ticker
       );
       const price = meta.stockPrice && meta.stockPrice > 0 ? meta.stockPrice : 1;
       const funds = new Set([...current.keys(), ...previous.keys()]);
@@ -216,12 +237,14 @@ export async function computeStockSignals(
   ]);
   const politician = computePoliticianSignal(sym);
 
-  const signals = [institutional, insider, politician];
+  const flowSignals = [institutional, insider, politician];
+  const cachedSignals = buildStockCachedSignals(sym);
+  const signals = [...flowSignals, ...cachedSignals];
   const computedAt = new Date().toISOString();
 
   if (options.persist !== false) {
     try {
-      await getStockSignalsRepository(pool).saveSignals(sym, signals);
+      await getStockSignalsRepository(pool).saveSignals(sym, flowSignals);
     } catch {
       /* persistence is best-effort; never block the response */
     }

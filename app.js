@@ -19,6 +19,12 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
+import {
+  formatProxyHoldings,
+  formatProxyPct,
+  formatProxyUsd,
+} from "./src/institution/portfolioPerformanceProxy/formatDisplay.js";
+import { formatSignedUsdCompact } from "./src/format/money.js";
 
 const LWC_MODULE_URL =
   "/node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.mjs";
@@ -110,16 +116,9 @@ const MA_WARMUP_MAX = 300;
 
 let activeCurrency = "USD";
 
-const STOCK_TABS = ["overview", "signals", "fundamentals", "ownership", "activity", "insider-activity", "congress-activity", "earnings", "sec-filings", "filings-fundamentals"];
+const STOCK_TABS = ["overview", "signals", "filings-fundamentals", "ownership", "activity", "insider-activity", "congress-activity", "sec-filings"];
 let activeStockTab = "overview";
 
-const UPCOMING_EARNINGS_PREVIEW_LIMIT = 5;
-const EARNINGS_CALENDAR_DAYS = 60;
-/** @type {{ loadedAt: number; data: object } | null} */
-let earningsCalendarClientCache = null;
-let earningsCalendarOpen = false;
-/** @type {null | "gainers" | "losers" | "volume"} */
-let marketMoversOpen = null;
 let screenerOpen = false;
 let recentlyActiveOpen = false;
 let stocksMostAccumulatedOpen = false;
@@ -135,17 +134,7 @@ let stockCompareLoading = false;
 let stockCompareBound = false;
 let stockCompareHoldersExpanded = false;
 
-const MARKET_MOVERS_PREVIEW_LIMIT = 5;
-const MARKET_MOVERS_FULL_LIMIT = 15;
-/** @type {{ loadedAt: number; data: object } | null} */
-let marketMoversClientCache = null;
-
-const MARKET_MOVERS_VIEWS = {
-  gainers: { key: "gainers", title: "Biggest Movers", metric: "change" },
-  losers: { key: "losers", title: "Biggest Losers", metric: "change" },
-  volume: { key: "volume", title: "Highest Volume", metric: "volume" },
-};
-
+const PULSE_PREVIEW_LIMIT = 5;
 const INSTITUTION_TABS = ["holdings", "activity", "options", "performance", "history"];
 const EXPLORE_MODES = ["stocks", "institutions", "insiders", "politicians", "signals", "tools"];
 let activeExploreMode = "stocks";
@@ -172,7 +161,7 @@ let evebitdaCalculator = null;
 let fcfYieldCalculator = null;
 /** @type {ReturnType<typeof createFindSimilarStocksController> | null} */
 let similarStocksTool = null;
-let institutionPerformancePeriod = "rolling_1y";
+let institutionPerformancePeriod = "qoq";
 let lastInstitutionPerformanceRankings = [];
 let institutionPerformanceRankingsLoading = false;
 let institutionPerformanceRankingsBound = false;
@@ -183,6 +172,8 @@ let mostAccumulatedLoading = false;
 let mostAccumulatedBound = false;
 let mostAccumulatedSortKey = "netSharesAdded";
 let mostAccumulatedSortDir = "desc";
+let mostAccumulatedPage = 1;
+const INSTITUTION_MOST_ACCUMULATED_PAGE_SIZE = 30;
 let mostAccumulatedFilters = {
   search: "",
   sector: "",
@@ -197,6 +188,10 @@ let newPositionsLoading = false;
 let newPositionsBound = false;
 let newPositionsSortKey = "positionValueUsd";
 let newPositionsSortDir = "desc";
+let newPositionsPage = 1;
+const INSTITUTION_NEW_POSITIONS_PAGE_SIZE = 50;
+let newPositionsFilterOptionsReady = false;
+let newPositionsSearchTimer = null;
 let newPositionsFilters = {
   quarter: "",
   institution: "",
@@ -422,13 +417,14 @@ let completelySoldLoading = false;
 let completelySoldBound = false;
 let completelySoldSortKey = "previousPositionValueUsd";
 let completelySoldSortDir = "desc";
+let completelySoldPage = 1;
+const INSTITUTION_COMPLETELY_SOLD_PAGE_SIZE = 30;
 let completelySoldFilters = {
   quarter: "",
-  institution: "",
   sector: "",
   minValue: 0,
   search: "",
-  minWeight: 0,
+  minExits: 0,
 };
 /** @type {object | null} */
 let lastInstitutionComparePayload = null;
@@ -704,11 +700,14 @@ let lastInstitutionAdds = [];
 /** @type {Array<object>} */
 let lastInstitutionTrims = [];
 /** @type {Array<object>} */
+let lastInstitutionExits = [];
+/** @type {Array<object>} */
 let lastInstitutionNewPositions = [];
 /** @type {Array<object>} */
 let lastInstitutionActivityAll = [];
 let institutionAddsExpanded = false;
 let institutionTrimsExpanded = false;
+let institutionExitsExpanded = false;
 let institutionNewExpanded = false;
 /** @type {Array<object>} */
 let lastInstitutionHoldings = [];
@@ -723,12 +722,18 @@ let institutionOptionsStocksExpanded = false;
 
 const ACTIVITY_INITIAL_COUNT = 5;
 
-/** @type {Array<{ fundName: string; sharesChange: number; currentShares: number; previousShares: number; valueChangeUsd: number | null }>} */
+/** @type {Array<{ fundName: string; filerCik?: string; sharesChange: number; currentShares: number; previousShares: number; valueChangeUsd: number | null }>} */
 let lastActivityBuyers = [];
-/** @type {Array<{ fundName: string; sharesChange: number; currentShares: number; previousShares: number; valueChangeUsd: number | null }>} */
+/** @type {Array<{ fundName: string; filerCik?: string; sharesChange: number; currentShares: number; previousShares: number; valueChangeUsd: number | null }>} */
 let lastActivitySellers = [];
+/** @type {Array<{ fundName: string; filerCik?: string; shares: number; previousShares: number; valueUsd: number | null; previousValueUsd: number | null }>} */
+let lastActivityExits = [];
+/** @type {Array<{ fundName: string; filerCik?: string; shares: number; valueUsd: number | null }>} */
+let lastActivityNewPositions = [];
 let activityBuyersExpanded = false;
 let activitySellersExpanded = false;
+let activityExitsExpanded = false;
+let activityNewExpanded = false;
 /** @type {{ currentQuarter?: string; previousQuarter?: string | null }} */
 let lastActivityQuarterMeta = {};
 
@@ -915,14 +920,10 @@ function renderOwnershipEmpty(msg) {
   setOwnershipSubtitle("Tracked institutional filers");
 }
 
+/** Format raw USD value changes for institutional activity / ownership tables. */
+/** Activity / ownership value cells: API fields are raw USD dollars. */
 function formatValueAddedMillions(usd) {
-  const x = Number(usd);
-  if (!Number.isFinite(x)) return "—";
-  const millions = x / 1e6;
-  const abs = Math.abs(millions);
-  const formatted =
-    abs >= 100 ? abs.toFixed(0) : abs >= 10 ? abs.toFixed(1) : abs.toFixed(2);
-  return `${millions >= 0 ? "+" : "−"}${formatted}M`;
+  return formatSignedUsdCompact(usd);
 }
 
 function renderOwnershipChangeCell(h) {
@@ -1034,7 +1035,7 @@ async function fetchTopHolders(symbol) {
 
 function parseStockRoute(pathname) {
   const m = String(pathname || "").match(
-    /^\/stock\/([A-Za-z0-9.\^-]+)(?:\/(overview|signals|fundamentals|ownership|activity|insider-activity|congress-activity|earnings|sec-filings|filings-fundamentals))?\/?$/
+    /^\/stock\/([A-Za-z0-9.\^-]+)(?:\/([a-z0-9-]+))?\/?$/
   );
   if (!m) return null;
   const tab = m[2] || "overview";
@@ -1151,7 +1152,16 @@ async function enterAppFromLanding(mode) {
     void refreshSidebarMarketPanels();
     return;
   }
+  if (mode === "insiders") {
+    activeInsiderKey = null;
+    activeInsiderHubView = "trades";
+    setExploreMode("insiders", { navigate: true });
+    void refreshSidebarMarketPanels();
+    return;
+  }
   if (mode === "politicians") {
+    activePoliticianKey = null;
+    activePoliticianHubView = "trades";
     setExploreMode("politicians", { navigate: true });
     void refreshSidebarMarketPanels();
     return;
@@ -1182,21 +1192,13 @@ function parseInstitutionRoute(pathname) {
   };
 }
 
-function parseMarketMoversRoute(pathname) {
-  const m = String(pathname || "").match(/^\/market-movers\/(gainers|losers|volume)\/?$/);
-  return m && MARKET_MOVERS_VIEWS[m[1]] ? m[1] : null;
-}
-
 function parseAppRoute(pathname) {
   if (isLandingPath(pathname)) return { mode: "landing" };
   const inst = parseInstitutionRoute(pathname);
   if (inst) return { mode: "institutions", hub: false, ...inst };
   if (pathname === "/institutions" || pathname.startsWith("/institutions/")) {
-    if (pathname === "/institutions/performance") {
+    if (pathname === "/institutions/performance" || pathname === "/institutions/proxy-performance") {
       return { mode: "institutions", hub: true, performanceRankings: true };
-    }
-    if (pathname === "/institutions/proxy-performance") {
-      return { mode: "institutions", hub: true, proxyPerformance: true };
     }
     if (pathname === "/institutions/most-accumulated") {
       return { mode: "institutions", hub: true, mostAccumulated: true };
@@ -1391,11 +1393,10 @@ function parseAppRoute(pathname) {
   if (pathname === "/stocks") {
     return { mode: "stocks" };
   }
+  // Legacy Yahoo earnings calendar route → stocks hub
   if (pathname === "/earnings-calendar" || pathname.startsWith("/earnings-calendar/")) {
-    return { mode: "stocks", earningsCalendar: true };
+    return { mode: "stocks" };
   }
-  const marketMovers = parseMarketMoversRoute(pathname);
-  if (marketMovers) return { mode: "stocks", marketMovers };
   const stock = parseStockRoute(pathname);
   if (stock) return { mode: "stocks", ...stock };
   return { mode: "stocks" };
@@ -1533,8 +1534,6 @@ function isStockHubVisible() {
   return (
     activeExploreMode === "stocks" &&
     !getDisplayStock() &&
-    !earningsCalendarOpen &&
-    !marketMoversOpen &&
     !screenerOpen &&
     !recentlyActiveOpen &&
     !stocksMostAccumulatedOpen &&
@@ -1551,8 +1550,6 @@ function updateStocksView() {
   if (hub) hub.hidden = !showHub;
 
   const overlayOpen =
-    earningsCalendarOpen ||
-    Boolean(marketMoversOpen) ||
     screenerOpen ||
     recentlyActiveOpen ||
     stocksMostAccumulatedOpen ||
@@ -1560,8 +1557,6 @@ function updateStocksView() {
     stocksHolderOverlapOpen ||
     stocksOwnershipHistoryOpen ||
     stocksCompareOpen;
-  const earningsEl = document.getElementById("view-earnings-calendar");
-  const moversEl = document.getElementById("view-market-movers");
   const screenerEl = document.getElementById("view-screener");
   const recentlyActiveEl = document.getElementById("view-stock-recent-activity");
   const mostAccumulatedEl = document.getElementById("view-stock-most-accumulated");
@@ -1569,8 +1564,6 @@ function updateStocksView() {
   const holderOverlapEl = document.getElementById("view-stock-holder-overlap");
   const ownershipHistoryEl = document.getElementById("view-stock-ownership-history");
   const compareEl = document.getElementById("view-stock-compare");
-  if (earningsEl) earningsEl.hidden = !earningsCalendarOpen;
-  if (moversEl) moversEl.hidden = !marketMoversOpen;
   if (screenerEl) screenerEl.hidden = !screenerOpen;
   if (recentlyActiveEl) recentlyActiveEl.hidden = !recentlyActiveOpen;
   if (mostAccumulatedEl) mostAccumulatedEl.hidden = !stocksMostAccumulatedOpen;
@@ -1582,7 +1575,7 @@ function updateStocksView() {
   const hideDetail = showHub || overlayOpen;
   document
     .querySelectorAll(
-      "#view-stocks > :not(#view-earnings-calendar):not(#view-market-movers):not(#view-screener):not(#view-stock-recent-activity):not(#view-stock-most-accumulated):not(#view-stock-ownership-changes):not(#view-stock-holder-overlap):not(#view-stock-ownership-history):not(#view-stock-compare):not(#stock-hub)"
+      "#view-stocks > :not(#view-screener):not(#view-stock-recent-activity):not(#view-stock-most-accumulated):not(#view-stock-ownership-changes):not(#view-stock-holder-overlap):not(#view-stock-ownership-history):not(#view-stock-compare):not(#stock-hub)"
     )
     .forEach((el) => {
       // Tab panels must also respect the active tab, otherwise opening a stock
@@ -1611,8 +1604,6 @@ function updateStocksOverlay() {
 }
 
 function closeStocksOverlays() {
-  earningsCalendarOpen = false;
-  marketMoversOpen = null;
   screenerOpen = false;
   recentlyActiveOpen = false;
   stocksMostAccumulatedOpen = false;
@@ -4243,41 +4234,9 @@ function setupStockComparePage() {
   bindSearch("B");
 }
 
-function setEarningsCalendarVisible(visible) {
-  earningsCalendarOpen = Boolean(visible);
-  if (visible) {
-    marketMoversOpen = null;
-    screenerOpen = false;
-    recentlyActiveOpen = false;
-    stocksMostAccumulatedOpen = false;
-    stocksOwnershipChangesOpen = false;
-    stocksHolderOverlapOpen = false;
-    stocksOwnershipHistoryOpen = false;
-    stocksCompareOpen = false;
-  }
-  updateStocksOverlay();
-}
-
-function setMarketMoversVisible(type) {
-  marketMoversOpen = type && MARKET_MOVERS_VIEWS[type] ? type : null;
-  if (marketMoversOpen) {
-    earningsCalendarOpen = false;
-    screenerOpen = false;
-    recentlyActiveOpen = false;
-    stocksMostAccumulatedOpen = false;
-    stocksOwnershipChangesOpen = false;
-    stocksHolderOverlapOpen = false;
-    stocksOwnershipHistoryOpen = false;
-    stocksCompareOpen = false;
-  }
-  updateStocksOverlay();
-}
-
 function setScreenerVisible(visible) {
   screenerOpen = Boolean(visible);
   if (screenerOpen) {
-    earningsCalendarOpen = false;
-    marketMoversOpen = null;
     recentlyActiveOpen = false;
     stocksMostAccumulatedOpen = false;
     stocksOwnershipChangesOpen = false;
@@ -4394,29 +4353,6 @@ function navigateToStocksCompare(options = {}) {
   updateStocksView();
 }
 
-function navigateToMarketMovers(type) {
-  const view = MARKET_MOVERS_VIEWS[type];
-  if (!view) return;
-  const path = `/market-movers/${type}`;
-  if (window.location.pathname !== path) {
-    history.pushState({ marketMovers: type }, "", path);
-  }
-  showLandingView(false);
-  setExploreMode("stocks", { navigate: false });
-  setMarketMoversVisible(type);
-  void loadMarketMoversPage(type);
-}
-
-function navigateToEarningsCalendar() {
-  if (window.location.pathname !== "/earnings-calendar") {
-    history.pushState({ earningsCalendar: true }, "", "/earnings-calendar");
-  }
-  showLandingView(false);
-  setExploreMode("stocks", { navigate: false });
-  setEarningsCalendarVisible(true);
-  void loadEarningsCalendarPage();
-}
-
 function updateInstitutionsView() {
   const hub = document.getElementById("institution-hub");
   const rankings = document.getElementById("institution-performance-rankings");
@@ -4427,23 +4363,25 @@ function updateInstitutionsView() {
   const institutionCompare = document.getElementById("institution-compare");
   const profile = document.getElementById("institution-profile");
   const showProfile = Boolean(activeInstitutionCik);
-  const showRankings = activeInstitutionHubView === "performance" && !showProfile;
-  const showProxyPerformance = activeInstitutionHubView === "proxy-performance" && !showProfile;
+  // "performance" hub view is now the 13F reported-value proxy (no Yahoo prices).
+  const showPerformance =
+    (activeInstitutionHubView === "performance" ||
+      activeInstitutionHubView === "proxy-performance") &&
+    !showProfile;
   const showMostAccumulated = activeInstitutionHubView === "most-accumulated" && !showProfile;
   const showNewPositions = activeInstitutionHubView === "new-positions" && !showProfile;
   const showCompletelySold = activeInstitutionHubView === "completely-sold" && !showProfile;
   const showInstitutionCompare = activeInstitutionHubView === "compare" && !showProfile;
   const showDirectory =
     !showProfile &&
-    !showRankings &&
-    !showProxyPerformance &&
+    !showPerformance &&
     !showMostAccumulated &&
     !showNewPositions &&
     !showCompletelySold &&
     !showInstitutionCompare;
   if (hub) hub.hidden = !showDirectory;
-  if (rankings) rankings.hidden = showProfile || !showRankings;
-  if (proxyPerformance) proxyPerformance.hidden = showProfile || !showProxyPerformance;
+  if (rankings) rankings.hidden = true; // retired Yahoo price-based rankings UI
+  if (proxyPerformance) proxyPerformance.hidden = showProfile || !showPerformance;
   if (mostAccumulated) mostAccumulated.hidden = showProfile || !showMostAccumulated;
   if (newPositions) newPositions.hidden = showProfile || !showNewPositions;
   if (completelySold) completelySold.hidden = showProfile || !showCompletelySold;
@@ -4451,9 +4389,7 @@ function updateInstitutionsView() {
   if (profile) profile.hidden = !showProfile;
   if (showProfile) {
     scrollInstitutionProfileIntoView();
-  } else if (showRankings) {
-    void loadInstitutionPerformanceRankings();
-  } else if (showProxyPerformance) {
+  } else if (showPerformance) {
     void ensureInstitutionProxyPerformance().show();
   } else if (showMostAccumulated) {
     void loadMostAccumulatedPage();
@@ -4485,17 +4421,7 @@ function ensureInstitutionProxyPerformance() {
 }
 
 function navigateToInstitutionProxyPerformance() {
-  activeInstitutionCik = null;
-  activeInstitutionHubView = "proxy-performance";
-  if (window.location.pathname !== "/institutions/proxy-performance") {
-    history.pushState(
-      { explore: "institutions", proxyPerformance: true },
-      "",
-      "/institutions/proxy-performance"
-    );
-  }
-  setExploreMode("institutions", { navigate: false });
-  updateInstitutionsView();
+  navigateToInstitutionPerformanceRankings();
 }
 
 function navigateToInstitutionMostAccumulated() {
@@ -5486,8 +5412,6 @@ function setExploreMode(mode, { navigate = true } = {}) {
   const onInsidersPath = window.location.pathname.startsWith("/insiders");
   const onSignalsPath = window.location.pathname.startsWith("/signals");
   const onToolsPath = window.location.pathname.startsWith("/tools");
-  const onEarningsCalendar = window.location.pathname.startsWith("/earnings-calendar");
-  const onMarketMovers = window.location.pathname.startsWith("/market-movers");
   const onStocksScreener = window.location.pathname.startsWith("/stocks/screener");
   if (
     navigate &&
@@ -5496,8 +5420,6 @@ function setExploreMode(mode, { navigate = true } = {}) {
       onInsidersPath ||
       onSignalsPath ||
       onToolsPath ||
-      onEarningsCalendar ||
-      onMarketMovers ||
       onStocksScreener)
   ) {
     closeStocksOverlays();
@@ -6014,14 +5936,21 @@ function setupPoliticiansHub() {
 function openPoliticianProfile(key, { navigate = true } = {}) {
   if (!key) return;
   activePoliticianKey = key;
+  activePoliticianHubView = "trades";
   if (navigate) {
     const path = politicianPath(key);
     if (window.location.pathname !== path) {
       history.pushState({ politicianKey: key }, "", path);
     }
   }
-  renderPoliticiansHub();
-  window.scrollTo({ top: 0, behavior: "instant" });
+  // Switch into politicians mode when coming from Stocks (e.g. congress-activity).
+  // Avoid calling setExploreMode when already there — updatePoliticiansView used to
+  // re-enter openPoliticianProfile and freeze the tab in a loop.
+  if (activeExploreMode !== "politicians") {
+    setExploreMode("politicians", { navigate: false });
+    return;
+  }
+  void updatePoliticiansView();
 }
 
 function closePoliticianProfile({ navigate = true } = {}) {
@@ -6029,7 +5958,11 @@ function closePoliticianProfile({ navigate = true } = {}) {
   if (navigate && window.location.pathname !== "/politicians") {
     history.pushState({ explore: "politicians" }, "", "/politicians");
   }
-  renderPoliticiansHub();
+  if (activeExploreMode === "politicians") {
+    void updatePoliticiansView();
+  } else {
+    renderPoliticiansHub();
+  }
 }
 
 function politicianChamberLabel(chamber) {
@@ -6127,9 +6060,25 @@ function renderPoliticianProfile() {
   const nameEl = document.getElementById("politicians-profile-name");
   const metaEl = document.getElementById("politicians-profile-meta");
   const list = document.getElementById("politicians-profile-filings");
+  if (!activePoliticianKey) return;
+
+  if (politiciansHubLoading && !politiciansRecentData) {
+    if (nameEl) nameEl.textContent = "Loading…";
+    if (metaEl) metaEl.textContent = "Fetching congressional filings…";
+    if (list) list.innerHTML = `<p class="muted small">Loading trades…</p>`;
+    return;
+  }
+
   const filings = getPoliticianFilingsByKey(activePoliticianKey);
-  if (!activePoliticianKey || !filings.length) {
-    closePoliticianProfile({ navigate: false });
+  if (!filings.length) {
+    // Only close after data has loaded and this key truly has no filings.
+    if (politiciansHubLoaded) {
+      activePoliticianKey = null;
+      if (window.location.pathname.startsWith("/politicians/")) {
+        history.replaceState({ explore: "politicians" }, "", "/politicians");
+      }
+      renderPoliticiansHub();
+    }
     return;
   }
   const sorted = sortPoliticianFilings(filings);
@@ -6278,7 +6227,16 @@ async function updatePoliticiansView() {
 
   const route = parsePoliticianRoute(window.location.pathname);
   if (route?.key) {
-    openPoliticianProfile(route.key, { navigate: false });
+    activePoliticianKey = route.key;
+    activePoliticianHubView = "trades";
+    if (hub) hub.hidden = false;
+    if (mostAccumulated) mostAccumulated.hidden = true;
+    if (largestPortfolios) largestPortfolios.hidden = true;
+    if (repeatBuyers) repeatBuyers.hidden = true;
+    if (firstTimeBuyers) firstTimeBuyers.hidden = true;
+    if (heavySelling) heavySelling.hidden = true;
+    if (sectorExposure) sectorExposure.hidden = true;
+    renderPoliticiansHub();
     return;
   }
   if (showMostAccumulated) {
@@ -6933,13 +6891,13 @@ function renderPoliticianRepeatBuyersPage() {
   if (!body) return;
 
   if (politicianRepeatBuyersLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="13" class="trades-table__empty">Loading repeat buyers…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">Loading repeat buyers…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   if (payload && payload.available === false) {
-    body.innerHTML = `<tr><td colspan="13" class="trades-table__empty">${escapeHtml(
+    body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">${escapeHtml(
       payload.unavailableReason || "No politician data available."
     )}</td></tr>`;
     if (meta) meta.textContent = "Unavailable";
@@ -6948,7 +6906,7 @@ function renderPoliticianRepeatBuyersPage() {
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="13" class="trades-table__empty">No repeat buyers match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">No repeat buyers match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -6958,10 +6916,12 @@ function renderPoliticianRepeatBuyersPage() {
     body.innerHTML = rows
       .map((row, i) => {
         const rank = offset + i + 1;
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
-          <td>${escapeHtml(row.companyName || "—")}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td><a href="${politicianPath(row.politicianKey)}" class="politicians-name-link" data-politician-key="${escapeHtml(row.politicianKey)}">${escapeHtml(row.politicianName)}</a></td>
           <td>${escapeHtml(row.party || "—")}</td>
           <td class="mono">${escapeHtml(row.state || "—")}</td>
@@ -7273,13 +7233,13 @@ function renderPoliticianFirstTimeBuyersPage() {
   if (!body) return;
 
   if (politicianFirstTimeBuyersLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading first-time buyers…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading first-time buyers…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   if (payload && payload.available === false) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${escapeHtml(
       payload.unavailableReason || "No politician data available."
     )}</td></tr>`;
     if (meta) meta.textContent = "Unavailable";
@@ -7288,7 +7248,7 @@ function renderPoliticianFirstTimeBuyersPage() {
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No first-time or returning buys match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No first-time or returning buys match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
     if (meta) {
       meta.textContent =
         total === 0
@@ -7301,16 +7261,23 @@ function renderPoliticianFirstTimeBuyersPage() {
     }
     body.innerHTML = rows
       .map((row) => {
+        const yearsLabel = formatPoliticianYearsSinceLastBuy(row);
+        const yearsCell =
+          yearsLabel === "—"
+            ? ""
+            : `<span class="repeat-buyer-label">${escapeHtml(yearsLabel)}</span>`;
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
-          <td>${escapeHtml(row.companyName || "—")}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td><a href="${politicianPath(row.politicianKey)}" class="politicians-name-link" data-politician-key="${escapeHtml(row.politicianKey)}">${escapeHtml(row.politicianName)}</a></td>
           <td>${escapeHtml(row.party || "—")}</td>
           <td class="mono">${escapeHtml(row.state || "—")}</td>
           <td class="mono">${escapeHtml(row.transactionDate || "—")}</td>
           <td class="mono num">${escapeHtml(formatDisclosedUsdPlain(row.estimatedPurchaseValue))}</td>
           <td class="mono">${escapeHtml(row.previousBuyDate || "—")}</td>
-          <td class="mono num">${escapeHtml(formatPoliticianYearsSinceLastBuy(row))}</td>
+          <td class="num">${yearsCell}</td>
         </tr>`;
       })
       .join("");
@@ -7618,13 +7585,13 @@ function renderPoliticianHeavySellingPage() {
   if (!body) return;
 
   if (politicianHeavySellingLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading heavy selling…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading heavy selling…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   if (payload && payload.available === false) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${escapeHtml(
       payload.unavailableReason || "No politician data available."
     )}</td></tr>`;
     if (meta) meta.textContent = "Unavailable";
@@ -7633,7 +7600,7 @@ function renderPoliticianHeavySellingPage() {
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No sell disclosures match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No sell disclosures match these filters. Run <code class="inline-code">npm run politicians:fetch-recent</code> if disclosures are missing.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     if (meta) {
@@ -7645,9 +7612,11 @@ function renderPoliticianHeavySellingPage() {
         const multiLabel = row.multipleSellers
           ? `Yes (${formatInteger(row.multipleSellerCount ?? row.uniqueSellers)})`
           : "No";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
-          <td>${escapeHtml(row.companyName || "—")}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td class="mono num">${formatInteger(row.sellTransactions ?? 0)}</td>
           <td class="mono num">${formatInteger(row.uniqueSellers ?? 0)}</td>
           <td class="mono num">${escapeHtml(formatDisclosedUsdPlain(row.estimatedTotalSold))}</td>
@@ -8510,7 +8479,7 @@ function openInsiderProfile(key, { navigate = true } = {}) {
       history.pushState({ insiderKey: key }, "", path);
     }
   }
-  updateInsidersView();
+  setExploreMode("insiders", { navigate: false });
 }
 
 function closeInsiderProfile({ navigate = true } = {}) {
@@ -8989,6 +8958,22 @@ function renderInstitutionNewPositionRow(r) {
   `;
 }
 
+function renderInstitutionExitRow(r) {
+  const valueUsd = r.previousValueUsd;
+  const valueCell =
+    valueUsd == null || !Number.isFinite(Number(valueUsd))
+      ? "—"
+      : `<span class="change-pill change-pill--down">${escapeHtml(formatValueAddedMillions(-Math.abs(Number(valueUsd))))}</span>`;
+  return `
+    <tr>
+      <td class="mono">${institutionActivityTickerCell(r)}</td>
+      <td>${institutionStockLinkHtml(r.ticker, r.issuer)}</td>
+      <td class="mono num">${valueCell}</td>
+      <td class="mono num"><span class="change-pill change-pill--down">${escapeHtml(formatShareCount(r.previousShares))}</span></td>
+    </tr>
+  `;
+}
+
 function renderInstitutionActivitySection(bodyId, rows, emptyMsg, renderRow, colSpan = 6) {
   const body = document.getElementById(bodyId);
   if (!body) return;
@@ -9013,9 +8998,16 @@ function updateInstitutionActivityMoreControl(footId, btnId, total, expanded, sh
   btn.setAttribute("aria-expanded", expanded ? "true" : "false");
 }
 
-function renderInstitutionActivityPanels({ adds = [], trims = [], newPositions = [], activity = [] } = {}) {
+function renderInstitutionActivityPanels({
+  adds = [],
+  trims = [],
+  completelySold = [],
+  newPositions = [],
+  activity = [],
+} = {}) {
   lastInstitutionAdds = adds;
   lastInstitutionTrims = trims;
+  lastInstitutionExits = completelySold;
   lastInstitutionNewPositions = newPositions;
   if (activity.length) lastInstitutionActivityAll = activity;
 
@@ -9025,6 +9017,9 @@ function renderInstitutionActivityPanels({ adds = [], trims = [], newPositions =
   const visibleTrims = institutionTrimsExpanded
     ? lastInstitutionTrims
     : lastInstitutionTrims.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+  const visibleExits = institutionExitsExpanded
+    ? lastInstitutionExits
+    : lastInstitutionExits.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
   const visibleNew = institutionNewExpanded
     ? lastInstitutionNewPositions
     : lastInstitutionNewPositions.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
@@ -9040,6 +9035,13 @@ function renderInstitutionActivityPanels({ adds = [], trims = [], newPositions =
     visibleTrims,
     "No trims this quarter.",
     (r) => renderInstitutionActivityMoverRow(r, { sold: true })
+  );
+  renderInstitutionActivitySection(
+    "institution-exits-body",
+    visibleExits,
+    "No full exits this quarter.",
+    renderInstitutionExitRow,
+    4
   );
   renderInstitutionActivitySection(
     "institution-new-body",
@@ -9065,6 +9067,14 @@ function renderInstitutionActivityPanels({ adds = [], trims = [], newPositions =
     institutionTrimsExpanded,
     "Show fewer trims",
     "Show all trims"
+  );
+  updateInstitutionActivityMoreControl(
+    "institution-exits-foot",
+    "institution-exits-more-btn",
+    lastInstitutionExits.length,
+    institutionExitsExpanded,
+    "Show fewer exits",
+    "Show all exits"
   );
   updateInstitutionActivityMoreControl(
     "institution-new-foot",
@@ -9388,11 +9398,21 @@ function renderInstitutionHistoryTable(filings) {
 }
 
 function formatInstitutionPerformancePct(value, { signed = true } = {}) {
+  if (value == null || value === "") return "N/A";
   const x = Number(value);
-  if (!Number.isFinite(x)) return "—";
+  if (!Number.isFinite(x)) return "N/A";
   const pct = (x * 100).toFixed(2);
   if (!signed) return `${pct}%`;
   return `${x >= 0 ? "+" : ""}${pct}%`;
+}
+
+function formatInstitutionConsistency(score) {
+  if (score == null || score === "") return "N/A";
+  const x = Number(score);
+  if (!Number.isFinite(x)) return "N/A";
+  const pct = x * 100;
+  const label = Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
+  return `${label}%`;
 }
 
 function institutionPerformanceReturnClass(value) {
@@ -9413,10 +9433,12 @@ function renderInstitutionPerformanceSummary(latest) {
     return;
   }
   const items = [
-    { label: "Latest quarter", value: latest.quarter || "—", mono: false },
-    { label: "QoQ return", value: formatInstitutionPerformancePct(latest.qoqReturn), mono: true },
-    { label: "Rolling 1Y", value: formatInstitutionPerformancePct(latest.rolling1yReturn), mono: true },
-    { label: "YTD", value: formatInstitutionPerformancePct(latest.ytdReturn), mono: true },
+    { label: "As of", value: latest.quarter || "—", mono: false },
+    { label: "Portfolio value", value: formatProxyUsd(latest.currentPortfolioValueUsd), mono: true },
+    { label: "QoQ change", value: formatProxyPct(latest.qoqChangePct), mono: true },
+    { label: "1Y change", value: formatProxyPct(latest.change1yPct), mono: true },
+    { label: "3Y change", value: formatProxyPct(latest.change3yPct), mono: true },
+    { label: "Holdings", value: formatProxyHoldings(latest.holdingsCount), mono: true },
   ];
   grid.innerHTML = items
     .map(
@@ -9429,23 +9451,24 @@ function renderInstitutionPerformanceSummary(latest) {
   wrap.hidden = false;
 }
 
-function renderInstitutionPerformanceTable(series) {
+function renderInstitutionPerformanceTable(history) {
   const body = document.getElementById("institution-performance-body");
   if (!body) return;
-  if (!series?.length) {
-    body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No performance data yet. Ingest 13F holdings and ensure price history is available.</td></tr>`;
+  const rows = Array.isArray(history) ? [...history] : [];
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No reported 13F portfolio value history yet.</td></tr>`;
     return;
   }
-  const rows = [...series].sort((a, b) => String(b.quarter).localeCompare(String(a.quarter)));
+  rows.sort((a, b) => String(b.quarter).localeCompare(String(a.quarter)));
   body.innerHTML = rows
     .map(
       (row) => `<tr>
-      <td class="mono">${escapeHtml(row.quarter || "—")}</td>
-      <td class="mono num">${escapeHtml(formatInstitutionPerformancePct(row.qoqReturn))}</td>
-      <td class="mono num">${escapeHtml(formatInstitutionPerformancePct(row.rolling1yReturn))}</td>
-      <td class="mono num">${escapeHtml(formatInstitutionPerformancePct(row.ytdReturn))}</td>
-      <td class="mono num">${row.consistencyScore != null ? escapeHtml(`${(Number(row.consistencyScore) * 100).toFixed(0)}%`) : "—"}</td>
-      <td class="mono num">${row.volatility != null ? escapeHtml(formatInstitutionPerformancePct(row.volatility, { signed: false })) : "—"}</td>
+      <td class="mono">${escapeHtml(row.quarter || "N/A")}</td>
+      <td class="mono num">${escapeHtml(formatProxyUsd(row.portfolioValueUsd))}</td>
+      <td class="mono num">${escapeHtml(formatProxyUsd(row.qoqChangeUsd))}</td>
+      <td class="mono num">${escapeHtml(formatProxyPct(row.qoqChangePct))}</td>
+      <td class="mono num">${escapeHtml(formatProxyHoldings(row.holdingsCount))}</td>
+      <td class="mono num">${escapeHtml(row.filingDate ? String(row.filingDate).slice(0, 10) : "N/A")}</td>
     </tr>`
     )
     .join("");
@@ -9482,13 +9505,13 @@ function renderInstitutionPerformanceRankings() {
       "No rankings available. Run npm run performance:warm-cache once (batch price job), then refresh.";
     track.innerHTML = `<p class="muted small">${cacheHint}</p>`;
     body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">${cacheHint}</td></tr>`;
-    if (subtitle) subtitle.textContent = "Portfolio returns from reconstructed 13F holdings";
+    if (subtitle) subtitle.textContent = "13F-implied portfolio performance from quarter-end holdings";
     return;
   }
 
   const asOf = rows[0]?.quarter;
   if (subtitle) {
-    subtitle.textContent = `${performancePeriodLabel(institutionPerformancePeriod)} · as of ${asOf || "—"} · ${rows.length} institutions`;
+    subtitle.textContent = `${performancePeriodLabel(institutionPerformancePeriod)} · as of ${asOf || "N/A"} · ${rows.length} institutions · 13F-implied`;
   }
 
   track.innerHTML = rows
@@ -9498,7 +9521,7 @@ function renderInstitutionPerformanceRankings() {
       return `<button type="button" class="institution-performance-rank-card" data-institution-cik="${escapeHtml(cik)}" role="listitem">
         <span class="institution-performance-rank-card__rank">#${row.rank}</span>
         <span class="institution-performance-rank-card__name">${escapeHtml(row.name)}</span>
-        <span class="institution-performance-rank-card__meta">${escapeHtml(row.type)} · ${escapeHtml(row.quarter || "—")}</span>
+        <span class="institution-performance-rank-card__meta">${escapeHtml(row.type)} · ${escapeHtml(row.quarter || "N/A")}</span>
         <span class="institution-performance-rank-card__return ${retClass} mono">${escapeHtml(formatInstitutionPerformancePct(row.return))}</span>
       </button>`;
     })
@@ -9510,10 +9533,10 @@ function renderInstitutionPerformanceRankings() {
       <td class="mono num">${row.rank}</td>
       <td><a href="${institutionPath(bareInstitutionCik(row.institutionId), "performance")}" class="ownership-fund__link" data-institution-cik="${escapeHtml(bareInstitutionCik(row.institutionId))}">${escapeHtml(row.name)}</a></td>
       <td>${escapeHtml(row.type)}</td>
-      <td class="mono">${escapeHtml(row.quarter || "—")}</td>
+      <td class="mono">${escapeHtml(row.quarter || "N/A")}</td>
       <td class="mono num">${escapeHtml(formatInstitutionPerformancePct(row.return))}</td>
-      <td class="mono num">${row.consistencyScore != null ? escapeHtml(`${(Number(row.consistencyScore) * 100).toFixed(0)}%`) : "—"}</td>
-      <td class="mono num">${row.volatility != null ? escapeHtml(formatInstitutionPerformancePct(row.volatility, { signed: false })) : "—"}</td>
+      <td class="mono num">${escapeHtml(formatInstitutionConsistency(row.consistencyScore))}</td>
+      <td class="mono num">${row.volatility != null ? escapeHtml(formatInstitutionPerformancePct(row.volatility, { signed: false })) : "N/A"}</td>
     </tr>`
     )
     .join("");
@@ -9543,32 +9566,11 @@ function setupInstitutionPerformanceRankings() {
   if (institutionPerformanceRankingsBound) return;
   institutionPerformanceRankingsBound = true;
 
-  document.getElementById("institution-performance-rankings-back")?.addEventListener("click", () => {
-    navigateToInstitutionDirectory();
-  });
   document.getElementById("institution-hub-performance-link")?.addEventListener("click", () => {
     navigateToInstitutionPerformanceRankings();
   });
-  document.getElementById("institution-hub-proxy-performance-link")?.addEventListener("click", () => {
-    navigateToInstitutionProxyPerformance();
-  });
   document.getElementById("institution-hub-most-accumulated-link")?.addEventListener("click", () => {
     navigateToInstitutionMostAccumulated();
-  });
-  document.getElementById("institution-performance-rankings")?.addEventListener("click", (e) => {
-    const periodBtn = e.target.closest?.("[data-performance-period]");
-    if (periodBtn) {
-      const period = periodBtn.getAttribute("data-performance-period");
-      if (!period || period === institutionPerformancePeriod) return;
-      institutionPerformancePeriod = period;
-      void loadInstitutionPerformanceRankings();
-      return;
-    }
-    const card = e.target.closest?.(".institution-performance-rank-card[data-institution-cik]");
-    if (card) {
-      const cik = card.getAttribute("data-institution-cik");
-      if (cik) void openInstitution(cik, "performance");
-    }
   });
 }
 
@@ -9706,6 +9708,10 @@ function renderMostAccumulatedTable() {
   const loading = document.getElementById("institution-most-accumulated-loading");
   const subtitle = document.getElementById("institution-most-accumulated-subtitle");
   const countEl = document.getElementById("most-accumulated-count");
+  const pagination = document.getElementById("institution-most-accumulated-pagination");
+  const pageLabel = document.getElementById("institution-most-accumulated-page-label");
+  const prevBtn = document.getElementById("institution-most-accumulated-prev");
+  const nextBtn = document.getElementById("institution-most-accumulated-next");
   if (!body) return;
 
   document.querySelectorAll("[data-accumulation-period]").forEach((btn) => {
@@ -9723,6 +9729,7 @@ function renderMostAccumulatedTable() {
 
   if (mostAccumulatedLoading) {
     body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">Loading institutional accumulation…</td></tr>`;
+    if (pagination) pagination.hidden = true;
     return;
   }
 
@@ -9731,6 +9738,7 @@ function renderMostAccumulatedTable() {
     const hint =
       "No accumulation data available. Run npm run institutions:warm-most-accumulated once, then refresh.";
     body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">${hint}</td></tr>`;
+    if (pagination) pagination.hidden = true;
     if (subtitle) {
       subtitle.textContent = "Shows which stocks institutions have accumulated the most over the selected period.";
     }
@@ -9742,6 +9750,7 @@ function renderMostAccumulatedTable() {
       payload.unavailableReason || "Period unavailable."
     )}</td></tr>`;
     renderMostAccumulatedSummary(null);
+    if (pagination) pagination.hidden = true;
     if (subtitle) {
       subtitle.textContent = `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · unavailable`;
     }
@@ -9775,20 +9784,38 @@ function renderMostAccumulatedTable() {
   renderMostAccumulatedSummary(filteredSummary);
   renderMostAccumulatedSectorOptions(payload.sectors || []);
 
+  const total = rows.length;
+  const pageSize = INSTITUTION_MOST_ACCUMULATED_PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize) || 1);
+  if (mostAccumulatedPage > pageCount) mostAccumulatedPage = pageCount;
+  if (mostAccumulatedPage < 1) mostAccumulatedPage = 1;
+  const page = mostAccumulatedPage;
+  const start = (page - 1) * pageSize;
+  const pageRows = rows.slice(start, start + pageSize);
+
   const periodMeta = [payload.currentPeriod, payload.previousPeriod].filter(Boolean).join(" vs ");
   if (subtitle) {
-    subtitle.textContent = `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · ${periodMeta} · ${rows.length} stocks`;
+    subtitle.textContent = `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · ${periodMeta} · ${total} stocks`;
   }
-  if (countEl) countEl.textContent = rows.length ? `${rows.length} shown` : "No matches";
+  if (countEl) {
+    countEl.textContent = total
+      ? `${start + 1}–${start + pageRows.length} of ${total}`
+      : "No matches";
+  }
+
+  if (pagination) pagination.hidden = total <= pageSize;
+  if (pageLabel) pageLabel.textContent = `Page ${page} of ${pageCount}`;
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = page >= pageCount;
 
   if (!rows.length) {
     body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No stocks match the current filters.</td></tr>`;
     return;
   }
 
-  body.innerHTML = rows
+  body.innerHTML = pageRows
     .map((row, index) => {
-      const rank = index + 1;
+      const rank = start + index + 1;
       const sharesClass = row.netSharesAdded >= 0 ? "change--up" : "change--down";
       const pctClass =
         row.percentIncrease == null
@@ -9821,6 +9848,7 @@ async function loadMostAccumulatedPage() {
   try {
     const data = await apiJson("/api/institutions/most-accumulated", { period: mostAccumulatedPeriod });
     lastMostAccumulatedPayload = data;
+    mostAccumulatedPage = 1;
   } catch (err) {
     lastMostAccumulatedPayload = {
       available: false,
@@ -9856,6 +9884,16 @@ function setupMostAccumulatedPage() {
     navigateToInstitutionDirectory();
   });
 
+  document.getElementById("institution-most-accumulated-prev")?.addEventListener("click", () => {
+    if (mostAccumulatedPage <= 1) return;
+    mostAccumulatedPage -= 1;
+    renderMostAccumulatedTable();
+  });
+  document.getElementById("institution-most-accumulated-next")?.addEventListener("click", () => {
+    mostAccumulatedPage += 1;
+    renderMostAccumulatedTable();
+  });
+
   const panel = document.getElementById("institution-most-accumulated");
   panel?.addEventListener("click", (e) => {
     const periodBtn = e.target.closest?.("[data-accumulation-period]");
@@ -9863,6 +9901,7 @@ function setupMostAccumulatedPage() {
       const period = periodBtn.getAttribute("data-accumulation-period");
       if (!period || period === mostAccumulatedPeriod) return;
       mostAccumulatedPeriod = period;
+      mostAccumulatedPage = 1;
       void loadMostAccumulatedPage();
       return;
     }
@@ -9876,6 +9915,7 @@ function setupMostAccumulatedPage() {
         mostAccumulatedSortKey = key;
         mostAccumulatedSortDir = key === "ticker" ? "asc" : "desc";
       }
+      mostAccumulatedPage = 1;
       renderMostAccumulatedTable();
     }
   });
@@ -9884,16 +9924,19 @@ function setupMostAccumulatedPage() {
     (id) => {
       document.getElementById(id)?.addEventListener("input", () => {
         readMostAccumulatedFiltersFromDom();
+        mostAccumulatedPage = 1;
         renderMostAccumulatedTable();
       });
       document.getElementById(id)?.addEventListener("change", () => {
         readMostAccumulatedFiltersFromDom();
+        mostAccumulatedPage = 1;
         renderMostAccumulatedTable();
       });
     }
   );
   document.getElementById("most-accumulated-positive-only")?.addEventListener("change", () => {
     readMostAccumulatedFiltersFromDom();
+    mostAccumulatedPage = 1;
     renderMostAccumulatedTable();
   });
 }
@@ -9970,21 +10013,20 @@ function sortNewPositionsRows(rows) {
   });
 }
 
-function renderNewPositionsSummary(rows) {
-  const institutionIds = new Set(rows.map((r) => r.institutionId));
-  const tickers = new Set(rows.map((r) => r.ticker).filter(Boolean));
-  const totalValue = rows.reduce((sum, r) => sum + (r.positionValueUsd ?? 0), 0);
+function renderNewPositionsSummary(payload) {
+  const summary = payload?.summary;
   const totalEl = document.getElementById("new-positions-total");
   const instEl = document.getElementById("new-positions-institutions");
   const stocksEl = document.getElementById("new-positions-unique-stocks");
   const valueEl = document.getElementById("new-positions-total-value");
-  if (totalEl) totalEl.textContent = formatInteger(rows.length);
-  if (instEl) instEl.textContent = formatInteger(institutionIds.size);
-  if (stocksEl) stocksEl.textContent = formatInteger(tickers.size);
-  if (valueEl) valueEl.textContent = formatHoldingValueUsd(totalValue);
+  if (totalEl) totalEl.textContent = formatInteger(summary?.totalNewPositions ?? 0);
+  if (instEl) instEl.textContent = formatInteger(summary?.institutionsReporting ?? 0);
+  if (stocksEl) stocksEl.textContent = formatInteger(summary?.uniqueStocks ?? 0);
+  if (valueEl) valueEl.textContent = formatHoldingValueUsd(summary?.totalReportedValueUsd ?? 0);
 }
 
 function renderNewPositionsFilterOptions(payload) {
+  if (newPositionsFilterOptionsReady) return;
   const quarterSelect = document.getElementById("new-positions-quarter");
   const institutionSelect = document.getElementById("new-positions-institution");
   const sectorSelect = document.getElementById("new-positions-sector");
@@ -10018,6 +10060,22 @@ function renderNewPositionsFilterOptions(payload) {
         .join("");
     sectorSelect.value = current;
   }
+  newPositionsFilterOptionsReady = true;
+}
+
+function newPositionsQueryParams() {
+  return {
+    quarter: newPositionsFilters.quarter || undefined,
+    institution: newPositionsFilters.institution || undefined,
+    sector: newPositionsFilters.sector || undefined,
+    minValue: newPositionsFilters.minValue > 0 ? newPositionsFilters.minValue : undefined,
+    minWeight: newPositionsFilters.minWeight > 0 ? newPositionsFilters.minWeight : undefined,
+    search: newPositionsFilters.search || undefined,
+    page: newPositionsPage,
+    pageSize: INSTITUTION_NEW_POSITIONS_PAGE_SIZE,
+    sort: newPositionsSortKey,
+    sortDir: newPositionsSortDir,
+  };
 }
 
 function renderNewPositionsTable() {
@@ -10025,6 +10083,10 @@ function renderNewPositionsTable() {
   const loading = document.getElementById("institution-new-positions-loading");
   const subtitle = document.getElementById("institution-new-positions-subtitle");
   const countEl = document.getElementById("new-positions-count");
+  const pagination = document.getElementById("institution-new-positions-pagination");
+  const pageLabel = document.getElementById("institution-new-positions-page-label");
+  const prevBtn = document.getElementById("institution-new-positions-prev");
+  const nextBtn = document.getElementById("institution-new-positions-next");
   if (!body) return;
 
   document.querySelectorAll("[data-new-positions-sort]").forEach((btn) => {
@@ -10038,12 +10100,14 @@ function renderNewPositionsTable() {
   if (loading) loading.hidden = !newPositionsLoading;
   if (newPositionsLoading) {
     body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading new institutional positions…</td></tr>`;
+    if (pagination) pagination.hidden = true;
     return;
   }
 
   const payload = lastNewPositionsPayload;
   if (!payload) {
     body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No new position data available. Run npm run institutions:warm-new-positions once, then refresh.</td></tr>`;
+    if (pagination) pagination.hidden = true;
     if (subtitle) {
       subtitle.textContent =
         "Stocks that institutions opened as brand-new positions in their most recent 13F filing.";
@@ -10052,19 +10116,40 @@ function renderNewPositionsTable() {
   }
   if (payload.unavailableReason) {
     body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(payload.unavailableReason)}</td></tr>`;
-    renderNewPositionsSummary([]);
+    renderNewPositionsSummary(payload);
+    if (pagination) pagination.hidden = true;
     if (countEl) countEl.textContent = "";
     return;
   }
 
   renderNewPositionsFilterOptions(payload);
-  const rows = sortNewPositionsRows(filterNewPositionsRows(payload.positions || []));
-  renderNewPositionsSummary(rows);
+  renderNewPositionsSummary(payload);
+
+  const rows = payload.positions || [];
+  const paginationMeta = payload.pagination || {
+    page: newPositionsPage,
+    pageSize: INSTITUTION_NEW_POSITIONS_PAGE_SIZE,
+    total: rows.length,
+    pageCount: 1,
+  };
+  const total = paginationMeta.total ?? rows.length;
+  const page = paginationMeta.page ?? newPositionsPage;
+  const pageCount = paginationMeta.pageCount ?? 1;
+  const start = total ? (page - 1) * (paginationMeta.pageSize ?? INSTITUTION_NEW_POSITIONS_PAGE_SIZE) : 0;
 
   if (subtitle) {
-    subtitle.textContent = `Latest 13F vs prior filing · ${rows.length} position${rows.length === 1 ? "" : "s"} shown`;
+    subtitle.textContent = `Latest 13F vs prior filing · ${formatInteger(total)} position${total === 1 ? "" : "s"}`;
   }
-  if (countEl) countEl.textContent = rows.length ? `${rows.length} shown` : "No matches";
+  if (countEl) {
+    countEl.textContent = total
+      ? `${start + 1}–${start + rows.length} of ${formatInteger(total)}`
+      : "No matches";
+  }
+
+  if (pagination) pagination.hidden = total <= (paginationMeta.pageSize ?? INSTITUTION_NEW_POSITIONS_PAGE_SIZE);
+  if (pageLabel) pageLabel.textContent = `Page ${page} of ${pageCount}`;
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = page >= pageCount;
 
   if (!rows.length) {
     body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No positions match the current filters.</td></tr>`;
@@ -10113,7 +10198,13 @@ async function loadNewPositionsPage() {
   newPositionsLoading = true;
   renderNewPositionsTable();
   try {
-    lastNewPositionsPayload = await apiJson("/api/institutions/new-positions");
+    lastNewPositionsPayload = await apiJson(
+      "/api/institutions/new-positions",
+      newPositionsQueryParams()
+    );
+    if (lastNewPositionsPayload?.pagination?.page) {
+      newPositionsPage = lastNewPositionsPayload.pagination.page;
+    }
   } catch (err) {
     lastNewPositionsPayload = {
       computedAt: null,
@@ -10127,6 +10218,7 @@ async function loadNewPositionsPage() {
         totalReportedValueUsd: 0,
       },
       positions: [],
+      pagination: { page: 1, pageSize: INSTITUTION_NEW_POSITIONS_PAGE_SIZE, total: 0, pageCount: 1 },
       unavailableReason:
         err instanceof Error
           ? err.message
@@ -10149,6 +10241,16 @@ function setupNewPositionsPage() {
     navigateToInstitutionNewPositions();
   });
 
+  document.getElementById("institution-new-positions-prev")?.addEventListener("click", () => {
+    if (newPositionsPage <= 1) return;
+    newPositionsPage -= 1;
+    void loadNewPositionsPage();
+  });
+  document.getElementById("institution-new-positions-next")?.addEventListener("click", () => {
+    newPositionsPage += 1;
+    void loadNewPositionsPage();
+  });
+
   const panel = document.getElementById("institution-new-positions");
   panel?.addEventListener("click", (e) => {
     const sortBtn = e.target.closest?.("[data-new-positions-sort]");
@@ -10164,7 +10266,8 @@ function setupNewPositionsPage() {
             ? "asc"
             : "desc";
       }
-      renderNewPositionsTable();
+      newPositionsPage = 1;
+      void loadNewPositionsPage();
     }
   });
 
@@ -10177,37 +10280,33 @@ function setupNewPositionsPage() {
   ].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
       readNewPositionsFiltersFromDom();
-      renderNewPositionsTable();
+      newPositionsPage = 1;
+      void loadNewPositionsPage();
     });
   });
   document.getElementById("new-positions-search")?.addEventListener("input", (e) => {
     newPositionsFilters.search = e.target.value || "";
-    renderNewPositionsTable();
+    newPositionsPage = 1;
+    clearTimeout(newPositionsSearchTimer);
+    newPositionsSearchTimer = setTimeout(() => void loadNewPositionsPage(), 250);
   });
 }
 
 const COMPLETELY_SOLD_SORT_LABELS = {
   companyName: "Stock",
   ticker: "Ticker",
-  institutionName: "Institution",
-  previousPositionValueUsd: "Previous position value",
-  previousPortfolioWeightPct: "Previous portfolio weight",
-  filingDate: "Filing date",
+  previousPositionValueUsd: "Prior value (all institutions)",
+  previousShares: "Prior shares",
+  institutionsExiting: "Institutions exiting",
+  sector: "Sector",
 };
-
-function formatCompletelySoldFilingDate(value) {
-  if (!value) return "—";
-  const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${Number(iso[2])}/${Number(iso[3])}/${iso[1]}`;
-  return String(value);
-}
 
 function filterCompletelySoldRows(rows) {
   const q = completelySoldFilters.search.trim().toLowerCase();
   return rows.filter((row) => {
-    if (completelySoldFilters.quarter && row.quarter !== completelySoldFilters.quarter) return false;
-    if (completelySoldFilters.institution && row.institutionId !== completelySoldFilters.institution) {
-      return false;
+    if (completelySoldFilters.quarter) {
+      const quarters = Array.isArray(row.quarters) ? row.quarters : [];
+      if (!quarters.includes(completelySoldFilters.quarter)) return false;
     }
     if (completelySoldFilters.sector && row.sector !== completelySoldFilters.sector) return false;
     if (
@@ -10218,17 +10317,15 @@ function filterCompletelySoldRows(rows) {
       return false;
     }
     if (
-      completelySoldFilters.minWeight > 0 &&
-      (row.previousPortfolioWeightPct == null ||
-        row.previousPortfolioWeightPct < completelySoldFilters.minWeight)
+      completelySoldFilters.minExits > 0 &&
+      (Number(row.institutionsExiting) || 0) < completelySoldFilters.minExits
     ) {
       return false;
     }
     if (!q) return true;
     const ticker = String(row.ticker || "").toLowerCase();
     const company = String(row.companyName || "").toLowerCase();
-    const institution = String(row.institutionName || "").toLowerCase();
-    return ticker.includes(q) || company.includes(q) || institution.includes(q);
+    return ticker.includes(q) || company.includes(q);
   });
 }
 
@@ -10241,16 +10338,8 @@ function sortCompletelySoldRows(rows) {
       const bv = String(b.companyName || b.ticker || "").toLowerCase();
       return av.localeCompare(bv) * dir;
     }
-    if (key === "ticker") {
-      return String(a.ticker || "").localeCompare(String(b.ticker || "")) * dir;
-    }
-    if (key === "institutionName") {
-      return String(a.institutionName || "").localeCompare(String(b.institutionName || "")) * dir;
-    }
-    if (key === "filingDate") {
-      const av = Date.parse(a.filingDate || "") || 0;
-      const bv = Date.parse(b.filingDate || "") || 0;
-      return (av - bv) * dir;
+    if (key === "ticker" || key === "sector") {
+      return String(a[key] || "").localeCompare(String(b[key] || "")) * dir;
     }
     const av = Number(a[key]);
     const bv = Number(b[key]);
@@ -10260,23 +10349,25 @@ function sortCompletelySoldRows(rows) {
   });
 }
 
-function renderCompletelySoldSummary(rows) {
-  const institutionIds = new Set(rows.map((r) => r.institutionId));
-  const tickers = new Set(rows.map((r) => r.ticker).filter(Boolean));
+function renderCompletelySoldSummary(rows, payloadSummary = null) {
+  const totalExitEvents = rows.reduce((sum, r) => sum + (Number(r.institutionsExiting) || 0), 0);
   const totalValue = rows.reduce((sum, r) => sum + (r.previousPositionValueUsd ?? 0), 0);
   const totalEl = document.getElementById("completely-sold-total");
   const instEl = document.getElementById("completely-sold-institutions");
   const stocksEl = document.getElementById("completely-sold-unique-stocks");
   const valueEl = document.getElementById("completely-sold-total-value");
   if (totalEl) totalEl.textContent = formatInteger(rows.length);
-  if (instEl) instEl.textContent = formatInteger(institutionIds.size);
-  if (stocksEl) stocksEl.textContent = formatInteger(tickers.size);
+  if (instEl) {
+    instEl.textContent = formatInteger(
+      payloadSummary?.institutionsReporting ?? totalExitEvents
+    );
+  }
+  if (stocksEl) stocksEl.textContent = formatInteger(totalExitEvents);
   if (valueEl) valueEl.textContent = formatHoldingValueUsd(totalValue);
 }
 
 function renderCompletelySoldFilterOptions(payload) {
   const quarterSelect = document.getElementById("completely-sold-quarter");
-  const institutionSelect = document.getElementById("completely-sold-institution");
   const sectorSelect = document.getElementById("completely-sold-sector");
   if (quarterSelect) {
     const current = completelySoldFilters.quarter;
@@ -10286,18 +10377,6 @@ function renderCompletelySoldFilterOptions(payload) {
         .map((q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`)
         .join("");
     quarterSelect.value = current;
-  }
-  if (institutionSelect) {
-    const current = completelySoldFilters.institution;
-    institutionSelect.innerHTML =
-      `<option value="">All institutions</option>` +
-      (Array.isArray(payload?.institutions) ? payload.institutions : [])
-        .map(
-          (inst) =>
-            `<option value="${escapeHtml(inst.cik)}">${escapeHtml(inst.name)}</option>`
-        )
-        .join("");
-    institutionSelect.value = current;
   }
   if (sectorSelect) {
     const current = completelySoldFilters.sector;
@@ -10315,6 +10394,10 @@ function renderCompletelySoldTable() {
   const loading = document.getElementById("institution-completely-sold-loading");
   const subtitle = document.getElementById("institution-completely-sold-subtitle");
   const countEl = document.getElementById("completely-sold-count");
+  const pagination = document.getElementById("institution-completely-sold-pagination");
+  const pageLabel = document.getElementById("institution-completely-sold-page-label");
+  const prevBtn = document.getElementById("institution-completely-sold-prev");
+  const nextBtn = document.getElementById("institution-completely-sold-next");
   if (!body) return;
 
   document.querySelectorAll("[data-completely-sold-sort]").forEach((btn) => {
@@ -10327,57 +10410,75 @@ function renderCompletelySoldTable() {
 
   if (loading) loading.hidden = !completelySoldLoading;
   if (completelySoldLoading) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading completely sold positions…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">Loading completely sold positions…</td></tr>`;
+    if (pagination) pagination.hidden = true;
     return;
   }
 
   const payload = lastCompletelySoldPayload;
   if (!payload) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No completely sold data available. Run npm run institutions:warm-completely-sold once, then refresh.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No completely sold data available. Run npm run institutions:warm-completely-sold once, then refresh.</td></tr>`;
+    if (pagination) pagination.hidden = true;
     if (subtitle) {
       subtitle.textContent =
-        "Stocks that institutions fully exited in their most recent 13F filing.";
+        "Stocks fully exited across tracked institutions, ranked by aggregated prior 13F value.";
     }
     return;
   }
   if (payload.unavailableReason) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(payload.unavailableReason)}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">${escapeHtml(payload.unavailableReason)}</td></tr>`;
     renderCompletelySoldSummary([]);
+    if (pagination) pagination.hidden = true;
     if (countEl) countEl.textContent = "";
     return;
   }
 
   renderCompletelySoldFilterOptions(payload);
   const rows = sortCompletelySoldRows(filterCompletelySoldRows(payload.positions || []));
-  renderCompletelySoldSummary(rows);
+  renderCompletelySoldSummary(rows, payload.summary);
+
+  const total = rows.length;
+  const pageSize = INSTITUTION_COMPLETELY_SOLD_PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize) || 1);
+  if (completelySoldPage > pageCount) completelySoldPage = pageCount;
+  if (completelySoldPage < 1) completelySoldPage = 1;
+  const page = completelySoldPage;
+  const start = (page - 1) * pageSize;
+  const pageRows = rows.slice(start, start + pageSize);
 
   if (subtitle) {
-    subtitle.textContent = `Latest 13F vs prior filing · ${rows.length} position${rows.length === 1 ? "" : "s"} shown`;
+    subtitle.textContent = `Aggregated exits across institutions · ${total} stock${total === 1 ? "" : "s"}`;
   }
-  if (countEl) countEl.textContent = rows.length ? `${rows.length} shown` : "No matches";
+  if (countEl) {
+    countEl.textContent = total
+      ? `${start + 1}–${start + pageRows.length} of ${total}`
+      : "No matches";
+  }
+
+  if (pagination) pagination.hidden = total <= pageSize;
+  if (pageLabel) pageLabel.textContent = `Page ${page} of ${pageCount}`;
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = page >= pageCount;
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No positions match the current filters.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No stocks match the current filters.</td></tr>`;
     return;
   }
 
-  body.innerHTML = rows
+  body.innerHTML = pageRows
     .map((row) => {
       const ticker = row.ticker || "—";
       const stockLabel = row.companyName || row.ticker || "—";
       const stockCell = row.ticker
         ? `<a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(stockLabel)}</a>`
         : escapeHtml(stockLabel);
-      const instCik = bareInstitutionCik(row.institutionId);
       return `<tr>
       <td>${stockCell}</td>
       <td class="mono">${row.ticker ? `<a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(ticker)}</a>` : "—"}</td>
-      <td><a href="${institutionPath(instCik, "activity")}" class="ownership-fund__link" data-institution-cik="${escapeHtml(instCik)}">${escapeHtml(row.institutionName)}</a></td>
       <td class="mono num">${escapeHtml(formatHoldingValueUsd(row.previousPositionValueUsd))}</td>
       <td class="mono num">${escapeHtml(formatShareCount(row.previousShares))}</td>
-      <td class="mono num">${row.previousPortfolioWeightPct == null ? "—" : `${row.previousPortfolioWeightPct.toFixed(2)}%`}</td>
-      <td class="mono">${escapeHtml(row.quarter || "—")}</td>
-      <td class="mono">${escapeHtml(formatCompletelySoldFilingDate(row.filingDate))}</td>
+      <td class="mono num">${formatInteger(row.institutionsExiting)}</td>
+      <td>${escapeHtml(row.sector || "—")}</td>
       <td class="muted">Sold</td>
     </tr>`;
     })
@@ -10386,14 +10487,12 @@ function renderCompletelySoldTable() {
 
 function readCompletelySoldFiltersFromDom() {
   completelySoldFilters.quarter = document.getElementById("completely-sold-quarter")?.value || "";
-  completelySoldFilters.institution =
-    document.getElementById("completely-sold-institution")?.value || "";
   completelySoldFilters.sector = document.getElementById("completely-sold-sector")?.value || "";
   completelySoldFilters.search = document.getElementById("completely-sold-search")?.value || "";
   completelySoldFilters.minValue =
     Number(document.getElementById("completely-sold-min-value")?.value || 0) || 0;
-  completelySoldFilters.minWeight =
-    Number(document.getElementById("completely-sold-min-weight")?.value || 0) || 0;
+  completelySoldFilters.minExits =
+    Number(document.getElementById("completely-sold-min-exits")?.value || 0) || 0;
 }
 
 async function loadCompletelySoldPage() {
@@ -10405,14 +10504,14 @@ async function loadCompletelySoldPage() {
   renderCompletelySoldTable();
   try {
     lastCompletelySoldPayload = await apiJson("/api/institutions/completely-sold");
+    completelySoldPage = 1;
   } catch (err) {
     lastCompletelySoldPayload = {
       computedAt: null,
       quarters: [],
       sectors: [],
-      institutions: [],
       summary: {
-        totalPositionsSold: 0,
+        totalStocksSold: 0,
         institutionsReporting: 0,
         uniqueStocksSold: 0,
         totalValueExitedUsd: 0,
@@ -10440,6 +10539,16 @@ function setupCompletelySoldPage() {
     navigateToInstitutionCompletelySold();
   });
 
+  document.getElementById("institution-completely-sold-prev")?.addEventListener("click", () => {
+    if (completelySoldPage <= 1) return;
+    completelySoldPage -= 1;
+    renderCompletelySoldTable();
+  });
+  document.getElementById("institution-completely-sold-next")?.addEventListener("click", () => {
+    completelySoldPage += 1;
+    renderCompletelySoldTable();
+  });
+
   const panel = document.getElementById("institution-completely-sold");
   panel?.addEventListener("click", (e) => {
     const sortBtn = e.target.closest?.("[data-completely-sold-sort]");
@@ -10451,28 +10560,28 @@ function setupCompletelySoldPage() {
       } else {
         completelySoldSortKey = key;
         completelySoldSortDir =
-          key === "companyName" || key === "ticker" || key === "institutionName" || key === "filingDate"
-            ? "asc"
-            : "desc";
+          key === "companyName" || key === "ticker" || key === "sector" ? "asc" : "desc";
       }
+      completelySoldPage = 1;
       renderCompletelySoldTable();
     }
   });
 
   [
     "completely-sold-quarter",
-    "completely-sold-institution",
     "completely-sold-sector",
     "completely-sold-min-value",
-    "completely-sold-min-weight",
+    "completely-sold-min-exits",
   ].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
       readCompletelySoldFiltersFromDom();
+      completelySoldPage = 1;
       renderCompletelySoldTable();
     });
   });
   document.getElementById("completely-sold-search")?.addEventListener("input", (e) => {
     completelySoldFilters.search = e.target.value || "";
+    completelySoldPage = 1;
     renderCompletelySoldTable();
   });
 }
@@ -11021,6 +11130,7 @@ async function loadInstitutionPanel(tab, cik) {
       }
       institutionAddsExpanded = false;
       institutionTrimsExpanded = false;
+      institutionExitsExpanded = false;
       institutionNewExpanded = false;
       renderInstitutionActivityPanels(data);
       return;
@@ -11050,15 +11160,42 @@ async function loadInstitutionPanel(tab, cik) {
       return;
     }
     if (tab === "performance") {
-      const data = await apiJson(`/api/institutions/${bare}/performance`);
-      renderInstitutionHeader(data.meta);
-      const sub = document.getElementById("institution-performance-subtitle");
-      if (sub) {
-        const q = data.meta?.asOfQuarter || data.meta?.currentQuarter;
-        sub.textContent = q ? `${q} · reconstructed 13F portfolio returns` : "Quarterly portfolio returns";
+      const data = await apiJson("/api/institutions/performance-rankings", {
+        cik: bare,
+        pageSize: 1,
+      });
+      const row = Array.isArray(data.rankings) ? data.rankings[0] : null;
+      // Header still needs institution meta from the profile endpoint.
+      try {
+        const metaPayload = await apiJson(`/api/institutions/${bare}`);
+        renderInstitutionHeader(metaPayload.meta || metaPayload);
+      } catch {
+        /* rankings row still renders without header refresh */
       }
-      renderInstitutionPerformanceSummary(data.latest);
-      renderInstitutionPerformanceTable(data.series);
+      const sub = document.getElementById("institution-performance-subtitle");
+      const methodEl = document.getElementById("institution-performance-methodology");
+      if (sub) {
+        const q = row?.quarter || data.asOfQuarter;
+        sub.textContent = q
+          ? `${q} · reported 13F portfolio value changes`
+          : "Reported 13F portfolio value changes";
+      }
+      if (methodEl) {
+        methodEl.textContent =
+          data.disclaimer ||
+          "This reflects changes in the reported value of the institution's disclosed 13F portfolio between filing periods. It is not the institution's actual investment return.";
+      }
+      if (!row) {
+        renderInstitutionPerformanceSummary(null);
+        renderInstitutionPerformanceTable([]);
+        const body = document.getElementById("institution-performance-body");
+        if (body) {
+          body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No reported 13F portfolio value history for this institution.</td></tr>`;
+        }
+        return;
+      }
+      renderInstitutionPerformanceSummary(row);
+      renderInstitutionPerformanceTable(row.history);
       return;
     }
     if (tab === "history") {
@@ -11080,16 +11217,21 @@ async function loadInstitutionPanel(tab, cik) {
     } else if (tab === "activity") {
       institutionAddsExpanded = false;
       institutionTrimsExpanded = false;
+      institutionExitsExpanded = false;
       institutionNewExpanded = false;
       lastInstitutionAdds = [];
       lastInstitutionTrims = [];
+      lastInstitutionExits = [];
       lastInstitutionNewPositions = [];
       const empty = `<tr><td colspan="6" class="trades-table__empty">${msg}</td></tr>`;
       const emptyNew = `<tr><td colspan="4" class="trades-table__empty">${msg}</td></tr>`;
+      const emptyExits = `<tr><td colspan="4" class="trades-table__empty">${msg}</td></tr>`;
       for (const id of ["institution-adds-body", "institution-trims-body", "institution-activity-body"]) {
         const body = document.getElementById(id);
         if (body) body.innerHTML = empty;
       }
+      const exitsBody = document.getElementById("institution-exits-body");
+      if (exitsBody) exitsBody.innerHTML = emptyExits;
       const newBody = document.getElementById("institution-new-body");
       if (newBody) newBody.innerHTML = emptyNew;
     } else if (tab === "options") {
@@ -11139,12 +11281,13 @@ async function openInstitutionFromRoute(route) {
   if (route.performanceRankings) {
     activeInstitutionCik = null;
     activeInstitutionHubView = "performance";
-    updateInstitutionsView();
-    return;
-  }
-  if (route.proxyPerformance) {
-    activeInstitutionCik = null;
-    activeInstitutionHubView = "proxy-performance";
+    if (window.location.pathname === "/institutions/proxy-performance") {
+      history.replaceState(
+        { explore: "institutions", performanceRankings: true },
+        "",
+        "/institutions/performance"
+      );
+    }
     updateInstitutionsView();
     return;
   }
@@ -11232,11 +11375,11 @@ function setStockTab(tab, { updateUrl = true } = {}) {
   if (tab === "signals" && stock?.symbol) {
     void loadSignalsPanel(stock.symbol);
   }
-  if (tab === "earnings" && stock?.symbol) {
-    void loadEarningsPanel(stock.symbol);
-  }
   if (tab === "ownership" && lastOwnershipHolders.length) renderOwnershipTable();
-  if (tab === "sec-filings") renderSecFilingsTable();
+  if (tab === "sec-filings") {
+    renderSecFilingsTable();
+    renderSecFilingsFundamentalsExtras(lastFilingsFundamentals);
+  }
   if (tab === "filings-fundamentals" && stock?.symbol) {
     void loadFilingsFundamentalsPanel(stock.symbol);
   }
@@ -11457,6 +11600,14 @@ const SIGNAL_CATEGORY_LABELS = {
   institutional: "Institutional",
   insider: "Insider",
   politician: "Politicians",
+  "smart-money": "Smart Money",
+  "double-signal": "Double Signal",
+  "triple-signal": "Triple Signal",
+  "top-institution-entry": "Top Institution Entry",
+  "hidden-gem": "Hidden Gems",
+  "conflict-signal": "Conflict Signal",
+  "institutional-discovery": "Institutional Discovery",
+  "conviction-score": "Conviction Score",
 };
 
 const SIGNAL_CATEGORY_HINTS = {
@@ -11477,9 +11628,18 @@ function formatSignalValue(value) {
   return `${sign}${formatSecFundamentalValue(Math.abs(x))}`;
 }
 
+function formatSignalStatValue(value, numeric) {
+  const x = Number(value);
+  if (!Number.isFinite(x)) return "—";
+  if (numeric) return x % 1 === 0 ? String(x) : x.toFixed(2);
+  return formatSignalValue(x);
+}
+
 function renderSignalCard(signal) {
   const category = SIGNAL_CATEGORY_LABELS[signal.category] || signal.category;
-  const hint = SIGNAL_CATEGORY_HINTS[signal.category] || "";
+  const hint = signal.hint || SIGNAL_CATEGORY_HINTS[signal.category] || "";
+  const statLabels = signal.statLabels || { buy: "Buying", sell: "Selling", net: "Net" };
+  const numericStats = Boolean(signal.statValuesAreNumeric);
   const dirClass =
     signal.direction === "buying"
       ? "signal-card--buy"
@@ -11491,6 +11651,9 @@ function renderSignalCard(signal) {
     signal.ratio != null && Number.isFinite(signal.ratio)
       ? `${Number(signal.ratio).toFixed(1)}× ${signal.direction === "selling" ? "sell vs buy" : "buy vs sell"}`
       : "";
+  const hubLink = signal.href
+    ? `<a href="${escapeHtml(signal.href)}" class="signal-card__hub-link fundamentals-grid__link" data-signal-hub-link="${escapeHtml(signal.href)}">View signal hub →</a>`
+    : "";
   return `<article class="signal-card ${dirClass} ${strongClass}">
     <div class="signal-card__head">
       <span class="signal-card__category">${escapeHtml(category)}</span>
@@ -11499,20 +11662,21 @@ function renderSignalCard(signal) {
     <div class="signal-card__label">${escapeHtml(signal.label)}</div>
     <div class="signal-card__stats">
       <div class="signal-card__stat">
-        <span class="signal-card__stat-label">Buying</span>
-        <span class="signal-card__stat-value mono">${formatSignalValue(signal.buyValueUsd)}</span>
+        <span class="signal-card__stat-label">${escapeHtml(statLabels.buy)}</span>
+        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.buyValueUsd, numericStats)}</span>
       </div>
       <div class="signal-card__stat">
-        <span class="signal-card__stat-label">Selling</span>
-        <span class="signal-card__stat-value mono">${formatSignalValue(signal.sellValueUsd)}</span>
+        <span class="signal-card__stat-label">${escapeHtml(statLabels.sell)}</span>
+        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.sellValueUsd, numericStats)}</span>
       </div>
       <div class="signal-card__stat">
-        <span class="signal-card__stat-label">Net</span>
-        <span class="signal-card__stat-value mono">${formatSignalValue(signal.netValueUsd)}</span>
+        <span class="signal-card__stat-label">${escapeHtml(statLabels.net)}</span>
+        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.netValueUsd, numericStats)}</span>
       </div>
     </div>
     ${ratioText ? `<div class="signal-card__ratio">${escapeHtml(ratioText)}</div>` : ""}
     ${hint ? `<div class="signal-card__hint muted small">${escapeHtml(hint)}</div>` : ""}
+    ${hubLink}
   </article>`;
 }
 
@@ -11532,7 +11696,51 @@ function renderSignalsPanel(data, errMsg) {
     grid.innerHTML = '<p class="fundamentals-grid__empty">No signal data available for this stock.</p>';
     return;
   }
-  grid.innerHTML = signals.map(renderSignalCard).join("");
+
+  const bullish = signals.filter((s) => s.direction === "buying");
+  const bearish = signals.filter((s) => s.direction === "selling");
+  const neutral = signals.filter((s) => s.direction !== "buying" && s.direction !== "selling");
+
+  const sections = [];
+  if (bullish.length) {
+    sections.push(`<div class="signals-section signals-section--bullish">
+      <h3 class="signals-section__title signals-section__title--bullish">Bullish Signals</h3>
+      <div class="signals-section__grid">${bullish.map(renderSignalCard).join("")}</div>
+    </div>`);
+  }
+  if (neutral.length) {
+    sections.push(`<div class="signals-section signals-section--neutral">
+      <h3 class="signals-section__title">Neutral Signals</h3>
+      <div class="signals-section__grid">${neutral.map(renderSignalCard).join("")}</div>
+    </div>`);
+  }
+  if (bearish.length) {
+    sections.push(`<div class="signals-section signals-section--bearish">
+      <h3 class="signals-section__title signals-section__title--bearish">Bearish Signals</h3>
+      <div class="signals-section__grid">${bearish.map(renderSignalCard).join("")}</div>
+    </div>`);
+  }
+
+  grid.innerHTML = sections.join("");
+}
+
+async function fetchStockSignals(symbol) {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) throw new Error("Missing symbol");
+  const u = new URL(`/api/stocks/${encodeURIComponent(sym)}/signals`, window.location.origin);
+  const res = await fetch(u, { cache: "no-store" });
+  const text = await res.text();
+  let body;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    body = { raw: text };
+  }
+  if (!res.ok) {
+    const msg = body.message || body.error || text || res.statusText;
+    throw new Error(typeof msg === "string" ? msg : res.statusText);
+  }
+  return body;
 }
 
 async function loadSignalsPanel(symbol) {
@@ -11544,7 +11752,7 @@ async function loadSignalsPanel(symbol) {
   renderCategoryScoresPanel(lastSecFilingsForScores);
   setSignalsSubtitle("Computing signals…");
   try {
-    const data = await apiJson(`/api/stocks/${encodeURIComponent(sym)}/signals`);
+    const data = await fetchStockSignals(sym);
     if (signalsSymbol !== sym) return;
     renderSignalsPanel(data);
     const when = data?.computedAt ? new Date(data.computedAt) : null;
@@ -11561,249 +11769,9 @@ async function loadSignalsPanel(symbol) {
   }
 }
 
-function setEarningsSubtitle(text) {
-  const el = document.getElementById("earnings-subtitle");
-  if (el) el.textContent = text;
-}
-
-function formatEarningsEps(value) {
-  const x = Number(value);
-  if (!Number.isFinite(x)) return "—";
-  return x.toFixed(2);
-}
-
-function formatEarningsDifference(value) {
-  const x = Number(value);
-  if (!Number.isFinite(x)) return "—";
-  const sign = x >= 0 ? "+" : "";
-  return `${sign}${x.toFixed(2)}`;
-}
-
-function formatEarningsSurprise(value) {
-  const x = Number(value);
-  if (!Number.isFinite(x)) return "—";
-  return `${(x * 100).toFixed(2)}%`;
-}
-
-function renderEarningsNextDate(nextEarnings) {
-  const wrap = document.getElementById("earnings-next");
-  const labelEl = document.getElementById("earnings-next-label");
-  const dateEl = document.getElementById("earnings-next-date");
-  const metaEl = document.getElementById("earnings-next-meta");
-  if (!wrap || !labelEl || !dateEl || !metaEl) return;
-
-  if (!nextEarnings?.dateLabel) {
-    wrap.hidden = true;
-    labelEl.textContent = "Earnings Date";
-    dateEl.textContent = "—";
-    metaEl.textContent = "";
-    metaEl.hidden = true;
-    return;
-  }
-
-  wrap.hidden = false;
-  labelEl.textContent = nextEarnings.label || (nextEarnings.isEstimate ? "Earnings Date (est.)" : "Earnings Date");
-  dateEl.textContent = nextEarnings.dateLabel;
-
-  const metaParts = [];
-  if (Number.isFinite(Number(nextEarnings.epsEstimate))) {
-    metaParts.push(`EPS est. ${Number(nextEarnings.epsEstimate).toFixed(2)}`);
-  }
-  if (
-    Number.isFinite(Number(nextEarnings.epsLow)) &&
-    Number.isFinite(Number(nextEarnings.epsHigh))
-  ) {
-    metaParts.push(
-      `Range ${Number(nextEarnings.epsLow).toFixed(2)} – ${Number(nextEarnings.epsHigh).toFixed(2)}`
-    );
-  }
-
-  if (metaParts.length) {
-    metaEl.textContent = metaParts.join(" · ");
-    metaEl.hidden = false;
-  } else {
-    metaEl.textContent = "";
-    metaEl.hidden = true;
-  }
-}
-
-function renderEarningsHistory(data, errorMsg) {
-  const table = document.getElementById("earnings-table");
-  if (!table) return;
-
-  if (errorMsg) {
-    setEarningsSubtitle("Yahoo Finance (error)");
-    renderEarningsNextDate(null);
-    table.innerHTML = `<tbody><tr><td colspan="5" class="trades-table__empty">${escapeHtml(errorMsg)}</td></tr></tbody>`;
-    return;
-  }
-
-  const quarters = Array.isArray(data?.quarters) ? data.quarters : [];
-  renderEarningsNextDate(data?.nextEarnings || null);
-
-  if (!quarters.length) {
-    setEarningsSubtitle("Yahoo Finance · No earnings history");
-    table.innerHTML = `<tbody><tr><td colspan="5" class="trades-table__empty">No earnings history available for this symbol.</td></tr></tbody>`;
-    return;
-  }
-
-  const currency = data.currency || quarters[0]?.currency || "USD";
-  const sym = String(data.symbol || getDisplayStock()?.symbol || "").toUpperCase();
-  setEarningsSubtitle(
-    sym
-      ? `Yahoo Finance · Currency in ${currency} · ${sym}`
-      : `Yahoo Finance · Currency in ${currency}`
-  );
-
-  const headerCells = quarters
-    .map((q) => `<th class="num">${escapeHtml(q.quarterLabel || "—")}</th>`)
-    .join("");
-
-  const earningsRow = (label, pick, format) => {
-    const cells = quarters
-      .map((q) => `<td class="num mono">${escapeHtml(format(pick(q)))}</td>`)
-      .join("");
-    return `<tr><th scope="row">${escapeHtml(label)}</th>${cells}</tr>`;
-  };
-
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th scope="col" class="earnings-table__corner"></th>
-        ${headerCells}
-      </tr>
-    </thead>
-    <tbody>
-      ${earningsRow("EPS Est.", (q) => q.epsEstimate, formatEarningsEps)}
-      ${earningsRow("EPS Actual", (q) => q.epsActual, formatEarningsEps)}
-      ${earningsRow("Difference", (q) => q.epsDifference, formatEarningsDifference)}
-      ${earningsRow("Surprise %", (q) => q.surprisePercent, formatEarningsSurprise)}
-    </tbody>`;
-}
-
-function renderEarningsEmpty(message) {
-  setEarningsSubtitle("Yahoo Finance · Earnings history");
-  renderEarningsNextDate(null);
-  renderEarningsHistory(null, message);
-}
-
-function setEarningsLoading() {
-  setEarningsSubtitle("Loading earnings history…");
-  renderEarningsNextDate(null);
-  const table = document.getElementById("earnings-table");
-  if (table) {
-    table.innerHTML = `<tbody><tr><td colspan="5" class="trades-table__empty">Loading earnings history…</td></tr></tbody>`;
-  }
-}
-
-async function loadEarningsPanel(symbol) {
-  setEarningsLoading();
-  try {
-    const data = await apiJson("/api/yahoo/earnings", { symbol });
-    renderEarningsHistory(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    renderEarningsHistory(null, msg);
-  }
-}
-
-async function fetchEarningsCalendarData() {
-  if (
-    earningsCalendarClientCache &&
-    Date.now() - earningsCalendarClientCache.loadedAt < 5 * 60 * 1000
-  ) {
-    return earningsCalendarClientCache.data;
-  }
-  const data = await apiJson("/api/yahoo/earnings-calendar", { days: EARNINGS_CALENDAR_DAYS });
-  earningsCalendarClientCache = { loadedAt: Date.now(), data };
-  return data;
-}
-
-function formatEarningsCalendarDayLabel(dateKey) {
-  if (!dateKey) return "—";
-  const d = new Date(`${dateKey}T12:00:00Z`);
-  if (Number.isNaN(d.getTime())) return dateKey;
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function formatEarningsSidebarDate(event) {
-  if (!event) return "—";
-  if (event.dateKey) {
-    const d = new Date(`${event.dateKey}T12:00:00Z`);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-    }
-    return event.dateKey;
-  }
-  if (event.start) {
-    const d = new Date(event.start);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    }
-  }
-  return "—";
-}
-
-function formatEarningsTiming(timing) {
-  const value = String(timing || "").trim().toUpperCase();
-  if (value === "BMO") return "Before open";
-  if (value === "AMC") return "After close";
-  if (value === "TNS") return "During market";
-  return value || "";
-}
-
-function pickSidebarEarningsPreview(events, todayKey, limit = UPCOMING_EARNINGS_PREVIEW_LIMIT) {
-  const upcoming = (Array.isArray(events) ? events : []).filter(
-    (e) => e?.symbol && !e.reported && e.dateKey >= todayKey
-  );
-  const byDate = new Map();
-  for (const event of upcoming) {
-    if (!byDate.has(event.dateKey)) byDate.set(event.dateKey, []);
-    byDate.get(event.dateKey).push(event);
-  }
-
-  const picked = [];
-  for (const dateKey of [...byDate.keys()].sort()) {
-    const dayEvents = byDate
-      .get(dateKey)
-      .sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0) || a.name.localeCompare(b.name));
-    for (const event of dayEvents) {
-      picked.push(event);
-      if (picked.length >= limit) return picked;
-    }
-  }
-  return picked;
-}
-
-function renderPulseStockRow(stock, type) {
+function renderPulseStockRow(stock) {
   const sym = escapeHtml(stock.symbol);
   const name = escapeHtml(stock.name || stock.symbol);
-  const price =
-    stock.price != null && Number.isFinite(Number(stock.price))
-      ? escapeHtml(formatPrice(stock.price, stock.currency || "USD"))
-      : "—";
-  let secondary;
-  let secondaryClass;
-  if (type === "volume") {
-    secondary = escapeHtml(formatChartVolume(stock.volume));
-    secondaryClass = "pulse-row__meta";
-  } else if (type === "accumulated") {
-    secondary = "buyers";
-    secondaryClass = "pulse-row__meta";
-  } else {
-    secondary = escapeHtml(formatChange(stock.changePct ?? 0));
-    secondaryClass = `pulse-row__chg ${marketMoversMetaClass(stock, type)}`;
-  }
-  const primaryRight =
-    type === "accumulated"
-      ? escapeHtml(formatInteger(stock.institutionsBuying ?? 0))
-      : price;
   return `
     <li>
       <button type="button" class="pulse-row" data-market-symbol="${sym}">
@@ -11812,8 +11780,8 @@ function renderPulseStockRow(stock, type) {
           <span class="pulse-row__name">${name}</span>
         </span>
         <span class="pulse-row__quote">
-          <span class="pulse-row__price">${primaryRight}</span>
-          <span class="${secondaryClass}">${secondary}</span>
+          <span class="pulse-row__price">${escapeHtml(formatInteger(stock.institutionsBuying ?? 0))}</span>
+          <span class="pulse-row__meta">buyers</span>
         </span>
         <span class="pulse-row__arrow" aria-hidden="true">→</span>
       </button>
@@ -11867,98 +11835,95 @@ function renderPulseDiscoveryRow(stock) {
     </li>`;
 }
 
-function pickPulseDiscoveryMix(doublePayload, conflictPayload, gemsPayload) {
+function pickPulseDiscoveryMix(payloads) {
   const seen = new Set();
   const out = [];
 
-  const pushFrom = (rows, count, signalType, mapRow) => {
+  const mapTicker = (row, signalType) => ({
+    symbol: String(row?.ticker || "")
+      .trim()
+      .toUpperCase(),
+    name: row?.companyName || row?.ticker,
+    signalType,
+  });
+
+  const sources = [
+    { rows: payloads?.double?.signals, signalType: "Double Signal", count: 1 },
+    { rows: payloads?.triple?.signals, signalType: "Triple Signal", count: 1 },
+    { rows: payloads?.conflict?.signals, signalType: "Conflict Signal", count: 1 },
+    { rows: payloads?.gems?.signals, signalType: "Hidden Gem", count: 1 },
+    { rows: payloads?.discovery?.signals, signalType: "Institutional Discovery", count: 1 },
+  ];
+
+  const pushFrom = (rows, count, signalType) => {
     let added = 0;
     for (const row of Array.isArray(rows) ? rows : []) {
       if (added >= count) break;
-      const mapped = mapRow(row);
-      if (!mapped?.symbol || seen.has(mapped.symbol)) continue;
+      const mapped = mapTicker(row, signalType);
+      if (!mapped.symbol || seen.has(mapped.symbol)) continue;
+      // Skip insufficient / unscored discovery rows when possible.
+      if (
+        signalType === "Institutional Discovery" &&
+        (row?.insufficientData || row?.discoveryScore == null)
+      ) {
+        continue;
+      }
       seen.add(mapped.symbol);
-      out.push({ ...mapped, signalType: mapped.signalType || signalType });
+      out.push(mapped);
       added += 1;
     }
   };
 
-  pushFrom(doublePayload?.signals, 2, "Double Signal", (row) => ({
-    symbol: String(row.ticker || "")
-      .trim()
-      .toUpperCase(),
-    name: row.companyName || row.ticker,
-    signalType: "Double Signal",
-  }));
-
-  pushFrom(conflictPayload?.signals, 2, "Conflict Signal", (row) => ({
-    symbol: String(row.ticker || "")
-      .trim()
-      .toUpperCase(),
-    name: row.companyName || row.ticker,
-    signalType: "Conflict Signal",
-  }));
-
-  pushFrom(gemsPayload?.signals, 1, "Hidden Gem", (row) => ({
-    symbol: String(row.ticker || "")
-      .trim()
-      .toUpperCase(),
-    name: row.companyName || row.ticker,
-    signalType: "Hidden Gem",
-  }));
-
-  // Backfill if some sources were empty so we still aim for 5.
-  if (out.length < 5) {
-    pushFrom(doublePayload?.signals, 5 - out.length, "Double Signal", (row) => ({
-      symbol: String(row.ticker || "")
-        .trim()
-        .toUpperCase(),
-      name: row.companyName || row.ticker,
-      signalType: "Double Signal",
-    }));
-  }
-  if (out.length < 5) {
-    pushFrom(conflictPayload?.signals, 5 - out.length, "Conflict Signal", (row) => ({
-      symbol: String(row.ticker || "")
-        .trim()
-        .toUpperCase(),
-      name: row.companyName || row.ticker,
-      signalType: "Conflict Signal",
-    }));
-  }
-  if (out.length < 5) {
-    pushFrom(gemsPayload?.signals, 5 - out.length, "Hidden Gem", (row) => ({
-      symbol: String(row.ticker || "")
-        .trim()
-        .toUpperCase(),
-      name: row.companyName || row.ticker,
-      signalType: "Hidden Gem",
-    }));
+  for (const source of sources) {
+    pushFrom(source.rows, source.count, source.signalType);
   }
 
-  return out.slice(0, 5);
+  // Backfill from the same priority order if a source was empty.
+  if (out.length < PULSE_PREVIEW_LIMIT) {
+    for (const source of sources) {
+      if (out.length >= PULSE_PREVIEW_LIMIT) break;
+      pushFrom(source.rows, PULSE_PREVIEW_LIMIT - out.length, source.signalType);
+    }
+  }
+
+  return out.slice(0, PULSE_PREVIEW_LIMIT);
 }
 
 async function refreshPulseDiscoveriesSidebar() {
   const list = document.getElementById("pulse-discoveries-preview");
   if (!list) return;
   try {
-    const [doublePayload, conflictPayload, gemsPayload] = await Promise.all([
-      apiJson("/api/signals/double-signal", { window: 90 }),
-      apiJson("/api/signals/conflict-signals", {
-        page: 1,
-        pageSize: 10,
-        sort: "conflictScore",
-        sortDir: "desc",
-      }),
-      apiJson("/api/signals/hidden-gems", {
-        page: 1,
-        pageSize: 10,
-        sort: "hiddenGemScore",
-        sortDir: "desc",
-      }),
-    ]);
-    const mixed = pickPulseDiscoveryMix(doublePayload, conflictPayload, gemsPayload);
+    const [doublePayload, triplePayload, conflictPayload, gemsPayload, discoveryPayload] =
+      await Promise.all([
+        apiJson("/api/signals/double-signal", { window: 90 }),
+        apiJson("/api/signals/triple-signal", { window: 180 }),
+        apiJson("/api/signals/conflict-signals", {
+          page: 1,
+          pageSize: 10,
+          sort: "conflictScore",
+          sortDir: "desc",
+        }),
+        apiJson("/api/signals/hidden-gems", {
+          page: 1,
+          pageSize: 10,
+          sort: "hiddenGemScore",
+          sortDir: "desc",
+        }),
+        apiJson("/api/signals/institutional-discovery", {
+          page: 1,
+          pageSize: 10,
+          sort: "discoveryScore",
+          sortDir: "desc",
+          minScore: 50,
+        }),
+      ]);
+    const mixed = pickPulseDiscoveryMix({
+      double: doublePayload,
+      triple: triplePayload,
+      conflict: conflictPayload,
+      gems: gemsPayload,
+      discovery: discoveryPayload,
+    });
     if (!mixed.length) {
       list.innerHTML = pulseEmptyHtml("No signal discoveries yet");
       return;
@@ -11971,12 +11936,13 @@ async function refreshPulseDiscoveriesSidebar() {
 }
 
 function isPulseBuyAction(action) {
-  const a = String(action || "").toLowerCase();
-  return a.includes("bought") || a.includes("purchase");
+  const a = String(action || "").trim().toLowerCase();
+  // Insider open-market buys only ("Bought shares"); politician purchases separately.
+  return a === "bought shares" || a === "disclosed a purchase";
 }
 
 /** Newest unique tickers with buy activity from Recently Active day groups. */
-function pickPulseBuyStocksFromDays(days, limit = MARKET_MOVERS_PREVIEW_LIMIT) {
+function pickPulseBuyStocksFromDays(days, limit = PULSE_PREVIEW_LIMIT) {
   const seen = new Set();
   const out = [];
   for (const day of Array.isArray(days) ? days : []) {
@@ -12002,7 +11968,7 @@ function pickPulseBuyStocksFromDays(days, limit = MARKET_MOVERS_PREVIEW_LIMIT) {
 function renderPulseActivityPreview(listId, stocks, emptyLabel) {
   const list = document.getElementById(listId);
   if (!list) return;
-  const preview = Array.isArray(stocks) ? stocks.slice(0, MARKET_MOVERS_PREVIEW_LIMIT) : [];
+  const preview = Array.isArray(stocks) ? stocks.slice(0, PULSE_PREVIEW_LIMIT) : [];
   if (!preview.length) {
     list.innerHTML = pulseEmptyHtml(emptyLabel);
     return;
@@ -12035,203 +12001,6 @@ async function refreshPulseActivitySidebar() {
   }
 }
 
-function renderPulseEarningsRow(event) {
-  const sym = escapeHtml(event.symbol);
-  const rawName = String(event.name || "").trim();
-  const displayName =
-    rawName && rawName.toUpperCase() !== String(event.symbol || "").toUpperCase() ? rawName : "";
-  const name = escapeHtml(displayName);
-  const when = escapeHtml(formatEarningsSidebarDate(event));
-  const timing = formatEarningsTiming(event.timing);
-  const timingHtml = timing ? `<span class="pulse-row__meta pulse-row__meta--sub">${escapeHtml(timing)}</span>` : "";
-  return `
-    <li>
-      <button type="button" class="pulse-row pulse-row--earnings" data-earnings-symbol="${sym}">
-        <span class="pulse-row__main">
-          <span class="pulse-row__sym">${sym}</span>
-          <span class="pulse-row__name">${name || "—"}</span>
-        </span>
-        <span class="pulse-row__quote">
-          <span class="pulse-row__meta">${when}</span>
-          ${timingHtml}
-        </span>
-        <span class="pulse-row__arrow" aria-hidden="true">→</span>
-      </button>
-    </li>`;
-}
-
-function renderUpcomingEarningsPreview(events, todayKey) {
-  const list = document.getElementById("upcoming-earnings-preview");
-  if (!list) return;
-
-  const preview = pickSidebarEarningsPreview(events, todayKey);
-
-  if (!preview.length) {
-    list.innerHTML = pulseEmptyHtml("No upcoming earnings scheduled");
-    return;
-  }
-
-  list.innerHTML = preview.map((event) => renderPulseEarningsRow(event)).join("");
-}
-
-async function refreshUpcomingEarningsSidebar() {
-  const list = document.getElementById("upcoming-earnings-preview");
-  if (!list) return;
-  try {
-    const data = await fetchEarningsCalendarData();
-    renderUpcomingEarningsPreview(data.events, data.todayKey);
-  } catch (err) {
-    const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    list.innerHTML = pulseEmptyHtml(msg);
-  }
-}
-
-function renderEarningsCalendarPage(data, errorMsg) {
-  const body = document.getElementById("earnings-calendar-body");
-  const subtitle = document.getElementById("earnings-calendar-subtitle");
-  if (!body) return;
-
-  if (errorMsg) {
-    if (subtitle) subtitle.textContent = "Yahoo Finance (error)";
-    body.innerHTML = `<p class="muted small">${escapeHtml(errorMsg)}</p>`;
-    return;
-  }
-
-  const events = (Array.isArray(data?.events) ? data.events : []).filter((e) => !e.reported);
-  if (subtitle) {
-    subtitle.textContent = `Next 2 months · ${events.length} event${events.length === 1 ? "" : "s"} · Yahoo Finance`;
-  }
-
-  if (!events.length) {
-    body.innerHTML = `<p class="muted small">No upcoming earnings in the next 2 months.</p>`;
-    return;
-  }
-
-  const byDate = new Map();
-  for (const event of events) {
-    if (!byDate.has(event.dateKey)) byDate.set(event.dateKey, []);
-    byDate.get(event.dateKey).push(event);
-  }
-
-  body.innerHTML = [...byDate.keys()]
-    .sort()
-    .map((dateKey) => {
-      const dayEvents = byDate
-        .get(dateKey)
-        .sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0) || a.name.localeCompare(b.name));
-      const label = escapeHtml(formatEarningsCalendarDayLabel(dateKey));
-      const rows = dayEvents
-        .map((event) => {
-          const sym = escapeHtml(event.symbol);
-          const name = escapeHtml(event.name || event.symbol);
-          const timing = formatEarningsTiming(event.timing);
-          const timingHtml = timing ? `<span class="muted small">${escapeHtml(timing)}</span>` : "";
-          const eps =
-            event.epsEstimate != null && Number.isFinite(Number(event.epsEstimate))
-              ? Number(event.epsEstimate).toFixed(2)
-              : "—";
-          return `
-            <tr>
-              <td class="mono"><button type="button" class="earnings-calendar__symbol" data-earnings-symbol="${sym}">${sym}</button></td>
-              <td>${name}</td>
-              <td class="num mono">${escapeHtml(eps)}</td>
-              <td>${timingHtml}</td>
-            </tr>`;
-        })
-        .join("");
-      return `
-        <section class="earnings-calendar-day" aria-label="${label}">
-          <h3 class="earnings-calendar-day__label">${label}</h3>
-          <div class="table-scroll">
-            <table class="trades-table earnings-calendar-table">
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th>Company</th>
-                  <th class="num">EPS est.</th>
-                  <th>Timing</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </section>`;
-    })
-    .join("");
-}
-
-async function loadEarningsCalendarPage() {
-  const body = document.getElementById("earnings-calendar-body");
-  if (body) {
-    body.innerHTML = `<p class="muted small earnings-calendar__loading">Loading earnings calendar…</p>`;
-  }
-  try {
-    const data = await fetchEarningsCalendarData();
-    renderEarningsCalendarPage(data);
-    renderUpcomingEarningsPreview(data.events, data.todayKey);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    renderEarningsCalendarPage(null, msg);
-  }
-}
-
-function setupUpcomingEarnings() {
-  document.getElementById("upcoming-earnings-calendar-link")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    navigateToEarningsCalendar();
-  });
-
-  document.getElementById("earnings-calendar-body")?.addEventListener("click", (e) => {
-    const btn = e.target.closest?.("[data-earnings-symbol]");
-    if (!btn) return;
-    const sym = btn.getAttribute("data-earnings-symbol");
-    if (sym) void openStockPreview(sym);
-  });
-}
-
-async function fetchMarketMoversData() {
-  if (marketMoversClientCache && Date.now() - marketMoversClientCache.loadedAt < 5 * 60 * 1000) {
-    return marketMoversClientCache.data;
-  }
-  const data = await apiJson("/api/yahoo/market-movers", { count: MARKET_MOVERS_FULL_LIMIT });
-  marketMoversClientCache = { loadedAt: Date.now(), data };
-  return data;
-}
-
-function formatMarketMoversMeta(stock, type) {
-  if (type === "volume") return formatChartVolume(stock.volume);
-  return formatChange(stock.changePct ?? 0);
-}
-
-function marketMoversMetaClass(stock, type) {
-  if (type === "volume") return "";
-  const pct = Number(stock.changePct);
-  if (!Number.isFinite(pct) || pct === 0) return "";
-  return pct > 0 ? "chg--up" : "chg--down";
-}
-
-function renderMarketMoversPreview(listId, stocks, type) {
-  const list = document.getElementById(listId);
-  if (!list) return;
-
-  const preview = (Array.isArray(stocks) ? stocks : []).slice(0, MARKET_MOVERS_PREVIEW_LIMIT);
-
-  if (!preview.length) {
-    const label =
-      type === "gainers" ? "No gainers today" : type === "losers" ? "No losers today" : "No volume leaders today";
-    list.innerHTML = pulseEmptyHtml(label);
-    return;
-  }
-
-  list.innerHTML = preview.map((stock) => renderPulseStockRow(stock, type)).join("");
-}
-
-function renderAllMarketMoversPreviews(data) {
-  // Activity + Accumulated pulse lists are refreshed by dedicated helpers.
-  // Do not overwrite market-movers-volume-preview (now Most Accumulated).
-  void data;
-}
-
 async function refreshPulseAccumulatedSidebar() {
   const list = document.getElementById("market-movers-volume-preview");
   if (!list) return;
@@ -12242,7 +12011,7 @@ async function refreshPulseAccumulatedSidebar() {
       : Array.isArray(data?.periods?.quarter?.stocks)
         ? data.periods.quarter.stocks
         : [];
-    const preview = stocks.slice(0, MARKET_MOVERS_PREVIEW_LIMIT).map((row) => ({
+    const preview = stocks.slice(0, PULSE_PREVIEW_LIMIT).map((row) => ({
       symbol: row.ticker,
       name: row.companyName || row.ticker,
       institutionsBuying: row.institutionsBuying,
@@ -12253,101 +12022,15 @@ async function refreshPulseAccumulatedSidebar() {
       );
       return;
     }
-    list.innerHTML = preview
-      .map((stock) => renderPulseStockRow(stock, "accumulated"))
-      .join("");
+    list.innerHTML = preview.map((stock) => renderPulseStockRow(stock)).join("");
   } catch (err) {
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
     list.innerHTML = pulseEmptyHtml(msg);
   }
 }
 
-async function refreshMarketMoversSidebar() {
-  try {
-    const data = await fetchMarketMoversData();
-    renderAllMarketMoversPreviews(data);
-  } catch (err) {
-    const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    const list = document.getElementById("market-movers-volume-preview");
-    if (list) list.innerHTML = pulseEmptyHtml(msg);
-  }
-}
-
-function renderMarketMoversPage(data, type, errorMsg) {
-  const view = MARKET_MOVERS_VIEWS[type];
-  const heading = document.getElementById("market-movers-heading");
-  const subtitle = document.getElementById("market-movers-subtitle");
-  const metricHeading = document.getElementById("market-movers-metric-heading");
-  const body = document.getElementById("market-movers-body");
-  if (!view || !body) return;
-
-  if (heading) heading.textContent = view.title;
-  if (metricHeading) metricHeading.textContent = view.metric === "volume" ? "Volume" : "Change";
-
-  if (errorMsg) {
-    if (subtitle) subtitle.textContent = "Yahoo Finance (error)";
-    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">${escapeHtml(errorMsg)}</td></tr>`;
-    return;
-  }
-
-  const stocks = Array.isArray(data?.[view.key]) ? data[view.key] : [];
-  if (subtitle) {
-    subtitle.textContent = `Today · ${stocks.length} stock${stocks.length === 1 ? "" : "s"} · Yahoo Finance`;
-  }
-
-  if (!stocks.length) {
-    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">No market data available.</td></tr>`;
-    return;
-  }
-
-  body.innerHTML = stocks
-    .slice(0, MARKET_MOVERS_FULL_LIMIT)
-    .map((stock, index) => {
-      const sym = escapeHtml(stock.symbol);
-      const name = escapeHtml(stock.name || stock.symbol);
-      const price =
-        stock.price != null && Number.isFinite(Number(stock.price))
-          ? escapeHtml(formatPrice(stock.price, stock.currency || "USD"))
-          : "—";
-      const metric = escapeHtml(formatMarketMoversMeta(stock, type));
-      const metricClass = marketMoversMetaClass(stock, type);
-      return `
-        <tr>
-          <td class="mono muted">${index + 1}</td>
-          <td class="mono"><button type="button" class="market-movers__symbol" data-market-symbol="${sym}">${sym}</button></td>
-          <td>${name}</td>
-          <td class="num mono">${price}</td>
-          <td class="num mono ${metricClass}">${metric}</td>
-        </tr>`;
-    })
-    .join("");
-}
-
-async function loadMarketMoversPage(type) {
-  const body = document.getElementById("market-movers-body");
-  if (body) {
-    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">Loading market movers…</td></tr>`;
-  }
-  try {
-    const data = await fetchMarketMoversData();
-    renderMarketMoversPage(data, type);
-    renderAllMarketMoversPreviews(data);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    renderMarketMoversPage(null, type, msg);
-  }
-}
-
-function setupMarketMovers() {
+function setupMarketPulseSidebar() {
   setupMarketPulseTabs();
-
-  document.querySelectorAll("[data-market-movers-link]").forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      const type = link.getAttribute("data-market-movers-link");
-      if (type) navigateToMarketMovers(type);
-    });
-  });
 
   document.getElementById("pulse-activity-view-all")?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -12364,7 +12047,7 @@ function setupMarketMovers() {
   document.getElementById("pulse-discoveries-view-all")?.addEventListener("click", (e) => {
     e.preventDefault();
     setExploreMode("signals", { navigate: false });
-    navigateToSignalsSmartMoney();
+    navigateToDoubleSignal(null);
   });
 
   document.getElementById("market-pulse-section")?.addEventListener("click", (e) => {
@@ -12372,20 +12055,7 @@ function setupMarketMovers() {
     if (marketBtn) {
       const sym = marketBtn.getAttribute("data-market-symbol");
       if (sym) void openStockPreview(sym);
-      return;
     }
-    const earningsBtn = e.target.closest?.("[data-earnings-symbol]");
-    if (earningsBtn) {
-      const sym = earningsBtn.getAttribute("data-earnings-symbol");
-      if (sym) void openStockPreview(sym);
-    }
-  });
-
-  document.getElementById("market-movers-body")?.addEventListener("click", (e) => {
-    const btn = e.target.closest?.("[data-market-symbol]");
-    if (!btn) return;
-    const sym = btn.getAttribute("data-market-symbol");
-    if (sym) void openStockPreview(sym);
   });
 }
 
@@ -12422,7 +12092,7 @@ function enrichActivityMovers(rows) {
   });
 }
 
-function buildActivityMoversFromApi(changesRes, newRes, soldRes) {
+function buildActivityMoversFromChanges(changesRes) {
   const movers = [];
   for (const row of changesRes?.changes || []) {
     if (!row?.fundName) continue;
@@ -12437,40 +12107,47 @@ function buildActivityMoversFromApi(changesRes, newRes, soldRes) {
       valueChangeUsd: row.valueChangeUsd ?? null,
     });
   }
+  return movers;
+}
+
+function buildActivityNewPositions(newRes) {
+  const px = resolveOwnershipStockPrice();
+  const rows = [];
   for (const row of newRes?.positions || []) {
     if (!row?.fundName) continue;
-    const prev = Number(row.previousShares ?? 0);
-    const cur = Number(row.shares);
-    if (!Number.isFinite(cur)) continue;
-    const sc = cur - prev;
-    if (sc <= 0) continue;
-    movers.push({
+    const shares = Number(row.shares);
+    if (!Number.isFinite(shares) || shares <= 0) continue;
+    let valueUsd = row.valueUsd ?? null;
+    if (px != null) valueUsd = Math.round(shares * px * 100) / 100;
+    rows.push({
       fundName: row.fundName,
       filerCik: row.filerCik,
-      sharesChange: sc,
-      currentShares: cur,
-      previousShares: prev,
-      valueChangeUsd: row.valueUsd ?? null,
+      shares,
+      valueUsd,
     });
   }
+  return rows.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
+}
+
+function buildActivityExits(soldRes) {
+  const px = resolveOwnershipStockPrice();
+  const rows = [];
   for (const row of soldRes?.positions || []) {
     if (!row?.fundName) continue;
-    const prev = Number(row.previousShares ?? 0);
-    const cur = Number(row.shares ?? 0);
-    if (!Number.isFinite(prev) || prev <= 0) continue;
-    const sc = cur - prev;
-    if (sc >= 0) continue;
-    movers.push({
+    const previousShares = Number(row.previousShares ?? 0);
+    if (!Number.isFinite(previousShares) || previousShares <= 0) continue;
+    let previousValueUsd = row.previousValueUsd ?? null;
+    if (px != null) previousValueUsd = Math.round(previousShares * px * 100) / 100;
+    rows.push({
       fundName: row.fundName,
       filerCik: row.filerCik,
-      sharesChange: sc,
-      currentShares: Number.isFinite(cur) ? cur : 0,
-      previousShares: prev,
-      valueChangeUsd:
-        row.previousValueUsd != null ? -Number(row.previousValueUsd) : null,
+      shares: 0,
+      previousShares,
+      valueUsd: null,
+      previousValueUsd,
     });
   }
-  return movers;
+  return rows.sort((a, b) => (b.previousValueUsd ?? 0) - (a.previousValueUsd ?? 0));
 }
 
 function renderActivityMoverRow(row, { sold = false } = {}) {
@@ -12492,6 +12169,34 @@ function renderActivityMoverRow(row, { sold = false } = {}) {
   `;
 }
 
+function renderActivityExitRow(row) {
+  const priorValue =
+    row.previousValueUsd == null || !Number.isFinite(Number(row.previousValueUsd))
+      ? "—"
+      : formatExposureUsd(Number(row.previousValueUsd));
+  return `
+    <tr>
+      <td>${institutionFundLinkHtml(row.fundName, row.filerCik)}</td>
+      <td class="mono num">${escapeHtml(priorValue)}</td>
+      <td class="mono num"><span class="change-pill change-pill--down">${escapeHtml(formatShareCount(row.previousShares))}</span></td>
+    </tr>
+  `;
+}
+
+function renderActivityNewRow(row) {
+  const value =
+    row.valueUsd == null || !Number.isFinite(Number(row.valueUsd))
+      ? "—"
+      : formatExposureUsd(Number(row.valueUsd));
+  return `
+    <tr>
+      <td>${institutionFundLinkHtml(row.fundName, row.filerCik)}</td>
+      <td class="mono num"><span class="change-pill change-pill--up">${escapeHtml(value)}</span></td>
+      <td class="mono num">${escapeHtml(formatShareCount(row.shares))}</td>
+    </tr>
+  `;
+}
+
 function renderActivityMoversTable(bodyId, rows, emptyMsg) {
   const body = document.getElementById(bodyId);
   if (!body) return;
@@ -12503,40 +12208,74 @@ function renderActivityMoversTable(bodyId, rows, emptyMsg) {
   body.innerHTML = rows.map((r) => renderActivityMoverRow(r, { sold })).join("");
 }
 
-function updateActivityBuyersMoreControl() {
-  const foot = document.getElementById("activity-buyers-foot");
-  const btn = document.getElementById("activity-buyers-more-btn");
+function renderActivitySimpleTable(bodyId, rows, emptyMsg, renderRow, colSpan) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="${colSpan}" class="trades-table__empty">${escapeHtml(emptyMsg)}</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(renderRow).join("");
+}
+
+function updateActivityMoreControl(footId, btnId, total, expanded, fewerLabel, allLabel) {
+  const foot = document.getElementById(footId);
+  const btn = document.getElementById(btnId);
   if (!foot || !btn) return;
 
-  const extra = lastActivityBuyers.length - ACTIVITY_INITIAL_COUNT;
+  const extra = total - ACTIVITY_INITIAL_COUNT;
   if (extra <= 0) {
     foot.hidden = true;
     return;
   }
 
   foot.hidden = false;
-  btn.textContent = activityBuyersExpanded
-    ? "Show fewer buyers"
-    : `Show all buyers (${lastActivityBuyers.length})`;
-  btn.setAttribute("aria-expanded", activityBuyersExpanded ? "true" : "false");
+  btn.textContent = expanded ? fewerLabel : `${allLabel} (${total})`;
+  btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function updateActivityBuyersMoreControl() {
+  updateActivityMoreControl(
+    "activity-buyers-foot",
+    "activity-buyers-more-btn",
+    lastActivityBuyers.length,
+    activityBuyersExpanded,
+    "Show fewer buyers",
+    "Show all buyers"
+  );
 }
 
 function updateActivitySellersMoreControl() {
-  const foot = document.getElementById("activity-sellers-foot");
-  const btn = document.getElementById("activity-sellers-more-btn");
-  if (!foot || !btn) return;
+  updateActivityMoreControl(
+    "activity-sellers-foot",
+    "activity-sellers-more-btn",
+    lastActivitySellers.length,
+    activitySellersExpanded,
+    "Show fewer sellers",
+    "Show all sellers"
+  );
+}
 
-  const extra = lastActivitySellers.length - ACTIVITY_INITIAL_COUNT;
-  if (extra <= 0) {
-    foot.hidden = true;
-    return;
-  }
+function updateActivityExitsMoreControl() {
+  updateActivityMoreControl(
+    "activity-exits-foot",
+    "activity-exits-more-btn",
+    lastActivityExits.length,
+    activityExitsExpanded,
+    "Show fewer exits",
+    "Show all exits"
+  );
+}
 
-  foot.hidden = false;
-  btn.textContent = activitySellersExpanded
-    ? "Show fewer sellers"
-    : `Show all sellers (${lastActivitySellers.length})`;
-  btn.setAttribute("aria-expanded", activitySellersExpanded ? "true" : "false");
+function updateActivityNewMoreControl() {
+  updateActivityMoreControl(
+    "activity-new-foot",
+    "activity-new-more-btn",
+    lastActivityNewPositions.length,
+    activityNewExpanded,
+    "Show fewer new positions",
+    "Show all new positions"
+  );
 }
 
 function renderActivityTables() {
@@ -12546,6 +12285,12 @@ function renderActivityTables() {
   const visibleSellers = activitySellersExpanded
     ? lastActivitySellers
     : lastActivitySellers.slice(0, ACTIVITY_INITIAL_COUNT);
+  const visibleExits = activityExitsExpanded
+    ? lastActivityExits
+    : lastActivityExits.slice(0, ACTIVITY_INITIAL_COUNT);
+  const visibleNew = activityNewExpanded
+    ? lastActivityNewPositions
+    : lastActivityNewPositions.slice(0, ACTIVITY_INITIAL_COUNT);
 
   renderActivityMoversTable(
     "activity-buyers-body",
@@ -12557,8 +12302,24 @@ function renderActivityTables() {
     visibleSellers,
     "No institutional sellers in this comparison window."
   );
+  renderActivitySimpleTable(
+    "activity-exits-body",
+    visibleExits,
+    "No complete exits in this comparison window.",
+    renderActivityExitRow,
+    3
+  );
+  renderActivitySimpleTable(
+    "activity-new-body",
+    visibleNew,
+    "No new institutional positions in this comparison window.",
+    renderActivityNewRow,
+    3
+  );
   updateActivityBuyersMoreControl();
   updateActivitySellersMoreControl();
+  updateActivityExitsMoreControl();
+  updateActivityNewMoreControl();
 }
 
 function setOptionsSubtitle(text) {
@@ -12922,13 +12683,21 @@ function renderOptionsTables() {
 async function loadActivityPanel(symbol) {
   const buyersBody = document.getElementById("activity-buyers-body");
   const sellersBody = document.getElementById("activity-sellers-body");
+  const exitsBody = document.getElementById("activity-exits-body");
+  const newBody = document.getElementById("activity-new-body");
   if (!buyersBody || !sellersBody) return;
   activityBuyersExpanded = false;
   activitySellersExpanded = false;
+  activityExitsExpanded = false;
+  activityNewExpanded = false;
   const loading =
     '<tr><td colspan="5" class="trades-table__empty">Loading institutional activity…</td></tr>';
+  const loading3 =
+    '<tr><td colspan="3" class="trades-table__empty">Loading institutional activity…</td></tr>';
   buyersBody.innerHTML = loading;
   sellersBody.innerHTML = loading;
+  if (exitsBody) exitsBody.innerHTML = loading3;
+  if (newBody) newBody.innerHTML = loading3;
   setActivitySubtitle("Loading…");
   try {
     const sym = encodeURIComponent(symbol);
@@ -12955,26 +12724,34 @@ async function loadActivityPanel(symbol) {
     }
     setActivitySubtitle(parts.join(" · "));
 
-    const movers = enrichActivityMovers(
-      buildActivityMoversFromApi(changesRes, newRes, soldRes)
-    );
+    const movers = enrichActivityMovers(buildActivityMoversFromChanges(changesRes));
     lastActivityBuyers = movers
       .filter((r) => r.sharesChange > 0)
       .sort((a, b) => b.sharesChange - a.sharesChange);
     lastActivitySellers = movers
       .filter((r) => r.sharesChange < 0)
       .sort((a, b) => a.sharesChange - b.sharesChange);
+    lastActivityExits = buildActivityExits(soldRes);
+    lastActivityNewPositions = buildActivityNewPositions(newRes);
     renderActivityTables();
   } catch (err) {
     lastActivityBuyers = [];
     lastActivitySellers = [];
+    lastActivityExits = [];
+    lastActivityNewPositions = [];
     activityBuyersExpanded = false;
     activitySellersExpanded = false;
+    activityExitsExpanded = false;
+    activityNewExpanded = false;
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
     buyersBody.innerHTML = `<tr><td colspan="5" class="trades-table__empty">${msg}</td></tr>`;
     sellersBody.innerHTML = `<tr><td colspan="5" class="trades-table__empty">${msg}</td></tr>`;
+    if (exitsBody) exitsBody.innerHTML = `<tr><td colspan="3" class="trades-table__empty">${msg}</td></tr>`;
+    if (newBody) newBody.innerHTML = `<tr><td colspan="3" class="trades-table__empty">${msg}</td></tr>`;
     updateActivityBuyersMoreControl();
     updateActivitySellersMoreControl();
+    updateActivityExitsMoreControl();
+    updateActivityNewMoreControl();
     setActivitySubtitle("Institutional activity (error)");
   }
 }
@@ -13141,6 +12918,7 @@ function filingsFundamentalsToSignalInput(data) {
   const debtToEquityPct =
     debtToEquity != null && Math.abs(debtToEquity) <= 5 ? debtToEquity * 100 : debtToEquity;
 
+  const periodLabels = data.derivedPeriodLabels ?? {};
   return {
     revenueGrowth: derived.revenue_growth_yoy,
     epsGrowth: derived.eps_growth_yoy,
@@ -13149,6 +12927,8 @@ function filingsFundamentalsToSignalInput(data) {
     netMargin: derived.net_margin,
     roa: derived.roa,
     roe: derived.roe,
+    roePeriodLabel: periodLabels.roe ?? null,
+    roaPeriodLabel: periodLabels.roa ?? null,
     fcfMargin: derived.free_cash_flow_margin,
     currentRatio: derived.current_ratio,
     debtToEquity: debtToEquityPct,
@@ -13188,6 +12968,104 @@ function formatSignalMetricValue(metric, raw) {
   return x.toFixed(1);
 }
 
+const OVERVIEW_FILING_METRICS = [
+  { key: "revenue_ttm", label: "Revenue (TTM)" },
+  { key: "revenue_growth_yoy", label: "Revenue Growth YoY" },
+  { key: "eps_basic", label: "EPS (Basic)" },
+  { key: "operating_margin", label: "Operating Margin" },
+  { key: "gross_profit", label: "Gross Profit" },
+  { key: "gross_margin", label: "Gross Margin" },
+  { key: "free_cash_flow_margin", label: "Free Cash Flow Margin" },
+  { key: "book_value_per_share", label: "Book Value/Share" },
+  { key: "total_debt", label: "Total Debt" },
+];
+
+function computeOverviewRevenueTtm(filingsData) {
+  const quarters =
+    filingsData?.statements?.incomeStatement?.quarterly ||
+    filingsData?.quarterly ||
+    [];
+  const sorted = [...quarters]
+    .filter((row) => row?.metrics?.revenue != null && Number.isFinite(Number(row.metrics.revenue)))
+    .sort((a, b) => String(b.end || "").localeCompare(String(a.end || "")));
+  if (sorted.length >= 4) {
+    return sorted.slice(0, 4).reduce((sum, row) => sum + Number(row.metrics.revenue), 0);
+  }
+  const annual =
+    filingsData?.statements?.incomeStatement?.annual?.[0] || filingsData?.annual?.[0] || null;
+  const annualRevenue = annual?.metrics?.revenue;
+  return annualRevenue != null && Number.isFinite(Number(annualRevenue)) ? Number(annualRevenue) : null;
+}
+
+function overviewFilingsMetricValue(key, filingsData) {
+  if (!filingsData) return null;
+  const derived = filingsData.derivedLatest || {};
+  const incomeLatest = filingsData.statements?.incomeStatement?.latest || filingsData.latest || {};
+  switch (key) {
+    case "revenue_ttm":
+      return computeOverviewRevenueTtm(filingsData);
+    case "revenue_growth_yoy":
+      return derived.revenue_growth_yoy ?? null;
+    case "eps_basic":
+      return filingsMetricNumber(incomeLatest.eps_basic);
+    case "operating_margin":
+      return derived.operating_margin ?? null;
+    case "gross_profit":
+      return filingsMetricNumber(incomeLatest.gross_profit);
+    case "gross_margin":
+      return derived.gross_margin ?? null;
+    case "free_cash_flow_margin":
+      return derived.free_cash_flow_margin ?? null;
+    case "book_value_per_share":
+      return derived.book_value_per_share ?? null;
+    case "total_debt":
+      return derived.total_debt ?? null;
+    default:
+      return null;
+  }
+}
+
+function formatOverviewFilingMetricValue(key, value) {
+  if (value == null || !Number.isFinite(Number(value))) return "—";
+  const v = Number(value);
+  switch (key) {
+    case "revenue_growth_yoy":
+    case "operating_margin":
+    case "gross_margin":
+    case "free_cash_flow_margin":
+      return formatSecDerivedPercent(v);
+    case "eps_basic":
+    case "book_value_per_share":
+      return formatSecFundamentalValue(v, "USD/shares");
+    case "revenue_ttm":
+    case "gross_profit":
+    case "total_debt":
+      return formatSecFundamentalValue(v, "USD");
+    default:
+      return formatSecFundamentalValue(v, "USD");
+  }
+}
+
+function renderOverviewMetricsItem(metric, filingsData) {
+  const value = overviewFilingsMetricValue(metric.key, filingsData);
+  const val = formatOverviewFilingMetricValue(metric.key, value);
+  return `<div class="overview-key-stats-item">
+    <span class="overview-key-stats-item__label">${escapeHtml(metric.label)}</span>
+    <span class="overview-key-stats-item__value mono">${escapeHtml(val)}</span>
+  </div>`;
+}
+
+function renderOverviewMetricsGrid(filingsData) {
+  return OVERVIEW_FILING_METRICS.map((metric) => renderOverviewMetricsItem(metric, filingsData)).join("");
+}
+
+function hasOverviewFilingMetrics(filingsData) {
+  return OVERVIEW_FILING_METRICS.some((metric) => {
+    const value = overviewFilingsMetricValue(metric.key, filingsData);
+    return value != null && Number.isFinite(Number(value));
+  });
+}
+
 const OVERVIEW_KEY_STATS = [
   { key: "price", label: "Price" },
   { key: "volume", label: "Volume" },
@@ -13198,84 +13076,6 @@ const OVERVIEW_KEY_STATS = [
   { key: "floatShares", label: "Shares float" },
   { key: "nextEarningsDate", label: "Next earnings date", dynamicLabel: true },
   { key: "exDividendDate", label: "Ex-dividend date" },
-];
-
-const OVERVIEW_SNAPSHOT_SECTIONS = [
-  {
-    title: "Market fundamentals",
-    metrics: [
-      { key: "price", label: "Price" },
-      { key: "marketCap", label: "Market cap" },
-      { key: "revenueTtm", label: "Revenue" },
-      { key: "dilutedEps", label: "Diluted EPS" },
-    ],
-  },
-  {
-    title: "Core valuation",
-    metrics: [
-      { key: "pe", label: "P/E" },
-      { key: "forwardPe", label: "Forward P/E" },
-      { key: "peg", label: "PEG" },
-      { key: "priceToSales", label: "P/S" },
-      { key: "enterpriseToRevenue", label: "EV / Revenue" },
-      { key: "enterpriseToEbitda", label: "EV / EBITDA" },
-    ],
-  },
-  {
-    title: "Growth",
-    metrics: [
-      { key: "revenueGrowth", label: "Revenue growth" },
-      { key: "earningsGrowth", label: "EPS growth" },
-      { key: "revenueTtm", label: "Revenue" },
-      { key: "netIncomeTtm", label: "Net income" },
-      { key: "ebitda", label: "EBITDA" },
-    ],
-  },
-  {
-    title: "Profitability",
-    metrics: [
-      { key: "grossMargin", label: "Gross margin" },
-      { key: "operatingMargin", label: "Operating margin" },
-      { key: "netMargin", label: "Net margin" },
-      { key: "returnOnEquity", label: "ROE" },
-      { key: "returnOnAssets", label: "ROA" },
-      { key: "fcfMargin", label: "FCF margin" },
-    ],
-  },
-  {
-    title: "Financial health",
-    metrics: [
-      { key: "totalCash", label: "Cash" },
-      { key: "totalDebt", label: "Debt" },
-      { key: "netCashDebt", label: "Net cash" },
-      { key: "currentRatio", label: "Current ratio" },
-      { key: "debtToEquity", label: "Debt / equity" },
-      { key: "freeCashflow", label: "FCF" },
-    ],
-  },
-  {
-    title: "Trading",
-    metrics: [
-      { key: "beta", label: "Beta" },
-      { key: "averageVolume", label: "Avg. volume" },
-      { key: "fiftyTwoWeekHigh", label: "52W high" },
-      { key: "fiftyTwoWeekLow", label: "52W low" },
-      { key: "distFrom52WeekHigh", label: "Distance from high" },
-      { key: "distFrom52WeekLow", label: "Distance from low" },
-    ],
-  },
-  {
-    title: "Market structure",
-    metrics: [
-      { key: "sharesOutstanding", label: "Shares outstanding" },
-      { key: "floatShares", label: "Float" },
-      { key: "institutionalOwnership", label: "Institutional ownership" },
-      { key: "insiderOwnership", label: "Insider ownership" },
-      { key: "sharesShort", label: "Shares short" },
-      { key: "shortPercentFloat", label: "Short % float" },
-      { key: "shortRatio", label: "Short ratio" },
-    ],
-  },
 ];
 
 function formatSnapshotValue(key, raw) {
@@ -13732,14 +13532,14 @@ function renderConvictionBuysHub() {
   if (!body) return;
 
   if (convictionBuysLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">Loading conviction buys…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading conviction buys…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">No open-market conviction buys match these filters. Run <code class="inline-code">npm run insiders:warm-conviction-buys</code> if the cache is empty.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No open-market conviction buys match these filters. Run <code class="inline-code">npm run insiders:warm-conviction-buys</code> if the cache is empty.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -13749,14 +13549,15 @@ function renderConvictionBuysHub() {
     body.innerHTML = rows
       .map((row, i) => {
         const rank = offset + i + 1;
-        const company = row.companyName || "—";
         const ownPct = Number.isFinite(Number(row.ownershipIncreasePercent))
           ? `${Number(row.ownershipIncreasePercent).toFixed(1)}%`
           : "—";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
-          <td><span class="most-accumulated-stock__name">${escapeHtml(company)}</span></td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td>${escapeHtml(row.insiderName || "—")}</td>
           <td>${escapeHtml(row.role || row.insiderTitle || "—")}</td>
           <td class="mono num">${escapeHtml(formatInsiderClusterBuyValue(row.valueUsd))}</td>
@@ -13794,7 +13595,7 @@ async function loadConvictionBuysHub() {
     lastConvictionBuysPayload = null;
     const body = document.getElementById("conviction-buys-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     convictionBuysLoading = false;
     if (JSON.stringify(convictionBuysQueryParams()) !== requestKey) {
@@ -14006,14 +13807,14 @@ function renderRepeatBuyersHub() {
   if (!body) return;
 
   if (repeatBuyersLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">Loading repeat buyers…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">Loading repeat buyers…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">No repeat buyers match these filters. Run <code class="inline-code">npm run insiders:warm-repeat-buyers</code> if the cache is empty.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">No repeat buyers match these filters. Run <code class="inline-code">npm run insiders:warm-repeat-buyers</code> if the cache is empty.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -14023,11 +13824,12 @@ function renderRepeatBuyersHub() {
     body.innerHTML = rows
       .map((row, i) => {
         const rank = offset + i + 1;
-        const company = row.companyName || "—";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
-          <td><span class="most-accumulated-stock__name">${escapeHtml(company)}</span></td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td>${escapeHtml(row.insiderName || "—")}</td>
           <td>${escapeHtml(row.role || row.title || "—")}</td>
           <td class="mono num">${formatInteger(row.purchaseCount ?? 0)}</td>
@@ -14067,7 +13869,7 @@ async function loadRepeatBuyersHub() {
     lastRepeatBuyersPayload = null;
     const body = document.getElementById("repeat-buyers-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="12" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     repeatBuyersLoading = false;
     if (JSON.stringify(repeatBuyersQueryParams()) !== requestKey) {
@@ -14290,14 +14092,14 @@ function renderInsiderSentimentHub() {
   if (!body) return;
 
   if (insiderSentimentLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading insider sentiment…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading insider sentiment…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No insider sentiment matches these filters. Run <code class="inline-code">npm run insiders:warm-sentiment</code> if the cache is empty.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No insider sentiment matches these filters. Run <code class="inline-code">npm run insiders:warm-sentiment</code> if the cache is empty.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -14307,12 +14109,13 @@ function renderInsiderSentimentHub() {
     body.innerHTML = rows
       .map((row, i) => {
         const rank = offset + i + 1;
-        const company = row.companyName || "—";
         const flow = formatSignedFlow(row.netDollarFlow);
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
-          <td>${escapeHtml(company)}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td class="mono num">${formatInteger(row.uniqueBuyers ?? 0)}</td>
           <td class="mono num">${formatInteger(row.uniqueSellers ?? 0)}</td>
           <td class="mono num ${flow.cls}">${escapeHtml(flow.text)}</td>
@@ -14349,7 +14152,7 @@ async function loadInsiderSentimentHub() {
     lastInsiderSentimentPayload = null;
     const body = document.getElementById("insider-sentiment-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     insiderSentimentLoading = false;
     if (JSON.stringify(insiderSentimentQueryParams()) !== requestKey) {
@@ -14574,14 +14377,14 @@ function renderFirstTimeBuyersHub() {
   if (!body) return;
 
   if (firstTimeBuyersLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">Loading first-time buyers…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading first-time buyers…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">No first-time / long-gap buys match these filters. Run <code class="inline-code">npm run insiders:warm-first-time-buyers</code> if the cache is empty.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No first-time / long-gap buys match these filters. Run <code class="inline-code">npm run insiders:warm-first-time-buyers</code> if the cache is empty.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -14591,16 +14394,17 @@ function renderFirstTimeBuyersHub() {
     body.innerHTML = rows
       .map((row, i) => {
         const rank = offset + i + 1;
-        const company = row.companyName || "—";
         const yearsLabel = row.firstEverPurchase
           ? "First ever"
           : Number.isFinite(Number(row.yearsSinceLastBuy))
             ? `${Number(row.yearsSinceLastBuy).toFixed(1)}y`
             : "—";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
-          <td>${escapeHtml(company)}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td>${escapeHtml(row.insiderName || "—")}</td>
           <td>${escapeHtml(row.role || row.title || "—")}</td>
           <td class="mono num">${escapeHtml(yearsLabel)}</td>
@@ -14638,7 +14442,7 @@ async function loadFirstTimeBuyersHub() {
     lastFirstTimeBuyersPayload = null;
     const body = document.getElementById("first-time-buyers-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     firstTimeBuyersLoading = false;
     if (JSON.stringify(firstTimeBuyersQueryParams()) !== requestKey) {
@@ -14861,14 +14665,14 @@ function renderHeavySellingHub() {
   if (!body) return;
 
   if (heavySellingLoading && !payload) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">Loading heavy selling…</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">Loading heavy selling…</td></tr>`;
     if (meta) meta.textContent = "Loading…";
     return;
   }
 
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">No heavy selling matches these filters. Run <code class="inline-code">npm run insiders:warm-heavy-selling</code> if the cache is empty.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No heavy selling matches these filters. Run <code class="inline-code">npm run insiders:warm-heavy-selling</code> if the cache is empty.</td></tr>`;
     if (meta) meta.textContent = total === 0 ? "No results" : "Empty page";
   } else {
     const offset = (page - 1) * pageSize;
@@ -14882,6 +14686,9 @@ function renderHeavySellingHub() {
         const companyRaw = String(row.companyName || "").trim();
         const company =
           companyRaw && !/^n\/?a$/i.test(companyRaw) && companyRaw !== "—" ? companyRaw : "";
+        const stockLabel = company
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(company)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker || "—")}</span>`;
         const valueSold = formatInsiderClusterBuyValue(row.valueSold);
         const largestSale = formatInsiderClusterBuyValue(row.largestSale);
         const classification =
@@ -14890,8 +14697,7 @@ function renderHeavySellingHub() {
             : "";
         return `<tr>
           <td class="mono num">${rank}</td>
-          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
-          <td><span class="most-accumulated-stock__name">${escapeHtml(company)}</span></td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td class="mono num">${formatInteger(row.uniqueSellers ?? 0)}</td>
           <td class="mono num">${formatInteger(row.executiveSellers ?? 0)}</td>
           <td class="mono num">${formatInteger(row.sharesSold ?? 0)}</td>
@@ -14926,7 +14732,7 @@ async function loadHeavySellingHub() {
     lastHeavySellingPayload = null;
     const body = document.getElementById("heavy-selling-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     heavySellingLoading = false;
     if (JSON.stringify(heavySellingQueryParams()) !== requestKey) {
@@ -16004,7 +15810,7 @@ function renderConflictSignalsHub() {
 
   if (!payload) {
     if (body && !conflictSignalsLoading) {
-      body.innerHTML = `<tr><td colspan="10" class="muted">No conflict signals loaded.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="9" class="muted">No conflict signals loaded.</td></tr>`;
     }
     if (meta) meta.textContent = conflictSignalsLoading ? "Loading…" : "—";
     if (countEl) countEl.textContent = "";
@@ -16027,16 +15833,18 @@ function renderConflictSignalsHub() {
   }
 
   if (!rows.length) {
-    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">No conflict signals match these filters.</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">No conflict signals match these filters.</td></tr>`;
   } else if (body) {
     body.innerHTML = rows
       .map((row) => {
-        const label =
+        const signalLabel =
           CONFLICT_SIGNAL_TYPE_LABELS[row.signalType] || row.signalType || "—";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span>`;
         return `<tr class="conflict-signals-row" data-conflict-signals-ticker="${escapeHtml(row.ticker)}" tabindex="0" role="link">
-          <td>${escapeHtml(row.companyName || row.ticker || "—")}</td>
-          <td class="mono"><button type="button" class="linkish" data-open-stock="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</button></td>
-          <td>${escapeHtml(label)}</td>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
+          <td>${escapeHtml(signalLabel)}</td>
           <td class="mono num">${formatSignedScore(row.institutionScore)}</td>
           <td class="mono num">${formatSignedScore(row.insiderScore)}</td>
           <td class="mono num">${Number.isFinite(Number(row.conflictScore)) ? Number(row.conflictScore).toFixed(1) : "—"}</td>
@@ -16074,7 +15882,7 @@ async function loadConflictSignalsHub() {
     lastConflictSignalsPayload = null;
     const body = document.getElementById("conflict-signals-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     conflictSignalsLoading = false;
     if (JSON.stringify(conflictSignalsQueryParams()) !== requestKey) {
@@ -16271,7 +16079,7 @@ function renderHiddenGemsHub() {
 
   if (!payload) {
     if (body && !hiddenGemsLoading) {
-      body.innerHTML = `<tr><td colspan="11" class="muted">No hidden gems loaded. Run <code class="inline-code">npm run signals:warm-hidden-gems</code> if needed.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="muted">No hidden gems loaded. Run <code class="inline-code">npm run signals:warm-hidden-gems</code> if needed.</td></tr>`;
     }
     if (meta) meta.textContent = hiddenGemsLoading ? "Loading…" : "—";
     if (countEl) countEl.textContent = "";
@@ -16295,14 +16103,16 @@ function renderHiddenGemsHub() {
 
   if (!rows.length) {
     if (body) {
-      body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">No hidden gems match these filters.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">No hidden gems match these filters.</td></tr>`;
     }
   } else if (body) {
     body.innerHTML = rows
-      .map(
-        (row) => `<tr>
-          <td>${escapeHtml(row.companyName || row.ticker || "—")}</td>
-          <td class="mono"><button type="button" class="linkish" data-open-stock="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</button></td>
+      .map((row) => {
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span>`;
+        return `<tr>
+          <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${stockLabel}</a></td>
           <td>${escapeHtml(row.label || "—")}</td>
           <td class="mono num">${Number.isFinite(Number(row.hiddenGemScore)) ? Number(row.hiddenGemScore).toFixed(1) : "—"}</td>
           <td class="mono num">${Number.isFinite(Number(row.institutionalOwnership)) ? `${Number(row.institutionalOwnership).toFixed(1)}%` : "—"}</td>
@@ -16312,8 +16122,8 @@ function renderHiddenGemsHub() {
           <td class="mono num">${formatInteger(row.increasingPositionsCount)}</td>
           <td class="mono num">${formatInteger(row.netSharesAccumulated)}</td>
           <td class="mono num">${Number.isFinite(Number(row.convictionScore)) ? Number(row.convictionScore).toFixed(1) : "—"}</td>
-        </tr>`
-      )
+        </tr>`;
+      })
       .join("");
   }
 
@@ -16339,7 +16149,7 @@ async function loadHiddenGemsHub() {
     lastHiddenGemsPayload = null;
     const body = document.getElementById("hidden-gems-body");
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    if (body) body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">${msg}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${msg}</td></tr>`;
   } finally {
     hiddenGemsLoading = false;
     if (JSON.stringify(hiddenGemsQueryParams()) !== requestKey) {
@@ -16661,7 +16471,7 @@ function renderConvictionScoreHub() {
 
   if (!payload) {
     if (body && !convictionScoreLoading) {
-      body.innerHTML = `<tr><td colspan="11" class="muted">No conviction scores loaded. Run <code class="inline-code">npm run signals:warm-conviction-score</code> if needed.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="muted">No conviction scores loaded. Run <code class="inline-code">npm run signals:warm-conviction-score</code> if needed.</td></tr>`;
     }
     if (meta) meta.textContent = convictionScoreLoading ? "Loading…" : "—";
     renderConvictionScoreCompare([]);
@@ -16689,7 +16499,7 @@ function renderConvictionScoreHub() {
 
   if (!rows.length) {
     if (body) {
-      body.innerHTML = `<tr><td colspan="11" class="muted">No stocks match these filters.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="muted">No stocks match these filters.</td></tr>`;
     }
     return;
   }
@@ -16703,31 +16513,29 @@ function renderConvictionScoreHub() {
         const score =
           row.convictionScore == null ? "—" : Number(row.convictionScore).toFixed(0);
         const classification = row.classification || (row.insufficientData ? "Insufficient data" : "—");
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(ticker)}</span>`;
         return `
         <tr class="conviction-score-row${expanded ? " is-expanded" : ""}" data-conviction-ticker="${escapeHtml(ticker)}">
           <td class="mono num">${startRank + i + 1}</td>
           <td>
-            <button type="button" class="btn btn--ghost conviction-score-expand" data-conviction-expand="${escapeHtml(ticker)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "▾" : "▸"}</button>
-            <a href="${stockPath(ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(ticker)}">${escapeHtml(ticker)}</a>
-          </td>
-          <td>${escapeHtml(row.companyName || "—")}</td>
-          <td class="num">
-            <div class="conviction-score-cell">
-              <span class="mono conviction-score-cell__value">${escapeHtml(score)}</span>
-              <span class="${convictionScoreBadgeClass(classification)}">${escapeHtml(classification)}</span>
-              <span class="muted small conviction-score-cell__explain">${escapeHtml(row.explanation || "")}</span>
+            <div class="conviction-score-stock">
+              <button type="button" class="btn btn--ghost conviction-score-expand" data-conviction-expand="${escapeHtml(ticker)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "▾" : "▸"}</button>
+              <a href="${stockPath(ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(ticker)}">${stockLabel}</a>
             </div>
           </td>
-          <td><span class="${convictionScoreBadgeClass(classification)}">${escapeHtml(classification)}</span></td>
           <td class="mono num">${formatInteger(row.institutionalHolders)}</td>
           <td class="mono num">${escapeHtml(formatConvictionWeight(row.medianPortfolioWeight))}</td>
           <td class="mono num">${formatInteger(row.holdersAbove2Percent)}</td>
           <td class="mono num">${formatInteger(row.institutionsIncreasing)}</td>
           <td class="mono num">${escapeHtml(formatConvictionRatio(row.accumulationRatio))}</td>
           <td class="mono num">${Number(row.averageAccumulationStreak || 0).toFixed(1)}</td>
+          <td class="mono num">${escapeHtml(score)}</td>
+          <td><span class="${convictionScoreBadgeClass(classification)}">${escapeHtml(classification)}</span></td>
         </tr>
         <tr class="conviction-score-detail-row" ${expanded ? "" : "hidden"}>
-          <td colspan="11">${renderConvictionScoreDetail(row)}</td>
+          <td colspan="10">${renderConvictionScoreDetail(row)}</td>
         </tr>`;
       })
       .join("");
@@ -16747,7 +16555,7 @@ async function loadConvictionScoreHub() {
   } catch (err) {
     const body = document.getElementById("conviction-score-body");
     if (body) {
-      body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">${escapeHtml(
+      body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${escapeHtml(
         err instanceof Error ? err.message : String(err)
       )}</td></tr>`;
     }
@@ -17108,7 +16916,7 @@ function renderInstitutionalDiscoveryHub() {
 
   if (!payload) {
     if (body && !institutionalDiscoveryLoading) {
-      body.innerHTML = `<tr><td colspan="11" class="muted">No discovery scores loaded. Run <code class="inline-code">npm run signals:warm-institutional-discovery</code> if needed.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="muted">No discovery scores loaded. Run <code class="inline-code">npm run signals:warm-institutional-discovery</code> if needed.</td></tr>`;
     }
     if (meta) meta.textContent = institutionalDiscoveryLoading ? "Loading…" : "—";
     return;
@@ -17133,7 +16941,7 @@ function renderInstitutionalDiscoveryHub() {
 
   if (!rows.length) {
     if (body) {
-      body.innerHTML = `<tr><td colspan="11" class="muted">No stocks match these filters.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" class="muted">No stocks match these filters.</td></tr>`;
     }
     return;
   }
@@ -17147,31 +16955,29 @@ function renderInstitutionalDiscoveryHub() {
         const score =
           row.discoveryScore == null ? "—" : Number(row.discoveryScore).toFixed(0);
         const classification = row.classification || "—";
+        const stockLabel = row.companyName
+          ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(ticker)}</span>`
+          : `<span class="most-accumulated-stock__name mono">${escapeHtml(ticker)}</span>`;
         return `
         <tr class="discovery-row${expanded ? " is-expanded" : ""}" data-discovery-ticker="${escapeHtml(ticker)}">
           <td class="mono num">${startRank + i + 1}</td>
           <td>
-            <button type="button" class="btn btn--ghost discovery-expand" data-discovery-expand="${escapeHtml(ticker)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "▾" : "▸"}</button>
-            <a href="${stockPath(ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(ticker)}">${escapeHtml(ticker)}</a>
+            <div class="discovery-stock">
+              <button type="button" class="btn btn--ghost discovery-expand" data-discovery-expand="${escapeHtml(ticker)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "▾" : "▸"}</button>
+              <a href="${stockPath(ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(ticker)}">${stockLabel}</a>
+            </div>
           </td>
-          <td>${escapeHtml(row.companyName || "—")}</td>
           <td class="mono num">${formatInteger(row.currentHolderCount)}</td>
           <td class="mono num">+${formatInteger(row.newHolderCount)}</td>
           <td class="mono num">${escapeHtml(formatDiscoveryGrowth(row.holderGrowthPercent))}</td>
           <td class="mono num">${formatInteger(row.firstTimePositionCount)}</td>
           <td class="mono num">${escapeHtml(formatDiscoveryGrowth(row.ownershipChangePercent))}</td>
           <td class="mono num">${formatInteger(row.currentGrowthStreak)}</td>
-          <td class="num">
-            <div class="discovery-score-cell">
-              <span class="mono discovery-score-cell__value">${escapeHtml(score)}</span>
-              <span class="${discoveryBadgeClass(classification)}">${escapeHtml(classification)}</span>
-              <span class="muted small discovery-score-cell__explain">${escapeHtml(row.explanation || "")}</span>
-            </div>
-          </td>
+          <td class="mono num">${escapeHtml(score)}</td>
           <td><span class="${discoveryBadgeClass(classification)}">${escapeHtml(classification)}</span></td>
         </tr>
         <tr class="discovery-detail-row" ${expanded ? "" : "hidden"}>
-          <td colspan="11">${renderInstitutionalDiscoveryDetail(row)}</td>
+          <td colspan="10">${renderInstitutionalDiscoveryDetail(row)}</td>
         </tr>`;
       })
       .join("");
@@ -17194,7 +17000,7 @@ async function loadInstitutionalDiscoveryHub() {
   } catch (err) {
     const body = document.getElementById("institutional-discovery-body");
     if (body) {
-      body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">${escapeHtml(
+      body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${escapeHtml(
         err instanceof Error ? err.message : String(err)
       )}</td></tr>`;
     }
@@ -17296,7 +17102,7 @@ async function loadSmartMoneyHub() {
       .map(
         (row, i) => `<tr>
         <td class="mono num">${i + 1}</td>
-        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
+        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}"><span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span></a></td>
         <td class="mono num">${Number(row.smartMoneyConvictionScore).toFixed(1)}</td>
         <td class="mono num">${formatSmartMoneyComponent(row.institutionalScore)}</td>
         <td class="mono num">${formatSmartMoneyComponent(row.insiderScore)}</td>
@@ -17633,32 +17439,6 @@ function renderOwnershipIntelligencePanel(data, errMsg) {
   }
 }
 
-function snapshotSourceLabel(symbol) {
-  return symbol ? `Yahoo Finance · ${symbol}` : "Yahoo Finance";
-}
-
-function renderSnapshotItem({ key, label }, data) {
-  const val = formatSnapshotValue(key, data[key]);
-  return `<div class="overview-snapshot-item">
-    <span class="overview-snapshot-item__label">${escapeHtml(label)}</span>
-    <span class="overview-snapshot-item__value mono">${val}</span>
-  </div>`;
-}
-
-function renderSnapshotBody(data) {
-  const source = snapshotSourceLabel(data.symbol);
-  return OVERVIEW_SNAPSHOT_SECTIONS.map(({ title, metrics }) => {
-    const items = metrics.map((m) => renderSnapshotItem(m, data)).join("");
-    return `<details class="overview-snapshot-group" open>
-      <summary class="overview-snapshot-group__summary">
-        <span class="overview-snapshot-group__title">${escapeHtml(title)}</span>
-        <span class="overview-snapshot-group__source muted small">${escapeHtml(source)}</span>
-      </summary>
-      <div class="overview-snapshot-group__grid">${items}</div>
-    </details>`;
-  }).join("");
-}
-
 function neutralBadgeHtml() {
   return '<span class="overview-signal-dot" aria-hidden="true"></span>';
 }
@@ -17673,19 +17453,21 @@ function overallRatingClass(rating) {
   return `overview-header__rating--${String(rating || "neutral").toLowerCase()}`;
 }
 
-function renderTopSignalRow({ metric, signal, value }) {
+function renderTopSignalRow({ metric, displayMetric, signal, value }) {
+  const name = displayMetric || metric;
   const val = formatSignalMetricValue(metric, value);
   return `<li class="overview-top-signal overview-top-signal--${escapeHtml(signal)}">
     <span class="overview-top-signal__badge" aria-hidden="true">${signalBadgeHtml(signal)}</span>
-    <span class="overview-top-signal__metric">${escapeHtml(metric)}</span>
+    <span class="overview-top-signal__metric">${escapeHtml(name)}</span>
     <span class="overview-top-signal__value mono">${val}</span>
   </li>`;
 }
 
-function renderCategoryDetailRow({ metric, signal, value }) {
+function renderCategoryDetailRow({ metric, displayMetric, signal, value }) {
+  const name = displayMetric || metric;
   const val = formatSignalMetricValue(metric, value);
   return `<div class="overview-category-metric">
-    <span class="overview-category-metric__name">${escapeHtml(metric)}</span>
+    <span class="overview-category-metric__name">${escapeHtml(name)}</span>
     <span class="overview-category-metric__value mono">${val}</span>
     <span class="overview-category-metric__badge" aria-hidden="true">${signalBadgeHtml(signal)}</span>
   </div>`;
@@ -17738,35 +17520,6 @@ function renderCategoryScoresPanel(secFilings, errMsg) {
   categoriesEl.innerHTML = categories.map(renderCategoryCard).join("");
 }
 
-function renderSnapshotGrid(data) {
-  return renderSnapshotBody(data);
-}
-
-function renderStockFundamentalsPanel(fundamentalsData, errMsg) {
-  const snapshotEl = document.getElementById("overview-snapshot-grid");
-
-  if (errMsg) {
-    if (snapshotEl) {
-      snapshotEl.classList.add("overview-snapshot-body--empty");
-      snapshotEl.innerHTML = `<p class="fundamentals-grid__empty">${escapeHtml(errMsg)}</p>`;
-    }
-    return;
-  }
-
-  if (!fundamentalsData) {
-    if (snapshotEl) {
-      snapshotEl.classList.add("overview-snapshot-body--empty");
-      snapshotEl.innerHTML = `<p class="fundamentals-grid__empty">Select a stock to load company data.</p>`;
-    }
-    return;
-  }
-
-  if (snapshotEl) {
-    snapshotEl.classList.remove("overview-snapshot-body--empty");
-    snapshotEl.innerHTML = renderSnapshotGrid(fundamentalsData);
-  }
-}
-
 function renderStockOverview(overviewData, errMsg) {
   const panel = document.getElementById("overview-panel");
   const scoreEl = document.getElementById("overview-total-score");
@@ -17777,8 +17530,7 @@ function renderStockOverview(overviewData, errMsg) {
   const keyStatsEl = document.getElementById("overview-key-stats-grid");
 
   const secFilings = overviewData?.secFilings ?? null;
-  const yahooFundamentals = overviewData?.yahooFundamentals ?? null;
-  const hasOverviewData = Boolean(secFilings || yahooFundamentals);
+  const hasOverviewData = Boolean(secFilings);
 
   if (panel) panel.classList.toggle("overview-panel--empty", !hasOverviewData || !!errMsg);
 
@@ -17819,7 +17571,7 @@ function renderStockOverview(overviewData, errMsg) {
     if (bearishEl) bearishEl.innerHTML = "";
     if (keyStatsEl) {
       keyStatsEl.classList.add("overview-key-stats__grid--empty");
-      keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">Select a stock to load key statistics.</p>`;
+      keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">Select a stock to load metrics.</p>`;
     }
     return;
   }
@@ -17872,12 +17624,15 @@ function renderStockOverview(overviewData, errMsg) {
   }
 
   if (keyStatsEl) {
-    if (yahooFundamentals) {
+    if (secFilings && hasOverviewFilingMetrics(secFilings)) {
       keyStatsEl.classList.remove("overview-key-stats__grid--empty");
-      keyStatsEl.innerHTML = renderKeyStatsGrid(yahooFundamentals);
+      keyStatsEl.innerHTML = renderOverviewMetricsGrid(secFilings);
+    } else if (secFilings) {
+      keyStatsEl.classList.add("overview-key-stats__grid--empty");
+      keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">Metrics unavailable for this ticker.</p>`;
     } else {
       keyStatsEl.classList.add("overview-key-stats__grid--empty");
-      keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">Key statistics unavailable.</p>`;
+      keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">Metrics unavailable.</p>`;
     }
   }
 }
@@ -17887,7 +17642,6 @@ function renderOverviewEmpty(msg) {
   renderStockOverview(null);
   renderCategoryScoresPanel(null);
   renderOwnershipIntelligencePanel(null);
-  renderStockFundamentalsPanel(null);
   if (msg) {
     const bullishEl = document.getElementById("overview-bullish-list");
     const keyStatsEl = document.getElementById("overview-key-stats-grid");
@@ -17899,13 +17653,9 @@ function renderOverviewEmpty(msg) {
       keyStatsEl.classList.add("overview-key-stats__grid--empty");
       keyStatsEl.innerHTML = `<p class="fundamentals-grid__empty">${text}</p>`;
     }
-    renderStockFundamentalsPanel(null, msg);
   }
 }
 
-function renderFundamentalsEmpty(msg) {
-  renderOverviewEmpty(msg);
-}
 
 function formatPrice(n, currency = activeCurrency) {
   const code = currency || "USD";
@@ -17959,14 +17709,109 @@ async function fetchWatchlistEntry(symbol) {
     changePct: quote.changePct,
     currency: quote.currency,
     exchange: quote.exchange,
-    sparkline: quote.sparkline,
+    notifications: [],
+    signals: [],
+    latestActivity: null,
   };
+}
+
+function renderWatchlistNotifications(notifications, status) {
+  if (status === "loading") {
+    return `<span class="watchlist__notices"><span class="watchlist__notice watchlist__notice--loading">Loading…</span></span>`;
+  }
+  const list = Array.isArray(notifications) ? notifications : [];
+  if (!list.length) {
+    return `<span class="watchlist__notices watchlist__notices--empty" aria-hidden="true"></span>`;
+  }
+  return `<span class="watchlist__notices">${list
+    .map((n) => {
+      const tone = n?.tone === "buy" || n?.tone === "sell" ? n.tone : "neutral";
+      const label = String(n?.label || "").trim();
+      if (!label) return "";
+      return `<span class="watchlist__notice watchlist__notice--${tone}">${escapeHtml(label)}</span>`;
+    })
+    .filter(Boolean)
+    .join("")}</span>`;
+}
+
+let watchlistActivitySeq = 0;
+
+async function loadWatchlistActivity() {
+  if (!watchlist.length) return;
+  const tickers = watchlist.map((w) => String(w.symbol || "").trim().toUpperCase()).filter(Boolean);
+  if (!tickers.length) return;
+  const seq = ++watchlistActivitySeq;
+
+  watchlist = watchlist.map((w) => ({ ...w, noticesStatus: "loading" }));
+  renderWatchlist();
+
+  const queue = [...tickers];
+  let failures = 0;
+
+  async function loadOne(ticker) {
+    try {
+      const data = await apiJson("/api/watchlist/activity", { tickers: ticker });
+      if (seq !== watchlistActivitySeq) return;
+      const row = Array.isArray(data?.rows) ? data.rows[0] : null;
+      watchlist = watchlist.map((w) => {
+        if (String(w.symbol || "").toUpperCase() !== ticker) return w;
+        return {
+          ...w,
+          notifications: Array.isArray(row?.notifications) ? row.notifications : [],
+          signals: Array.isArray(row?.signals) ? row.signals : [],
+          latestActivity: row?.latestActivity || null,
+          noticesStatus: "ready",
+        };
+      });
+      renderWatchlist();
+    } catch {
+      if (seq !== watchlistActivitySeq) return;
+      failures += 1;
+      watchlist = watchlist.map((w) =>
+        String(w.symbol || "").toUpperCase() === ticker
+          ? { ...w, noticesStatus: "ready" }
+          : w
+      );
+      renderWatchlist();
+    }
+  }
+
+  const concurrency = Math.min(4, queue.length);
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      while (queue.length && seq === watchlistActivitySeq) {
+        const ticker = queue.shift();
+        if (!ticker) break;
+        await loadOne(ticker);
+      }
+    })
+  );
+
+  if (seq === watchlistActivitySeq && failures === tickers.length && tickers.length) {
+    setDashboardStatus("Watchlist activity failed to load. Is the server running?", true);
+    setTimeout(() => setDashboardStatus(""), 8000);
+  }
 }
 
 async function refreshWatchlistFromApi() {
   if (!watchlist.length) return;
+  const prevBySymbol = new Map(
+    watchlist.map((w) => [String(w.symbol || "").toUpperCase(), w])
+  );
   const settled = await Promise.allSettled(watchlist.map((w) => fetchWatchlistEntry(w.symbol)));
-  const next = settled.filter((r) => r.status === "fulfilled").map((r) => r.value);
+  const next = settled
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => {
+      const entry = r.value;
+      const prev = prevBySymbol.get(String(entry.symbol || "").toUpperCase());
+      return {
+        ...entry,
+        notifications: Array.isArray(prev?.notifications) ? prev.notifications : [],
+        signals: Array.isArray(prev?.signals) ? prev.signals : [],
+        latestActivity: prev?.latestActivity || null,
+        noticesStatus: prev?.noticesStatus || "ready",
+      };
+    });
   const failed = watchlist.length - next.length;
   if (next.length) {
     watchlist = next;
@@ -17977,6 +17822,7 @@ async function refreshWatchlistFromApi() {
     setTimeout(() => setDashboardStatus(""), 8000);
   }
   updateWatchlistBadge();
+  await loadWatchlistActivity();
 }
 
 async function searchStocks(query) {
@@ -18435,6 +18281,7 @@ async function addToWatchlist(symbol) {
     updateWatchlistBadge();
     closeWatchlistSearch();
     renderWatchlist();
+    void loadWatchlistActivity();
     renderHeader();
     renderEmptyMain(false);
     await loadActiveSymbolPanels();
@@ -18501,11 +18348,11 @@ function renderWatchlist() {
       (w, i) => `
     <li class="watchlist__item ${i === activeIndex ? "is-active" : ""}" data-index="${i}">
       <button type="button" class="watchlist__select" data-index="${i}" aria-label="Open ${escapeHtml(w.symbol)}">
-        <span class="watchlist__sym">${escapeHtml(w.symbol)}</span>
-        <span class="watchlist__chg watchlist__chg--${w.changePct >= 0 ? "up" : "down"}">${formatChange(w.changePct)}</span>
+        <span class="watchlist__head">
+          <span class="watchlist__sym">${escapeHtml(w.symbol)}</span>
+          ${renderWatchlistNotifications(w.notifications, w.noticesStatus)}
+        </span>
         <span class="watchlist__name">${escapeHtml(w.name)}</span>
-        ${buildSparklineSvg(w.sparkline, w.changePct >= 0, { className: "watchlist__spark", width: 48, height: 18 })}
-        <span class="watchlist__price">${formatPrice(w.price)}</span>
       </button>
       <button type="button" class="watchlist__remove" data-remove-index="${i}" aria-label="Remove ${escapeHtml(w.symbol)} from watchlist" title="Remove">×</button>
     </li>
@@ -18560,14 +18407,14 @@ function renderEmptyMain(empty) {
     if (secBody) {
       secBody.innerHTML = `<tr><td colspan="5" class="trades-table__empty">Add a stock to see SEC filings.</td></tr>`;
     }
-    renderFundamentalsEmpty("Select a stock to load overview metrics.");
+    renderSecFilingsFundamentalsExtras(null);
+    renderOverviewEmpty("Select a stock to load overview metrics.");
     renderOwnershipEmpty("Add a stock to see institutional holders.");
     ownershipExpanded = false;
     secFilingsExpanded = false;
     lastSecFilings = [];
     updateSecFilingsMoreControl();
     setSecSubtitle("data.sec.gov submissions (recent)");
-    renderEarningsEmpty("Add a stock to see earnings history.");
     updateStockAddWatchlistBtn();
     return;
   }
@@ -18686,6 +18533,8 @@ const FILINGS_FUNDAMENTALS_BALANCE_KEYS = [
   ["property_plant_equipment", "Property, plant & equipment"],
   ["goodwill", "Goodwill"],
   ["long_term_debt", "Long-term debt"],
+  ["commercial_paper", "Commercial paper"],
+  ["notes_carrying_amount", "Notes carrying amount"],
   ["debt", "Debt"],
   ["shares_outstanding", "Shares outstanding"],
 ];
@@ -18703,8 +18552,8 @@ const FILINGS_FUNDAMENTALS_DERIVED_KEYS = [
   ["gross_margin", "Gross margin", "pct"],
   ["operating_margin", "Operating margin", "pct"],
   ["net_margin", "Net margin", "pct"],
-  ["roe", "Return on equity", "pct"],
-  ["roa", "Return on assets", "pct"],
+  ["roe", "ROE", "pct"],
+  ["roa", "ROA", "pct"],
   ["free_cash_flow_margin", "Free cash flow margin", "pct"],
   ["revenue_growth_yoy", "Revenue growth YoY", "pct"],
   ["eps_growth_yoy", "EPS growth YoY", "pct"],
@@ -18778,6 +18627,14 @@ function formatMetricSourceDebug(source) {
   const parts = [];
   if (source.gaapTag) parts.push(source.gaapTag);
   if (source.accn) parts.push(source.accn);
+  const der = source.derivation;
+  if (der?.method === "ytd_minus_prior_ytd" && der.current && der.prior) {
+    const curEnd = der.current.end ? String(der.current.end).slice(0, 10) : "";
+    const priorEnd = der.prior.end ? String(der.prior.end).slice(0, 10) : "";
+    parts.push(
+      `derived ${curEnd || "current"} − ${priorEnd || "prior"}${der.prior.accn ? ` (${der.prior.accn})` : ""}`
+    );
+  }
   return parts.length ? parts.join(" · ") : "—";
 }
 
@@ -18815,10 +18672,8 @@ function renderFilingsFundamentalsSector(classification) {
   el.innerHTML = `<div class="overview-snapshot-group__grid">${items}</div>`;
 }
 
-function renderFilingsFundamentalsMetricGrid(elId, latest, keyList, emptyMsg) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  const items = keyList
+function renderFilingsFundamentalsMetricItems(latest, keyList) {
+  return keyList
     .map(([key, label]) => {
       const row = latest?.[key];
       const unit =
@@ -18837,20 +18692,22 @@ function renderFilingsFundamentalsMetricGrid(elId, latest, keyList, emptyMsg) {
             ? formatSecDerivedPercent(v)
             : formatSecFundamentalValue(v, row.unit ?? unit);
       }
-      const debug = row?.gaapTag
-        ? `<span class="muted small filings-fundamentals-debug">${escapeHtml(formatMetricSourceDebug(row))}</span>`
-        : "";
       const period =
-        row?.end || row?.fp
-          ? ` <span class="muted small">(${escapeHtml([row.fp, row.end].filter(Boolean).join(" · "))})</span>`
+        row?.end || row?.periodLabel || row?.fp
+          ? ` <span class="muted small">(${escapeHtml([row.periodLabel || row.fp, row.end].filter(Boolean).join(" · "))})</span>`
           : "";
       return `<div class="overview-snapshot-item">
       <span class="overview-snapshot-item__label">${escapeHtml(label)}</span>
       <span class="overview-snapshot-item__value mono">${val}${period}</span>
-      ${debug}
     </div>`;
     })
     .join("");
+}
+
+function renderFilingsFundamentalsMetricGrid(elId, latest, keyList, emptyMsg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const items = renderFilingsFundamentalsMetricItems(latest, keyList);
   const hasAny = keyList.some(([key]) => latest?.[key] != null);
   if (!hasAny) {
     el.classList.add("overview-snapshot-body--empty");
@@ -18859,6 +18716,67 @@ function renderFilingsFundamentalsMetricGrid(elId, latest, keyList, emptyMsg) {
   }
   el.classList.remove("overview-snapshot-body--empty");
   el.innerHTML = `<div class="overview-snapshot-group__grid">${items}</div>`;
+}
+
+function cashFlowSectionTitle(bundle, mode) {
+  if (mode === "derived") {
+    const sample =
+      bundle?.operating_cash_flow ||
+      bundle?.capital_expenditures ||
+      bundle?.free_cash_flow ||
+      null;
+    const fp = sample?.fp || sample?.periodLabel?.split("·")[0]?.trim() || "Quarter";
+    return fp;
+  }
+  const sample =
+    bundle?.operating_cash_flow ||
+    bundle?.capital_expenditures ||
+    bundle?.free_cash_flow ||
+    null;
+  return sample?.periodLabel || sample?.fp || "Reported";
+}
+
+function renderFilingsFundamentalsCashFlow(cashFlow, emptyMsg) {
+  const el = document.getElementById("filings-fundamentals-cashflow");
+  if (!el) return;
+  const reported = cashFlow?.latest ?? cashFlow ?? {};
+  const derived = cashFlow?.latestDerivedQuarter ?? null;
+  const hasReported = FILINGS_FUNDAMENTALS_CASHFLOW_KEYS.some(([key]) => reported?.[key] != null);
+  const hasDerived = derived
+    ? FILINGS_FUNDAMENTALS_CASHFLOW_KEYS.some(([key]) => derived?.[key] != null)
+    : false;
+
+  if (!hasReported && !hasDerived) {
+    el.classList.add("overview-snapshot-body--empty");
+    el.innerHTML = `<p class="fundamentals-grid__empty">${escapeHtml(emptyMsg)}</p>`;
+    return;
+  }
+
+  const sections = [];
+  if (hasDerived) {
+    const title = cashFlowSectionTitle(derived, "derived");
+    sections.push(`<section class="overview-snapshot-group filings-fundamentals-cashflow-group" open>
+      <div class="overview-snapshot-group__heading">
+        <span class="overview-snapshot-group__title">${escapeHtml(title)}</span>
+        <span class="muted small overview-snapshot-group__source">derived</span>
+      </div>
+      <div class="overview-snapshot-group__grid">${renderFilingsFundamentalsMetricItems(derived, FILINGS_FUNDAMENTALS_CASHFLOW_KEYS)}</div>
+    </section>`);
+  }
+  if (hasReported) {
+    const title = cashFlowSectionTitle(reported, "reported");
+    const end = reported.operating_cash_flow?.end || reported.free_cash_flow?.end || "";
+    sections.push(`<section class="overview-snapshot-group filings-fundamentals-cashflow-group" open>
+      <div class="overview-snapshot-group__heading">
+        <span class="overview-snapshot-group__title">${escapeHtml(title)}</span>
+        ${end ? `<span class="muted small overview-snapshot-group__source">${escapeHtml(String(end).slice(0, 10))}</span>` : ""}
+      </div>
+      <div class="overview-snapshot-group__grid">${renderFilingsFundamentalsMetricItems(reported, FILINGS_FUNDAMENTALS_CASHFLOW_KEYS)}</div>
+    </section>`);
+  }
+
+  el.classList.remove("overview-snapshot-body--empty");
+  el.innerHTML = sections.join("");
 }
 
 function formatSecDerivedValue(value, format) {
@@ -18879,13 +18797,24 @@ function formatSecDerivedValue(value, format) {
   }
 }
 
-function renderFilingsFundamentalsDerivedGrid(derived) {
+function renderFilingsFundamentalsDerivedGrid(derived, periodLabels) {
   const el = document.getElementById("filings-fundamentals-derived");
   if (!el) return;
+  const labels = periodLabels || {};
   const items = FILINGS_FUNDAMENTALS_DERIVED_KEYS.map(([key, label, format]) => {
+    let displayLabel = label;
+    if (key === "roe") {
+      displayLabel = labels.roe ? `ROE (${labels.roe})` : "ROE";
+    } else if (key === "roa") {
+      displayLabel = labels.roa ? `ROA (${labels.roa})` : "ROA";
+    } else if (key === "asset_turnover") {
+      displayLabel = labels.asset_turnover
+        ? `Asset turnover (${labels.asset_turnover})`
+        : "Asset turnover";
+    }
     const val = formatSecDerivedValue(derived?.[key], format);
     return `<div class="overview-snapshot-item">
-      <span class="overview-snapshot-item__label">${escapeHtml(label)}</span>
+      <span class="overview-snapshot-item__label">${escapeHtml(displayLabel)}</span>
       <span class="overview-snapshot-item__value mono">${escapeHtml(val)}</span>
     </div>`;
   }).join("");
@@ -18993,7 +18922,7 @@ function renderFilingsFundamentalsEarningsRow(r) {
 }
 
 function renderFilingsFundamentalsEarningsTable(rows) {
-  const body = document.getElementById("filings-fundamentals-earnings-body");
+  const body = document.getElementById("sec-filings-earnings-body");
   if (!body) return;
   if (!rows?.length) {
     body.innerHTML =
@@ -19001,6 +18930,34 @@ function renderFilingsFundamentalsEarningsTable(rows) {
     return;
   }
   body.innerHTML = rows.map(renderFilingsFundamentalsEarningsRow).join("");
+}
+
+function renderSecFilingsFundamentalsExtras(data, errMsg) {
+  const emptyFiling = (msg) =>
+    `<tr><td colspan="5" class="trades-table__empty">${escapeHtml(msg)}</td></tr>`;
+  const emptyEarnings = (msg) =>
+    `<tr><td colspan="7" class="trades-table__empty">${escapeHtml(msg)}</td></tr>`;
+
+  if (errMsg) {
+    const tenK = document.getElementById("sec-filings-10k-body");
+    const earnings = document.getElementById("sec-filings-earnings-body");
+    if (tenK) tenK.innerHTML = emptyFiling(errMsg);
+    if (earnings) earnings.innerHTML = emptyEarnings(errMsg);
+    return;
+  }
+
+  if (!data) {
+    renderFilingsFundamentalsFilingTable("sec-filings-10k-body", [], "Select a stock to load 10-K filings.");
+    renderFilingsFundamentalsEarningsTable([]);
+    return;
+  }
+
+  renderFilingsFundamentalsFilingTable(
+    "sec-filings-10k-body",
+    data.filings?.["10-K"],
+    "No 10-K filings in recent submissions."
+  );
+  renderFilingsFundamentalsEarningsTable(data.earningsReleases);
 }
 
 function renderFilingsFundamentalsFilingRow(r) {
@@ -19048,18 +19005,11 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
       }
     }
     const empty = `<tr><td colspan="10" class="trades-table__empty">${escapeHtml(errMsg)}</td></tr>`;
-    const emptyFiling = `<tr><td colspan="5" class="trades-table__empty">${escapeHtml(errMsg)}</td></tr>`;
-    for (const id of [
-      "filings-fundamentals-annual-body",
-      "filings-fundamentals-quarterly-body",
-      "filings-fundamentals-earnings-body",
-      "filings-fundamentals-10k-body",
-      "filings-fundamentals-10q-body",
-      "filings-fundamentals-8k-body",
-    ]) {
+    for (const id of ["filings-fundamentals-annual-body", "filings-fundamentals-quarterly-body"]) {
       const body = document.getElementById(id);
-      if (body) body.innerHTML = id.includes("10") || id.includes("8k") ? emptyFiling : empty;
+      if (body) body.innerHTML = empty;
     }
+    renderSecFilingsFundamentalsExtras(null, errMsg);
     return;
   }
 
@@ -19078,12 +19028,7 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
       FILINGS_FUNDAMENTALS_BALANCE_KEYS,
       "Select a stock to load balance sheet metrics."
     );
-    renderFilingsFundamentalsMetricGrid(
-      "filings-fundamentals-cashflow",
-      null,
-      FILINGS_FUNDAMENTALS_CASHFLOW_KEYS,
-      "Select a stock to load cash flow metrics."
-    );
+    renderFilingsFundamentalsCashFlow(null, "Select a stock to load cash flow metrics.");
     renderFilingsFundamentalsDerivedGrid(null);
     renderFilingsFundamentalsPeriodTable(
       "filings-fundamentals-annual-body",
@@ -19095,22 +19040,7 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
       [],
       "Select a stock to load quarterly SEC financials."
     );
-    renderFilingsFundamentalsEarningsTable([]);
-    renderFilingsFundamentalsFilingTable(
-      "filings-fundamentals-10k-body",
-      [],
-      "No 10-K filings on record."
-    );
-    renderFilingsFundamentalsFilingTable(
-      "filings-fundamentals-10q-body",
-      [],
-      "No 10-Q filings on record."
-    );
-    renderFilingsFundamentalsFilingTable(
-      "filings-fundamentals-8k-body",
-      [],
-      "No 8-K filings on record."
-    );
+    renderSecFilingsFundamentalsExtras(null);
     return;
   }
 
@@ -19118,19 +19048,14 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
   if (data.entityName) parts.push(data.entityName);
   if (data.cik) parts.push(`CIK ${String(data.cik).replace(/^0+/, "")}`);
   setFilingsFundamentalsSubtitle(parts.join(" · "));
+
   renderFilingsFundamentalsSector(data.classification);
   if (data.classification) lastStockClassification = data.classification;
   renderStockClassificationLabel(lastStockClassification);
 
   const income = data.statements?.incomeStatement?.latest ?? data.latest ?? {};
   const balance = data.statements?.balanceSheet?.latest ?? {};
-  const cash = data.statements?.cashFlow?.latest ?? {};
-  const cashWithDerived = {
-    ...cash,
-    free_cash_flow: data.derivedLatest?.free_cash_flow
-      ? { value: data.derivedLatest.free_cash_flow, unit: "USD" }
-      : null,
-  };
+  const cashFlowBundle = data.statements?.cashFlow ?? null;
 
   renderFilingsFundamentalsMetricGrid(
     "filings-fundamentals-income",
@@ -19144,13 +19069,11 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
     FILINGS_FUNDAMENTALS_BALANCE_KEYS,
     "No balance sheet metrics in Company Facts."
   );
-  renderFilingsFundamentalsMetricGrid(
-    "filings-fundamentals-cashflow",
-    cashWithDerived,
-    FILINGS_FUNDAMENTALS_CASHFLOW_KEYS,
+  renderFilingsFundamentalsCashFlow(
+    cashFlowBundle,
     "No cash flow metrics in Company Facts."
   );
-  renderFilingsFundamentalsDerivedGrid(data.derivedLatest);
+  renderFilingsFundamentalsDerivedGrid(data.derivedLatest, data.derivedPeriodLabels);
 
   renderFilingsFundamentalsPeriodTable(
     "filings-fundamentals-annual-body",
@@ -19162,22 +19085,7 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
     dedupeFilingsPeriodRows(data.quarterly),
     "No quarterly (10-Q / Q1–Q3) periods found."
   );
-  renderFilingsFundamentalsEarningsTable(data.earningsReleases);
-  renderFilingsFundamentalsFilingTable(
-    "filings-fundamentals-10k-body",
-    data.filings?.["10-K"],
-    "No 10-K filings in recent submissions."
-  );
-  renderFilingsFundamentalsFilingTable(
-    "filings-fundamentals-10q-body",
-    data.filings?.["10-Q"],
-    "No 10-Q filings in recent submissions."
-  );
-  renderFilingsFundamentalsFilingTable(
-    "filings-fundamentals-8k-body",
-    data.filings?.["8-K"],
-    "No 8-K filings in recent submissions."
-  );
+  renderSecFilingsFundamentalsExtras(data);
 }
 
 async function loadFilingsFundamentalsPanel(symbol) {
@@ -19187,6 +19095,7 @@ async function loadFilingsFundamentalsPanel(symbol) {
   lastFilingsFundamentals = null;
   renderFilingsFundamentalsPanel(null, "Loading SEC financials…");
   renderFilingsFundamentalsSector(null);
+  renderSecFilingsFundamentalsExtras(null, "Loading SEC financials…");
   try {
     const data = await apiJson(
       `/api/stocks/${encodeURIComponent(sym)}/filings-fundamentals?_=${Date.now()}`
@@ -19197,6 +19106,7 @@ async function loadFilingsFundamentalsPanel(symbol) {
     lastFilingsFundamentals = null;
     const msg = err instanceof Error ? err.message : String(err);
     renderFilingsFundamentalsPanel(null, msg);
+    renderSecFilingsFundamentalsExtras(null, msg);
   }
 }
 
@@ -20049,15 +19959,16 @@ async function loadActiveSymbolPanels() {
   setSecSubtitle("Loading SEC submissions…");
   renderStockOverview(null, "Loading…");
   renderCategoryScoresPanel(null, "Loading…");
+  if (activeStockTab === "signals") {
+    void loadSignalsPanel(sym);
+  }
   renderOwnershipIntelligencePanel(null, "Loading…");
   renderStockInsiderCluster(null);
-  renderStockFundamentalsPanel(null, "Loading…");
   renderOwnershipHoldersBody(
     `<tr><td colspan="6" class="trades-table__empty">Loading institutional holders…</td></tr>`
   );
 
-  const [fundRes, secFilRes, ownRes, secRes, insiderRes, intelRes, classRes] = await Promise.allSettled([
-    fetchFundamentals(sym),
+  const [secFilRes, ownRes, secRes, insiderRes, intelRes, classRes] = await Promise.allSettled([
     fetchFilingsFundamentals(sym),
     fetchTopHolders(sym),
     fetchSecFilings(sym, 30),
@@ -20070,27 +19981,21 @@ async function loadActiveSymbolPanels() {
     fetchStockClassification(sym),
   ]);
 
-  const yahooFundamentals = fundRes.status === "fulfilled" ? fundRes.value : null;
   const secFilings = secFilRes.status === "fulfilled" ? secFilRes.value : null;
+  lastFilingsFundamentals = secFilings;
   lastSecFilingsForScores = secFilings;
   renderCategoryScoresPanel(secFilings);
+  renderSecFilingsFundamentalsExtras(secFilings, secFilRes.status === "rejected" ? String(secFilRes.reason?.message || secFilRes.reason) : null);
 
   if (secFilings) {
     const parts = ["SEC Company Facts"];
     if (secFilings.entityName) parts.push(secFilings.entityName);
     if (secFilings.ticker) parts.push(secFilings.ticker);
     setOverviewDataSource(parts.join(" · "));
-    renderStockOverview({ secFilings, yahooFundamentals });
+    renderStockOverview({ secFilings });
   } else {
     setOverviewDataSource("SEC Company Facts (error)");
-    renderStockOverview(yahooFundamentals ? { yahooFundamentals } : null);
-  }
-
-  if (yahooFundamentals) {
-    renderStockFundamentalsPanel(yahooFundamentals);
-  } else {
-    const msg = String(fundRes.reason?.message || fundRes.reason);
-    renderStockFundamentalsPanel(null, msg);
+    renderStockOverview(null);
   }
 
   if (intelRes.status === "fulfilled") {
@@ -20169,9 +20074,7 @@ async function loadActiveSymbolPanels() {
     renderSecFilingsTable();
   }
 
-  if (activeStockTab === "earnings") {
-    void loadEarningsPanel(sym);
-  } else if (activeStockTab === "filings-fundamentals") {
+  if (activeStockTab === "filings-fundamentals") {
     void loadFilingsFundamentalsPanel(sym);
   } else if (activeStockTab === "signals") {
     void loadSignalsPanel(sym);
@@ -20479,16 +20382,6 @@ async function handleRouteChange() {
     updateStocksView();
     return;
   }
-  if (route.earningsCalendar) {
-    setEarningsCalendarVisible(true);
-    void loadEarningsCalendarPage();
-    return;
-  }
-  if (route.marketMovers) {
-    setMarketMoversVisible(route.marketMovers);
-    void loadMarketMoversPage(route.marketMovers);
-    return;
-  }
   closeStocksOverlays();
   if (route.symbol) {
     await openStockFromRoute(route);
@@ -20505,6 +20398,16 @@ function setupStockTabs() {
     btn.addEventListener("click", () => {
       setStockTab(btn.dataset.stockTab || "overview");
     });
+  });
+  document.getElementById("signals-grid")?.addEventListener("click", (e) => {
+    const link = e.target.closest?.("[data-signal-hub-link]");
+    if (!link) return;
+    e.preventDefault();
+    const href = link.getAttribute("data-signal-hub-link");
+    if (href) {
+      history.pushState({}, "", href);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   });
   window.addEventListener("popstate", () => {
     void handleRouteChange();
@@ -20586,19 +20489,11 @@ function setupExploreNav() {
         })();
         return;
       }
-      if (view === "performance") {
+      if (view === "performance" || view === "proxy-performance") {
         void (async () => {
           await ensureInstitutionsIndex();
           setExploreMode("institutions", { navigate: false });
           navigateToInstitutionPerformanceRankings();
-        })();
-        return;
-      }
-      if (view === "proxy-performance") {
-        void (async () => {
-          await ensureInstitutionsIndex();
-          setExploreMode("institutions", { navigate: false });
-          navigateToInstitutionProxyPerformance();
         })();
         return;
       }
@@ -20859,6 +20754,12 @@ function setupLanding() {
   document.getElementById("landing-enter-institutions")?.addEventListener("click", () => {
     void enterAppFromLanding("institutions");
   });
+  document.getElementById("landing-enter-insiders")?.addEventListener("click", () => {
+    void enterAppFromLanding("insiders");
+  });
+  document.getElementById("landing-enter-politicians")?.addEventListener("click", () => {
+    void enterAppFromLanding("politicians");
+  });
   document.getElementById("logo-home-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     navigateToLanding();
@@ -21048,6 +20949,7 @@ async function init() {
         saveWatchlistSymbols();
         updateWatchlistBadge();
         renderWatchlist();
+        void loadWatchlistActivity();
         setDashboardStatus("");
       } catch {
         setDashboardStatus("");
@@ -21244,20 +21146,6 @@ async function init() {
     return;
   }
 
-  if (appRoute.earningsCalendar) {
-    setExploreMode("stocks", { navigate: false });
-    setEarningsCalendarVisible(true);
-    void loadEarningsCalendarPage();
-    return;
-  }
-
-  if (appRoute.marketMovers) {
-    setExploreMode("stocks", { navigate: false });
-    setMarketMoversVisible(appRoute.marketMovers);
-    void loadMarketMoversPage(appRoute.marketMovers);
-    return;
-  }
-
   const route = appRoute.mode === "stocks" && appRoute.symbol ? appRoute : parseStockRoute(window.location.pathname);
   const onStocksHubPath = window.location.pathname === "/stocks";
   const saved = loadSavedSymbols();
@@ -21289,6 +21177,7 @@ async function init() {
     }
     updateWatchlistBadge();
     renderWatchlist();
+    void loadWatchlistActivity();
     if (route) {
       await openStockFromRoute(route);
     } else if (onStocksHubPath) {
@@ -21373,6 +21262,20 @@ function setupActivityToggles() {
       renderActivityTables();
     });
   }
+  const exitsBtn = document.getElementById("activity-exits-more-btn");
+  if (exitsBtn) {
+    exitsBtn.addEventListener("click", () => {
+      activityExitsExpanded = !activityExitsExpanded;
+      renderActivityTables();
+    });
+  }
+  const newBtn = document.getElementById("activity-new-more-btn");
+  if (newBtn) {
+    newBtn.addEventListener("click", () => {
+      activityNewExpanded = !activityNewExpanded;
+      renderActivityTables();
+    });
+  }
   const fundsBtn = document.getElementById("options-funds-more-btn");
   if (fundsBtn) {
     fundsBtn.addEventListener("click", () => {
@@ -21396,6 +21299,7 @@ function setupInstitutionActivityToggles() {
       renderInstitutionActivityPanels({
         adds: lastInstitutionAdds,
         trims: lastInstitutionTrims,
+        completelySold: lastInstitutionExits,
         newPositions: lastInstitutionNewPositions,
         activity: lastInstitutionActivityAll,
       });
@@ -21408,6 +21312,20 @@ function setupInstitutionActivityToggles() {
       renderInstitutionActivityPanels({
         adds: lastInstitutionAdds,
         trims: lastInstitutionTrims,
+        completelySold: lastInstitutionExits,
+        newPositions: lastInstitutionNewPositions,
+        activity: lastInstitutionActivityAll,
+      });
+    });
+  }
+  const exitsBtn = document.getElementById("institution-exits-more-btn");
+  if (exitsBtn) {
+    exitsBtn.addEventListener("click", () => {
+      institutionExitsExpanded = !institutionExitsExpanded;
+      renderInstitutionActivityPanels({
+        adds: lastInstitutionAdds,
+        trims: lastInstitutionTrims,
+        completelySold: lastInstitutionExits,
         newPositions: lastInstitutionNewPositions,
         activity: lastInstitutionActivityAll,
       });
@@ -21420,6 +21338,7 @@ function setupInstitutionActivityToggles() {
       renderInstitutionActivityPanels({
         adds: lastInstitutionAdds,
         trims: lastInstitutionTrims,
+        completelySold: lastInstitutionExits,
         newPositions: lastInstitutionNewPositions,
         activity: lastInstitutionActivityAll,
       });
@@ -21457,8 +21376,7 @@ setupPoliticianSectorExposurePage();
 setupInsidersHub();
 setupExploreNav();
 setupLanding();
-setupUpcomingEarnings();
-setupMarketMovers();
+setupMarketPulseSidebar();
 setupEntityLinkDelegation();
 initChartExtensions();
 setupChartFullscreen();

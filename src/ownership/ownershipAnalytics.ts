@@ -12,6 +12,7 @@ import type {
 } from "./types.js";
 import {
   SELECT_RECENT_QUARTERS_FOR_CUSIPS_SQL,
+  SELECT_FILERS_WITH_QUARTER_FILING_SQL,
   SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL,
   SELECT_TRACKED_AGGREGATES_BY_FILER_SQL,
   SELECT_TRACKED_CALLS_BY_FILER_SQL,
@@ -20,6 +21,12 @@ import {
   SELECT_TRACKED_PUTS_BY_FILER_SQL,
 } from "./queries.js";
 import { resolveStockIdentifiers } from "./resolveStock.js";
+import {
+  fetchCachedQuarterPairMap,
+  fetchCachedTopHolders,
+  fetchPreviousHoldersForCiks,
+  loadOwnershipCacheSnapshot,
+} from "./ownershipCacheReader.js";
 import {
   canonicalFundName,
   TRACKED_INSTITUTIONAL_CIK_PADDED,
@@ -58,11 +65,14 @@ function holdingValueUsd(shares: number, stockPrice: number | null): number | nu
   return round2(shares * stockPrice);
 }
 
-/** 13F `value` / `value_usd_thousands` columns are reported in thousands of USD. */
-function filingValueUsd(valueThousands: number | null | undefined): number | null {
-  const x = Number(valueThousands);
+/**
+ * sec_holding.value is stored as USD dollars in this database (despite the
+ * historical value_usd_thousands column name). Do not multiply by 1,000.
+ */
+function filingValueUsd(valueFromDb: number | null | undefined): number | null {
+  const x = Number(valueFromDb);
   if (!Number.isFinite(x) || x <= 0) return null;
-  return round2(x * 1000);
+  return round2(x);
 }
 
 function mapOptionRows(
@@ -129,19 +139,26 @@ export async function loadOwnershipMeta(
   ticker: string
 ): Promise<OwnershipQueryMeta> {
   const stock = await resolveStockIdentifiers(pool, ticker);
+  const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, stock.ticker);
   const [quarters, impliedSharesOutstanding, quote] = await Promise.all([
-    loadRecentQuarters(pool, stock.cusips, 2),
-    fetchImpliedSharesOutstanding(stock.ticker),
+    cacheSnapshot?.currentQuarter
+      ? Promise.resolve([cacheSnapshot.currentQuarter, cacheSnapshot.previousQuarter].filter(Boolean) as string[])
+      : loadRecentQuarters(pool, stock.cusips, 2),
+    cacheSnapshot?.sharesOutstanding
+      ? Promise.resolve(cacheSnapshot.sharesOutstanding)
+      : fetchImpliedSharesOutstanding(stock.ticker),
     fetchStockPrice(stock.ticker),
   ]);
+  const sharesOutstanding =
+    cacheSnapshot?.sharesOutstanding ?? impliedSharesOutstanding;
   return {
     ticker: stock.ticker,
     cusips: stock.cusips,
     issuerHint: stock.issuerHint,
-    currentQuarter: quarters[0] ?? "",
-    previousQuarter: quarters[1] ?? null,
+    currentQuarter: cacheSnapshot?.currentQuarter ?? quarters[0] ?? "",
+    previousQuarter: cacheSnapshot?.previousQuarter ?? quarters[1] ?? null,
     trackedFundCount: TRACKED_INSTITUTIONAL_MANAGERS.length,
-    impliedSharesOutstanding,
+    impliedSharesOutstanding: sharesOutstanding,
     stockPrice: quote.price,
     currency: quote.currency,
   };
@@ -184,8 +201,23 @@ export async function fetchQuarterPairMap(
   currentQuarter: string,
   previousQuarter: string | null,
   sharesOutstanding: number | null,
-  stockPrice: number | null
+  stockPrice: number | null,
+  ticker?: string
 ): Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }> {
+  if (ticker) {
+    const snapshot = await loadOwnershipCacheSnapshot(pool, ticker);
+    if (snapshot?.currentQuarter === currentQuarter) {
+      return fetchCachedQuarterPairMap(
+        pool,
+        ticker,
+        cusips,
+        snapshot,
+        sharesOutstanding,
+        stockPrice
+      );
+    }
+  }
+
   const quarters = previousQuarter ? [currentQuarter, previousQuarter] : [currentQuarter];
   const res = await pool.query<TrackedFundAggRow & { quarter: string }>(
     SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL,
@@ -226,24 +258,51 @@ export async function getTopHolders(
     return { meta, holders: [] };
   }
   const limit = Math.min(200, Math.max(1, options.limit ?? 100));
-  let holders = await fetchTrackedAggregatesForQuarter(
-    pool,
-    meta.cusips,
-    meta.currentQuarter,
-    meta.impliedSharesOutstanding,
-    meta.stockPrice,
-    limit
-  );
 
-  if (meta.previousQuarter) {
-    const { previous } = await fetchQuarterPairMap(
+  const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, meta.ticker);
+  let holders: FundHoldingAggregate[];
+  if (cacheSnapshot?.currentQuarter === meta.currentQuarter) {
+    holders = await fetchCachedTopHolders(
+      pool,
+      meta.ticker,
+      meta.impliedSharesOutstanding,
+      meta.stockPrice,
+      limit
+    );
+  } else {
+    holders = await fetchTrackedAggregatesForQuarter(
       pool,
       meta.cusips,
       meta.currentQuarter,
-      meta.previousQuarter,
       meta.impliedSharesOutstanding,
-      meta.stockPrice
+      meta.stockPrice,
+      limit
     );
+  }
+
+  if (meta.previousQuarter) {
+    const ciks = holders.map((h) => h.filerCik).filter((c): c is string => Boolean(c));
+    const previous =
+      cacheSnapshot?.currentQuarter === meta.currentQuarter && ciks.length
+        ? await fetchPreviousHoldersForCiks(
+            pool,
+            meta.cusips,
+            meta.previousQuarter,
+            ciks,
+            meta.impliedSharesOutstanding,
+            meta.stockPrice
+          )
+        : (
+            await fetchQuarterPairMap(
+              pool,
+              meta.cusips,
+              meta.currentQuarter,
+              meta.previousQuarter,
+              meta.impliedSharesOutstanding,
+              meta.stockPrice,
+              meta.ticker
+            )
+          ).previous;
     holders = attachQuarterOverQuarterChange(holders, previous);
   }
 
@@ -266,7 +325,8 @@ export async function getOwnershipChanges(
     meta.currentQuarter,
     meta.previousQuarter,
     meta.impliedSharesOutstanding,
-    meta.stockPrice
+    meta.stockPrice,
+    meta.ticker
   );
 
   const changes: OwnershipChangeRow[] = [];
@@ -309,7 +369,8 @@ export async function getNewPositions(
     meta.currentQuarter,
     meta.previousQuarter,
     meta.impliedSharesOutstanding,
-    meta.stockPrice
+    meta.stockPrice,
+    meta.ticker
   );
 
   const positions: PositionEventRow[] = [];
@@ -318,6 +379,7 @@ export async function getNewPositions(
     if (!prev || prev.shares <= 0) {
       positions.push({
         fundName,
+        filerCik: cur.filerCik,
         shares: cur.shares,
         valueUsd: cur.valueUsd,
         pctOutstanding: cur.pctOutstanding,
@@ -338,34 +400,74 @@ export async function getSoldOut(
   options: OwnershipQueryOptions = {}
 ): Promise<{ meta: OwnershipQueryMeta; positions: PositionEventRow[] }> {
   const meta = await loadOwnershipMeta(pool, ticker);
-  if (!meta.previousQuarter) {
+  if (!meta.currentQuarter || !meta.previousQuarter) {
     return { meta, positions: [] };
   }
 
-  const { current, previous } = await fetchQuarterPairMap(
-    pool,
-    meta.cusips,
+  // Compare full tracked holders for both quarters by CIK. Do not use
+  // ownership_holding as "current" — that cache is incomplete for some tickers
+  // and would falsely list still-held mega funds as exits.
+  const trackedCiks = [...TRACKED_INSTITUTIONAL_CIK_PADDED];
+  const [current, previous] = await Promise.all([
+    fetchPreviousHoldersForCiks(
+      pool,
+      meta.cusips,
+      meta.currentQuarter,
+      trackedCiks,
+      meta.impliedSharesOutstanding,
+      meta.stockPrice
+    ),
+    fetchPreviousHoldersForCiks(
+      pool,
+      meta.cusips,
+      meta.previousQuarter,
+      trackedCiks,
+      meta.impliedSharesOutstanding,
+      meta.stockPrice
+    ),
+  ]);
+
+  const previousCiks = [
+    ...new Set(
+      [...previous.values()]
+        .map((h) => (h.filerCik ? formatSecCik(h.filerCik) : ""))
+        .filter(Boolean)
+    ),
+  ];
+  if (!previousCiks.length) {
+    return { meta, positions: [] };
+  }
+
+  // Only count exits for filers that already submitted a current-quarter 13F.
+  // Missing Q2 filings must not be treated as sold-out.
+  const filedRes = await pool.query<{ filer_cik: string }>(SELECT_FILERS_WITH_QUARTER_FILING_SQL, [
     meta.currentQuarter,
-    meta.previousQuarter,
-    meta.impliedSharesOutstanding,
-    meta.stockPrice
-  );
+    previousCiks,
+  ]);
+  const filedCurrent = new Set(filedRes.rows.map((r) => formatSecCik(String(r.filer_cik))));
+
+  const currentByCik = new Map<string, FundHoldingAggregate>();
+  for (const h of current.values()) {
+    if (!h.filerCik) continue;
+    currentByCik.set(formatSecCik(h.filerCik), h);
+  }
 
   const positions: PositionEventRow[] = [];
-  for (const [fundName, prev] of previous) {
-    const cur = current.get(fundName);
-    if (!cur || cur.shares <= 0) {
-      if (prev.shares > 0) {
-        positions.push({
-          fundName,
-          shares: cur?.shares ?? 0,
-          valueUsd: cur?.valueUsd ?? null,
-          pctOutstanding: cur?.pctOutstanding ?? null,
-          previousShares: prev.shares,
-          previousValueUsd: prev.valueUsd,
-        });
-      }
-    }
+  for (const prev of previous.values()) {
+    if (!prev.filerCik || prev.shares <= 0) continue;
+    const cik = formatSecCik(prev.filerCik);
+    if (!filedCurrent.has(cik)) continue;
+    const cur = currentByCik.get(cik);
+    if (cur && cur.shares > 0) continue;
+    positions.push({
+      fundName: prev.fundName,
+      filerCik: prev.filerCik,
+      shares: cur?.shares ?? 0,
+      valueUsd: cur?.valueUsd ?? null,
+      pctOutstanding: cur?.pctOutstanding ?? null,
+      previousShares: prev.shares,
+      previousValueUsd: prev.valueUsd,
+    });
   }
 
   positions.sort((a, b) => (b.previousValueUsd ?? 0) - (a.previousValueUsd ?? 0));

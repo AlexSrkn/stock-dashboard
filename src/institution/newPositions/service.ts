@@ -5,9 +5,20 @@ import {
   setNewPositionsMemoryCache,
 } from "./cache.js";
 import { computeNewInstitutionalPositions } from "./compute.js";
+import {
+  queryNewInstitutionalPositions,
+  type NewPositionsQuery,
+  type NewPositionsQueryResult,
+} from "./query.js";
 import type { NewPositionsPayload } from "./types.js";
 
 export type { NewPositionsPayload } from "./types.js";
+export type { NewPositionsQuery, NewPositionsQueryResult } from "./query.js";
+export {
+  parseNewPositionsSortKey,
+  parseNewPositionsSortDir,
+  queryNewInstitutionalPositions,
+} from "./query.js";
 
 let inflight: Promise<NewPositionsPayload> | null = null;
 
@@ -33,4 +44,12 @@ export async function loadNewInstitutionalPositions(
 
 export async function getNewInstitutionalPositions(pool: pg.Pool = getPool()) {
   return loadNewInstitutionalPositions(pool);
+}
+
+export async function getNewInstitutionalPositionsPage(
+  query: NewPositionsQuery,
+  pool: pg.Pool = getPool()
+): Promise<NewPositionsQueryResult> {
+  const payload = await loadNewInstitutionalPositions(pool);
+  return queryNewInstitutionalPositions(payload, query);
 }

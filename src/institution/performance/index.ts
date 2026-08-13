@@ -4,9 +4,12 @@ export type {
   InstitutionPerformanceSummary,
   InstitutionPortfolioSnapshot,
   InstitutionQuarterPerformance,
+  QuarterPerformanceDebug,
   PriceData,
   QuarterlyStockReturn,
 } from "./types.js";
+
+export { PERFORMANCE_METHODOLOGY } from "./types.js";
 
 export {
   parseQuarter,
@@ -16,9 +19,13 @@ export {
   previousQuarter,
   quarterYear,
   quarterDateRange,
+  quarterReturnDateRange,
   quartersYtdThrough,
   nextQuarter,
   expandQuarterRange,
+  holdingsQuarters,
+  filterHoldingsToLatestQuarters,
+  returnQuartersFromHoldings,
   quartersForHoldings,
 } from "./quarters.js";
 
@@ -44,6 +51,8 @@ export {
   buildPortfolioWeightRows,
   computePortfolioReturnsFromMatrix,
   computeInstitutionPerformanceSummaries,
+  computeInstitutionPerformanceWithDebug,
+  buildQuarterPerformanceDebug,
   type PortfolioWeightRow,
 } from "./portfolioEngine.js";
 
@@ -52,6 +61,10 @@ export {
   computeRolling1yReturn,
   computeYtdReturn,
   computeInstitutionHelperMetrics,
+  computeConsistencyThrough,
+  computeVolatilityThrough,
+  annualizedVolatility,
+  consistencyFromReturns,
   indexQuarterReturns,
   type InstitutionHelperMetrics,
 } from "./metrics.js";

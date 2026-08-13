@@ -1,6 +1,7 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
 import { queryRecentInsiderTransactions } from "../db/insiderTransactions.js";
+import { openMarketInsiderActionLabel } from "../insider/openMarketSide.js";
 import { listTrackedInstitutions } from "../institution/institutionAnalytics.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 import { normalizeTicker } from "../politicians/byTicker.js";
@@ -57,16 +58,26 @@ interface NormalizedEvent {
 
 const MAX_RETURNED_EVENTS = 2500;
 const MAX_ITEMS_PER_STOCK_CARD = 8;
+/** Default lookback when no --from date is provided (keeps the page fast after universe expansion). */
+const DEFAULT_INSTITUTION_LOOKBACK_DAYS = 45;
+
 const SELECT_RECENT_INSTITUTION_ACTIVITY_SQL = `
-WITH latest_filings AS (
-  SELECT DISTINCT ON (filer_cik, quarter)
-    id AS filing_id,
-    filer_cik,
-    quarter,
-    filing_date
+WITH recent_filers AS (
+  SELECT DISTINCT filer_cik
   FROM sec_filing
-  WHERE filer_cik = ANY($1::char(10)[])
-  ORDER BY filer_cik, quarter, filing_date DESC, id DESC
+  WHERE filer_cik = ANY($1::bpchar[])
+    AND filing_date >= $2::date
+    AND ($3::date IS NULL OR filing_date <= $3::date)
+),
+latest_filings AS (
+  SELECT DISTINCT ON (f.filer_cik, f.quarter)
+    f.id AS filing_id,
+    f.filer_cik,
+    f.quarter,
+    f.filing_date
+  FROM sec_filing f
+  INNER JOIN recent_filers rf ON rf.filer_cik = f.filer_cik
+  ORDER BY f.filer_cik, f.quarter, f.filing_date DESC, f.id DESC
 ),
 ranked_quarters AS (
   SELECT
@@ -88,7 +99,7 @@ SELECT
   MAX(h.ticker) AS ticker,
   MAX(h.issuer) AS issuer,
   SUM(h.shares)::float8 AS shares,
-  SUM(COALESCE(h.value, h.value_usd_thousands) * 1000)::float8 AS market_value
+  SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS market_value
 FROM ranked_quarters rq
 INNER JOIN sec_holding h
   ON h.filing_id = rq.filing_id
@@ -99,6 +110,13 @@ WHERE rq.rn <= 2
 GROUP BY rq.filer_cik, rq.quarter, rq.filing_date, rq.rn, h.cusip
 HAVING SUM(h.shares) > 0
 `.trim();
+
+function defaultInstitutionFromDate(filters: RecentlyActiveFilters): string {
+  if (filters.from) return filters.from;
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - DEFAULT_INSTITUTION_LOOKBACK_DAYS);
+  return d.toISOString().slice(0, 10);
+}
 
 function toIsoDate(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -129,12 +147,7 @@ function insiderActionLabel(
   acquisitionDisposition: string | null,
   transactionCode: string
 ): string {
-  const code = String(transactionCode || "").toUpperCase();
-  if (acquisitionDisposition === "A") return "Bought shares";
-  if (acquisitionDisposition === "D") return "Sold shares";
-  if (code === "P") return "Bought shares";
-  if (code === "S") return "Sold shares";
-  return `Filed Form 4 (${code || "trade"})`;
+  return openMarketInsiderActionLabel(transactionCode, acquisitionDisposition);
 }
 
 function politicianActionLabel(category: string): string {
@@ -164,6 +177,8 @@ async function loadInstitutionEvents(pool: pg.Pool, filters: RecentlyActiveFilte
   const institutions = listTrackedInstitutions();
   const events: NormalizedEvent[] = [];
   const institutionNameByCik = new Map(institutions.map((inst) => [inst.cik, inst.name]));
+  const fromDate = defaultInstitutionFromDate(filters);
+  const toDate = filters.to;
   const res = await pool.query<{
     institution_id: string;
     quarter: string;
@@ -173,7 +188,11 @@ async function loadInstitutionEvents(pool: pg.Pool, filters: RecentlyActiveFilte
     issuer: string | null;
     shares: number;
     market_value: number;
-  }>(SELECT_RECENT_INSTITUTION_ACTIVITY_SQL, [institutions.map((inst) => inst.cik)]);
+  }>(SELECT_RECENT_INSTITUTION_ACTIVITY_SQL, [
+    institutions.map((inst) => inst.cik),
+    fromDate,
+    toDate,
+  ]);
 
   const currentByInstitution = new Map<string, Map<string, { shares: number; marketValue: number }>>();
   const previousByInstitution = new Map<string, Map<string, { shares: number; marketValue: number }>>();

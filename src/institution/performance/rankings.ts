@@ -95,7 +95,7 @@ export function buildInstitutionRankings(
 
 export function parsePerformancePeriod(raw: string | null | undefined): PerformancePeriod {
   const p = String(raw || "").trim().toLowerCase();
-  if (p === "qoq" || p === "quarter") return "qoq";
+  if (p === "rolling_1y" || p === "1y" || p === "rolling") return "rolling_1y";
   if (p === "ytd") return "ytd";
-  return "rolling_1y";
+  return "qoq";
 }

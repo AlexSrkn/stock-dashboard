@@ -36,4 +36,4 @@ export function mapOwnershipHistoryRowsForUi(payload: OwnershipHistoryPayload): 
     categoryLabel: categoryLabel(row.category),
   }));
 }
-
+

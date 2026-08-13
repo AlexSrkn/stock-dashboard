@@ -4,6 +4,11 @@
  */
 
 import { buildSparklineSvg } from "./sparkline.js";
+import {
+  formatProxyHoldings as formatHoldings,
+  formatProxyPct as formatPct,
+  formatProxyUsd as formatUsd,
+} from "./src/institution/portfolioPerformanceProxy/formatDisplay.js";
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -15,23 +20,6 @@ function escapeHtml(s) {
 
 function finite(n) {
   return typeof n === "number" && Number.isFinite(n);
-}
-
-function formatUsd(n) {
-  if (!finite(n)) return "N/A";
-  const abs = Math.abs(n);
-  const sign = n < 0 ? "-" : "";
-  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`;
-  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
-  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`;
-  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
-  return `${sign}$${abs.toFixed(0)}`;
-}
-
-function formatPct(n) {
-  if (!finite(n)) return "N/A";
-  const sign = n > 0 ? "+" : "";
-  return `${sign}${n.toFixed(1)}%`;
 }
 
 function pctClass(n) {
@@ -57,7 +45,7 @@ export function createInstitutionPerformanceProxyController(deps) {
   let requestId = 0;
   let loading = false;
 
-  function setLoading(on, message = "Loading 13F portfolio performance proxy…") {
+  function setLoading(on, message = "Loading performance rankings…") {
     loading = on;
     const el = document.getElementById("institution-proxy-performance-loading");
     if (!el) return;
@@ -113,7 +101,7 @@ export function createInstitutionPerformanceProxyController(deps) {
           <td class="mono">${escapeHtml(h.quarter)}</td>
           <td class="num mono">${formatUsd(h.portfolioValueUsd)}</td>
           <td class="num mono ${pctClass(h.qoqChangePct)}">${formatPct(h.qoqChangePct)}</td>
-          <td class="num mono">${finite(h.holdingsCount) ? h.holdingsCount.toLocaleString() : "N/A"}</td>
+          <td class="num mono">${formatHoldings(h.holdingsCount)}</td>
         </tr>`;
       })
       .join("");
@@ -207,7 +195,7 @@ export function createInstitutionPerformanceProxyController(deps) {
         <td class="num mono">${formatUsd(row.currentPortfolioValueUsd)}</td>
         <td class="num mono ${pctClass(row.qoqChangePct)}">${formatPct(row.qoqChangePct)}</td>
         <td class="num mono ${pctClass(row.change1yPct)}">${formatPct(row.change1yPct)}</td>
-        <td class="num mono">${finite(row.holdingsCount) ? row.holdingsCount.toLocaleString() : "N/A"}</td>
+        <td class="num mono">${formatHoldings(row.holdingsCount)}</td>
         <td class="mono">${escapeHtml(row.latestFilingDate || "N/A")}</td>
         <td class="num"><button type="button" class="btn btn--ghost institution-proxy-performance__expand" data-proxy-expand="${escapeHtml(row.cik)}" aria-expanded="${open}">${open ? "Hide" : "Details"}</button></td>
       </tr>`);

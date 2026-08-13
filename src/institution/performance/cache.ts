@@ -8,7 +8,7 @@ const CACHE_FILE = path.join(CACHE_DIR, "institution-performance-summaries.json"
 const MEMORY_CACHE_MS = 60 * 60 * 1000;
 
 interface DiskPayload {
-  version: 1;
+  version: 2;
   builtAt: string;
   summaries: InstitutionPerformanceSummary[];
 }
@@ -24,7 +24,7 @@ export function loadPerformanceSummariesFromDisk(): InstitutionPerformanceSummar
   try {
     if (!fs.existsSync(CACHE_FILE)) return null;
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as DiskPayload;
-    if (!raw || raw.version !== 1 || !Array.isArray(raw.summaries) || !raw.summaries.length) {
+    if (!raw || raw.version !== 2 || !Array.isArray(raw.summaries) || !raw.summaries.length) {
       return null;
     }
     return raw.summaries;
@@ -40,7 +40,7 @@ export function savePerformanceSummariesToDisk(summaries: InstitutionPerformance
   }
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   const payload: DiskPayload = {
-    version: 1,
+    version: 2,
     builtAt: new Date().toISOString(),
     summaries,
   };
@@ -55,8 +55,8 @@ export function ensurePerformanceSummariesOnStartup(): void {
       return;
     }
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as DiskPayload;
-    if (!raw?.summaries?.length) {
-      console.log("Performance summaries cache empty — run: npm run performance:warm-cache");
+    if (!raw?.summaries?.length || raw.version !== 2) {
+      console.log("Performance summaries cache empty or outdated — run: npm run performance:warm-cache");
       return;
     }
     hydrateMemory(raw.summaries, Date.now());

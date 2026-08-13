@@ -69,6 +69,8 @@ export function mergePeriodRows(
     derived: mergeMetricMaps(prefer.derived, other.derived) as FinancialPeriodRow["derived"],
     validationFlags: [...(prefer.validationFlags ?? []), ...(other.validationFlags ?? [])],
     inclusionReason: prefer.inclusionReason ?? other.inclusionReason,
+    totalDebtProvenance: prefer.totalDebtProvenance ?? other.totalDebtProvenance,
+    returnMetricsProvenance: prefer.returnMetricsProvenance ?? other.returnMetricsProvenance,
   };
 }
 

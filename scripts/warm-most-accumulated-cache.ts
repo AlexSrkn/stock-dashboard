@@ -2,13 +2,21 @@
  * Precompute most-accumulated institutional rankings for all periods.
  * Usage: npm run institutions:warm-most-accumulated
  */
-import { closePool, loadEnvFile } from "../src/db/pool.js";
+import { closePool, getPool, loadEnvFile } from "../src/db/pool.js";
+import { listTrackedInstitutions } from "../src/institution/institutionAnalytics.js";
 import { saveMostAccumulatedToDisk } from "../src/institution/mostAccumulated/cache.js";
 import { computeMostAccumulated } from "../src/institution/mostAccumulated/compute.js";
 
 loadEnvFile();
+// Full-universe holdings load can exceed the default pool statement_timeout.
+process.env.PG_STATEMENT_TIMEOUT_MS = "0";
 
-const payload = await computeMostAccumulated();
+const pool = getPool();
+console.log(
+  `Warming most-accumulated for ${listTrackedInstitutions().length} tracked institutions…`
+);
+
+const payload = await computeMostAccumulated(pool);
 const quarterCount = payload.periods.quarter.stocks.length;
 if (!quarterCount) {
   console.error("No most-accumulated rows computed. Existing cache was not overwritten.");

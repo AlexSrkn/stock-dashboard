@@ -28,4 +28,4 @@ export {
   mapOwnershipHistoryRowsForUi,
 } from "./OwnershipHistoryTable.js";
 export type { OwnershipHistoryTableProps } from "./OwnershipHistoryTable.js";
-
+

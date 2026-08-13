@@ -3,7 +3,7 @@
 import { PORTFOLIO_PROXY_DISCLAIMER } from "./types.js";
 
 export function portfolioProxyPageTitle(): string {
-  return "13F Portfolio Performance Proxy";
+  return "Performance";
 }
 
 export function portfolioProxyDisclaimer(): string {

@@ -127,12 +127,12 @@ export const FINANCIAL_METRIC_DEFINITIONS: FinancialMetricDefinition[] = [
     label: "Debt",
     statement: "balance",
     valueType: "instant",
+    // Legacy single-field debt: prefer explicit balance-sheet aggregates only.
+    // Footnote notes carrying amounts are mapped separately to notes_carrying_amount.
     tags: [
       "LongTermDebt",
       "LongTermDebtNoncurrent",
-      "DebtInstrumentCarryingAmount",
       "LongTermDebtAndCapitalLeaseObligations",
-      "LongTermDebtAndCapitalLeaseObligationsCurrent",
       "ShortTermBorrowings",
       "DebtCurrent",
     ],
@@ -180,20 +180,47 @@ export const FINANCIAL_METRIC_DEFINITIONS: FinancialMetricDefinition[] = [
     label: "Long-term debt",
     statement: "balance",
     valueType: "instant",
+    // Noncurrent balance-sheet debt first. Bare LongTermDebt is a last-resort
+    // fallback (often current+noncurrent aggregate) and must not beat Noncurrent.
     tags: [
       "LongTermDebtNoncurrent",
-      "LongTermDebt",
       "LongTermDebtAndCapitalLeaseObligationsNoncurrent",
+      "DebtNoncurrent",
+      "LongTermDebt",
+      "LongTermDebtAndCapitalLeaseObligations",
     ],
     unit: "USD",
   },
   {
-    // Internal helper for the Total Debt derived metric (current portion of debt).
+    // Current portion of interest-bearing debt (term debt current, then short-term).
     key: "current_debt",
     label: "Current debt",
     statement: "balance",
     valueType: "instant",
-    tags: ["DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings"],
+    tags: [
+      "LongTermDebtCurrent",
+      "LongTermDebtAndCapitalLeaseObligationsCurrent",
+      "DebtCurrent",
+      "ShortTermBorrowings",
+      "ShortTermDebt",
+    ],
+    unit: "USD",
+  },
+  {
+    key: "commercial_paper",
+    label: "Commercial paper",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["CommercialPaper", "CommercialPaperCurrent"],
+    unit: "USD",
+  },
+  {
+    // Footnote / debt-instrument disclosure — NOT used for Total debt.
+    key: "notes_carrying_amount",
+    label: "Notes carrying amount",
+    statement: "balance",
+    valueType: "instant",
+    tags: ["DebtInstrumentCarryingAmount"],
     unit: "USD",
   },
   {

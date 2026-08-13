@@ -18,6 +18,7 @@ import {
   type InstitutionRecord,
   type InstitutionType,
 } from "./InstitutionDirectory.js";
+import { normalizeCusip } from "../../sec/thirteenF/normalizeHoldings.js";
 
 const TREND_EPS = 0.005; // ±0.5% change band counts as neutral
 const TOP_INSTITUTIONS = 10;
@@ -47,6 +48,7 @@ export interface OwnershipCacheRow {
   allHolders: TopInstitution[];
   institutionTypes: InstitutionType[];
   currentQuarter: string;
+  primaryCusip: string | null;
 }
 
 export interface OwnershipBuildResult {
@@ -67,6 +69,7 @@ interface TickerAgg {
   currentShares: number;
   previousShares: number;
   holders: Map<string, HolderAgg>; // current-quarter holders by cik
+  cusipShares: Map<string, number>;
 }
 
 function computeTrend(current: number, previous: number): OwnershipTrend {
@@ -126,7 +129,7 @@ export function computeOwnershipRows(
   const ensure = (ticker: string): TickerAgg => {
     let agg = byTicker.get(ticker);
     if (!agg) {
-      agg = { ticker, currentShares: 0, previousShares: 0, holders: new Map() };
+      agg = { ticker, currentShares: 0, previousShares: 0, holders: new Map(), cusipShares: new Map() };
       byTicker.set(ticker, agg);
     }
     return agg;
@@ -141,6 +144,12 @@ export function computeOwnershipRows(
       const holder = agg.holders.get(cik) ?? { cik, currentShares: 0 };
       holder.currentShares += h.shares;
       agg.holders.set(cik, holder);
+      if (h.cusip) {
+        const cusip = normalizeCusip(String(h.cusip).trim());
+        if (cusip) {
+          agg.cusipShares.set(cusip, (agg.cusipShares.get(cusip) ?? 0) + h.shares);
+        }
+      }
     } else if (previousQuarter && h.quarter === previousQuarter) {
       agg.previousShares += h.shares;
     }
@@ -179,10 +188,23 @@ export function computeOwnershipRows(
       allHolders,
       institutionTypes: [...types],
       currentQuarter,
+      primaryCusip: pickPrimaryCusip(agg.cusipShares),
     });
   }
 
   return { rows, currentQuarter, previousQuarter };
+}
+
+function pickPrimaryCusip(cusipShares: Map<string, number>): string | null {
+  let best: string | null = null;
+  let bestShares = 0;
+  for (const [cusip, shares] of cusipShares) {
+    if (shares > bestShares) {
+      bestShares = shares;
+      best = cusip;
+    }
+  }
+  return best;
 }
 
 export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<OwnershipBuildResult> {
@@ -226,14 +248,15 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
       JSON.stringify(r.topInstitutions),
       r.institutionTypes,
       r.currentQuarter,
+      r.primaryCusip,
     ]);
     await chunkedInsert(
       client as unknown as pg.Pool,
       `INSERT INTO ownership_cache
         (ticker, institutional_ownership_pct, insider_ownership_pct, ownership_trend,
          institution_count, current_shares, previous_shares, shares_outstanding,
-         top_institutions, institution_types, current_quarter)`,
-      11,
+         top_institutions, institution_types, current_quarter, primary_cusip)`,
+      12,
       cacheRows
     );
 

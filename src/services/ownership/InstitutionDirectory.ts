@@ -144,6 +144,71 @@ ON CONFLICT (cik) DO UPDATE SET
   updated_at = NOW()
 `.trim();
 
+const UPSERT_KEEP_NAME_SQL = `
+INSERT INTO institution (cik, name, normalized_name, type, updated_at)
+VALUES ($1, $2, $3, $4, NOW())
+ON CONFLICT (cik) DO UPDATE SET
+  type = EXCLUDED.type,
+  updated_at = NOW()
+`.trim();
+
+/** Build a directory record using the same normalize/classify path as the seed. */
+export function institutionRecordFromName(
+  cik: string,
+  name: string,
+  seedType?: InstitutionalManagerType
+): InstitutionRecord {
+  return {
+    cik: formatSecCik(cik),
+    name: String(name || "").trim() || formatSecCik(cik),
+    normalizedName: normalizeInstitutionName(name),
+    type: classifyInstitutionType(name, seedType),
+  };
+}
+
+/** Upsert one institution row (existing creation logic). */
+export async function upsertInstitutionRecord(
+  record: InstitutionRecord,
+  pool: pg.Pool = getPool(),
+  { keepExistingName = false }: { keepExistingName?: boolean } = {}
+): Promise<void> {
+  await ensureOwnershipSchema(pool);
+  const sql = keepExistingName ? UPSERT_KEEP_NAME_SQL : UPSERT_SQL;
+  await pool.query(sql, [record.cik, record.name, record.normalizedName, record.type]);
+}
+
+export async function upsertInstitutionRecords(
+  records: InstitutionRecord[],
+  pool: pg.Pool = getPool(),
+  opts?: { keepExistingName?: boolean }
+): Promise<number> {
+  let n = 0;
+  for (const rec of records) {
+    await upsertInstitutionRecord(rec, pool, opts);
+    n += 1;
+  }
+  return n;
+}
+
+/** Load existing institution directory keyed by padded CIK. */
+export async function loadInstitutionDirectoryByCik(
+  pool: pg.Pool = getPool()
+): Promise<Map<string, { cik: string; name: string; type: string }>> {
+  await ensureOwnershipSchema(pool);
+  const res = await pool.query<{ cik: string; name: string; type: string }>(
+    `SELECT cik, name, type FROM institution`
+  );
+  const map = new Map<string, { cik: string; name: string; type: string }>();
+  for (const row of res.rows) {
+    map.set(formatSecCik(row.cik), {
+      cik: formatSecCik(row.cik),
+      name: row.name,
+      type: row.type,
+    });
+  }
+  return map;
+}
+
 /** Idempotently (re)build the institution directory from the seed list. */
 export async function refreshInstitutionDirectory(
   pool: pg.Pool = getPool()

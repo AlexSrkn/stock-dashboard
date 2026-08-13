@@ -19,6 +19,8 @@ import { formatSecCik } from "../http.js";
 export interface IngestForm4Options extends SecFetchOptions {
   ticker: string;
   limit?: number;
+  /** Only ingest Form 4 filings with filingDate strictly after this YYYY-MM-DD. */
+  sinceDate?: string | null;
   ensureSchema?: boolean;
 }
 
@@ -35,16 +37,17 @@ export async function ingestForm4ForTicker(
   options: IngestForm4Options
 ): Promise<IngestForm4Result> {
   const ticker = String(options.ticker).trim().toUpperCase();
-  const limit = Math.max(1, options.limit ?? 40);
+  const sinceDate = String(options.sinceDate || "").trim() || null;
+  const limit = Math.max(1, options.limit ?? (sinceDate ? 120 : 40));
 
   if (options.ensureSchema !== false) {
     await ensureInsiderTransactionsSchema();
   }
 
-  const { ticker: _t, limit: _l, ensureSchema: _e, ...fetchOpts } = options;
+  const { ticker: _t, limit: _l, ensureSchema: _e, sinceDate: _s, ...fetchOpts } = options;
   const submissions = await downloadSecSubmissionsByTicker({ ticker, ...fetchOpts });
   const cik = formatSecCik(submissions.cik);
-  const filings = discoverForm4Filings(submissions, limit);
+  const filings = discoverForm4Filings(submissions, { limit, sinceDate });
 
   let transactionsInserted = 0;
   let transactionsSkipped = 0;

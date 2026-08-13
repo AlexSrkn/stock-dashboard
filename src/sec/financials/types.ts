@@ -20,6 +20,8 @@ export type FinancialMetricKey =
   | "current_liabilities"
   | "long_term_debt"
   | "current_debt"
+  | "commercial_paper"
+  | "notes_carrying_amount"
   | "inventory"
   | "accounts_receivable"
   | "property_plant_equipment"
@@ -103,8 +105,39 @@ export interface MetricSourceRef {
 
 export interface MetricValueDetail {
   reportedValue: number;
-  normalizedQuarterValue: number;
+  /** Standalone quarter when known; null when only YTD was reported and not derived. */
+  normalizedQuarterValue: number | null;
   durationDays: number | null;
+  durationBucket?: import("./periodUtils.js").DurationBucket | null;
+  /** True when normalizedQuarterValue came from current YTD − prior YTD. */
+  derivedStandalone?: boolean;
+  /** Prior YTD value used in derivation (when derivedStandalone). */
+  priorReportedValue?: number | null;
+  priorEnd?: string | null;
+  priorAccn?: string | null;
+  priorFiled?: string | null;
+  priorForm?: string | null;
+  priorDurationBucket?: import("./periodUtils.js").DurationBucket | null;
+}
+
+export interface CashFlowDerivationProvenance {
+  method: "ytd_minus_prior_ytd";
+  current: {
+    value: number;
+    end: string | null;
+    accn: string | null;
+    filed: string | null;
+    form: string | null;
+    durationBucket: import("./periodUtils.js").DurationBucket | null;
+  };
+  prior: {
+    value: number;
+    end: string | null;
+    accn: string | null;
+    filed: string | null;
+    form: string | null;
+    durationBucket: import("./periodUtils.js").DurationBucket | null;
+  };
 }
 
 export interface ExtractedMetricValue {
@@ -116,11 +149,32 @@ export interface ExtractedMetricValue {
   filed: string | null;
   form: string | null;
   accn: string | null;
+  /** SEC fiscal period tag (Q1/Q2/Q3/FY) for the filing row. */
   fp: string | null;
+  /**
+   * Display period for this metric's value (e.g. "9M YTD", "Q3 · derived").
+   * Prefer this over `fp` when presenting cash-flow / duration facts.
+   */
+  periodLabel?: string | null;
   fy: number | null;
   gaapTag: string;
   namespace: string;
+  durationBucket?: import("./periodUtils.js").DurationBucket | null;
+  /** Present when value is a standalone quarter derived from YTD − prior YTD. */
+  derivation?: CashFlowDerivationProvenance | null;
 }
+
+export type CashFlowLatestMetrics = Partial<Record<FinancialMetricKey, ExtractedMetricValue>> & {
+  /** Derived FCF aligned to the same period basis as sibling cash-flow metrics. */
+  free_cash_flow?: {
+    value: number;
+    unit: string;
+    end: string | null;
+    fp: string | null;
+    periodLabel: string | null;
+    derivation?: CashFlowDerivationProvenance | null;
+  };
+};
 
 export interface FinancialPeriodRow {
   end: string;
@@ -137,10 +191,20 @@ export interface FinancialPeriodRow {
   validationFlags?: string[];
   /** Why this row was included in period tables (primary metrics present). */
   inclusionReason?: string;
+  /** Hierarchy-aware total debt components for the same balance-sheet date. */
+  totalDebtProvenance?: import("./debtResolve.js").TotalDebtResolution | null;
+  /** ROE / ROA / asset turnover period basis + provenance. */
+  returnMetricsProvenance?: import("./returnMetrics.js").RowReturnMetrics | null;
 }
 
 export interface StatementBundle {
-  latest: Partial<Record<FinancialMetricKey, ExtractedMetricValue>>;
+  /** Reported filing values (for cash flow: often YTD). */
+  latest: CashFlowLatestMetrics;
+  /**
+   * Standalone latest-quarter cash-flow metrics derived as current YTD − prior YTD.
+   * Only populated for cash-flow when derivation is possible.
+   */
+  latestDerivedQuarter?: CashFlowLatestMetrics;
   annual: FinancialPeriodRow[];
   quarterly: FinancialPeriodRow[];
 }
@@ -189,6 +253,8 @@ export interface FilingsFundamentalsResponse {
     cashFlow: StatementBundle;
   };
   derivedLatest: Partial<Record<DerivedMetricKey, number>>;
+  /** Period basis labels for return metrics, e.g. { roe: "TTM", roa: "FY" }. */
+  derivedPeriodLabels?: Partial<Record<"roe" | "roa" | "asset_turnover", string>>;
   earningsReleases: EarningsReleaseRow[];
   filings: {
     "10-K": SecFinancialFilingRow[];

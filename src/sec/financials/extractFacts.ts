@@ -1,9 +1,10 @@
-import { collectInstantMetricsByPeriod } from "./balanceSheetExtract.js";
+import { collectInstantMetricsByPeriod, type DurationPeriodAnchor } from "./balanceSheetExtract.js";
 import { enrichPeriodRows } from "./derivedMetrics.js";
 import {
   normalizeQuarterlyDurations,
   pickAnnualDurationValue,
 } from "./durationNormalize.js";
+import { resolveAnnualFiscalYear } from "./fiscalYear.js";
 import { FINANCIAL_METRIC_DEFINITIONS, METRICS_BY_STATEMENT } from "./metrics.js";
 import {
   comparePeriodRows,
@@ -12,16 +13,23 @@ import {
   periodCanonicalKey,
 } from "./periodRows.js";
 import {
+  classifyDuration,
+  durationBucketLabel,
+  durationDays,
   is10KForm,
   is10QForm,
   isValidFilingDate,
+  isYtdDurationBucket,
   normalizeFiscalPeriod,
   observationEnd,
   parseIsoDate,
+  type DurationBucket,
   type NormalizedFiscalPeriod,
 } from "./periodUtils.js";
 import { validateQuarterlyRevenue } from "./validateMetrics.js";
 import type {
+  CashFlowDerivationProvenance,
+  CashFlowLatestMetrics,
   ExtractedMetricValue,
   FinancialMetricKey,
   FinancialPeriodRow,
@@ -132,7 +140,9 @@ function ensureRow(
     };
     rows.set(key, row);
   } else if (obs.fy != null && Number.isFinite(Number(obs.fy))) {
-    row.fy = Number(obs.fy);
+    // Do not overwrite fy from later observations — row key already encodes the
+    // resolved fiscal year (critical for annual restatements tagged with a later fy).
+    if (row.fy == null) row.fy = Number(obs.fy);
   }
   return row;
 }
@@ -140,18 +150,31 @@ function ensureRow(
 function applyMetric(
   row: RowDraft,
   key: FinancialMetricKey,
-  normalized: number,
+  normalized: number | null,
   reported: number,
-  durationDays: number | null,
+  metricDurationDays: number | null,
   obs: XbrlFactObservation,
   gaapTag: string,
-  namespace: string
+  namespace: string,
+  durationBucket: DurationBucket | null = null,
+  derivedStandalone = false,
+  priorObs: XbrlFactObservation | null = null
 ): void {
-  row.metrics[key] = normalized;
+  // Prefer standalone quarter when available; otherwise keep the reported duration value
+  // (e.g. 9M YTD) — never invent a fake "quarter" by relabeling YTD as Q3.
+  row.metrics[key] = normalized ?? reported;
   row.metricDetails[key] = {
     reportedValue: reported,
     normalizedQuarterValue: normalized,
-    durationDays,
+    durationDays: metricDurationDays,
+    durationBucket,
+    derivedStandalone,
+    priorReportedValue: priorObs != null ? Number(priorObs.val) : null,
+    priorEnd: priorObs ? observationEnd(priorObs) : null,
+    priorAccn: priorObs?.accn ? String(priorObs.accn) : null,
+    priorFiled: priorObs ? parseIsoDate(priorObs.filed) : null,
+    priorForm: priorObs?.form ? String(priorObs.form) : null,
+    priorDurationBucket: priorObs ? classifyDuration(durationDays(priorObs)) : null,
   };
   row.metricSources[key] = toMetricSource(obs, gaapTag, namespace);
 }
@@ -220,7 +243,10 @@ function collectDurationRows(
           pick.durationDays,
           pick.obs,
           tag,
-          ns
+          ns,
+          pick.durationBucket,
+          pick.derivedStandalone,
+          pick.priorObs
         );
       }
     }
@@ -243,7 +269,9 @@ function collectDurationRows(
         const pick = pickAnnualDurationValue(obsList);
         if (!pick) continue;
         const fp = normalizeFiscalPeriod(pick.obs, "annual");
-        const fy = pick.obs.fy != null ? Number(pick.obs.fy) : NaN;
+        // Value may come from a later 10-K restatement; fy must come from the
+        // original annual filing for this period end — not the restatement's fy.
+        const fy = resolveAnnualFiscalYear(obsList, end) ?? NaN;
         if (!fp || !Number.isFinite(fy)) continue;
         const row = ensureRow(rows, scope, fy, fp, end, pick.obs);
         applyMetric(
@@ -254,7 +282,10 @@ function collectDurationRows(
           pick.durationDays,
           pick.obs,
           tag,
-          ns
+          ns,
+          pick.durationBucket,
+          pick.derivedStandalone,
+          pick.priorObs
         );
       }
     }
@@ -267,27 +298,43 @@ function collectInstantRows(
   facts: SecCompanyFacts,
   scope: "annual" | "quarterly",
   anchorByFpEnd: Map<string, string>,
-  periodAccessions: Map<string, string> = new Map()
+  periodAccessions: Map<string, string> = new Map(),
+  durationPeriodByEnd: Map<string, DurationPeriodAnchor> = new Map()
 ): Map<string, RowDraft> {
   const rows = new Map<string, RowDraft>();
 
   for (const def of FINANCIAL_METRIC_DEFINITIONS) {
     if (def.valueType !== "instant") continue;
-    const picks = collectInstantMetricsByPeriod(facts, def, scope, periodAccessions);
+    const picks = collectInstantMetricsByPeriod(
+      facts,
+      def,
+      scope,
+      periodAccessions,
+      durationPeriodByEnd
+    );
     for (const [periodKey, pick] of picks) {
       const [fyStr, fp, end] = periodKey.split("|");
       const fy = Number(fyStr);
-      if (!Number.isFinite(fy)) continue;
+      if (!Number.isFinite(fy) || !end) continue;
+
+      const instantEnd = observationEnd(pick.obs);
+      // Instant facts belong only to the period whose balance-sheet date equals the instant.
+      if (instantEnd !== end) continue;
 
       const fpEnd = `${fp}|${end}`;
       const anchorKey = anchorByFpEnd.get(fpEnd);
       const canAnchor =
         Boolean(anchorKey) ||
-        (INSTANT_PRIMARY_METRICS.has(def.key) && isLikelyFinancialPeriodEnd(pick.obs));
+        // Annual-only: allow balance-sheet-only FY rows (no duration facts).
+        (scope === "annual" &&
+          INSTANT_PRIMARY_METRICS.has(def.key) &&
+          isLikelyFinancialPeriodEnd(pick.obs));
       if (!canAnchor) continue;
 
       const targetKey = anchorKey ?? periodKey;
       const [targetFy, targetFp, targetEnd] = targetKey.split("|");
+      if (instantEnd !== targetEnd) continue;
+
       const row = ensureRow(
         rows,
         scope,
@@ -336,24 +383,76 @@ function rowsFromDrafts(drafts: Map<string, RowDraft>): FinancialPeriodRow[] {
   }));
 }
 
+function collectFinalizedPeriodRows(
+  facts: SecCompanyFacts,
+  scope: "annual" | "quarterly"
+): FinancialPeriodRow[] {
+  const durationRows = collectDurationRows(facts, scope);
+  const anchorByFpEnd = new Map<string, string>();
+  const periodAccessions = new Map<string, string>();
+  const durationPeriodByEnd = new Map<string, DurationPeriodAnchor>();
+  for (const [key, row] of durationRows) {
+    const parts = key.split("|");
+    const fy = Number(parts[0]);
+    const fp = parts[1] as NormalizedFiscalPeriod;
+    const end = parts[2]!;
+    const fpEnd = `${fp}|${end}`;
+    if (!anchorByFpEnd.has(fpEnd)) anchorByFpEnd.set(fpEnd, key);
+    if (row.accessionNumber) periodAccessions.set(key, row.accessionNumber);
+    // One duration identity per exact period end. Prefer existing (first) when
+    // comparative filings also emit the same end under a different fy label.
+    if (!durationPeriodByEnd.has(end) && Number.isFinite(fy) && fp && end) {
+      durationPeriodByEnd.set(end, { fy, fp, key });
+    }
+  }
+  const instantRows = collectInstantRows(
+    facts,
+    scope,
+    anchorByFpEnd,
+    periodAccessions,
+    durationPeriodByEnd
+  );
+  const merged = mergeRowMaps(durationRows, instantRows);
+  return finalizePeriodRows(rowsFromDrafts(merged), scope);
+}
+
 function buildPeriodRows(
   facts: SecCompanyFacts,
   scope: "annual" | "quarterly",
   limit: number
 ): FinancialPeriodRow[] {
-  const durationRows = collectDurationRows(facts, scope);
-  const anchorByFpEnd = new Map<string, string>();
-  const periodAccessions = new Map<string, string>();
-  for (const [key, row] of durationRows) {
-    const parts = key.split("|");
-    const fpEnd = `${parts[1]}|${parts[2]}`;
-    if (!anchorByFpEnd.has(fpEnd)) anchorByFpEnd.set(fpEnd, key);
-    if (row.accessionNumber) periodAccessions.set(key, row.accessionNumber);
-  }
-  const instantRows = collectInstantRows(facts, scope, anchorByFpEnd, periodAccessions);
-  const merged = mergeRowMaps(durationRows, instantRows);
-  const rows = finalizePeriodRows(enrichPeriodRows(rowsFromDrafts(merged), scope), scope);
+  // Legacy path used by older call sites — enrich without cross-scope context.
+  const rows = enrichPeriodRows(collectFinalizedPeriodRows(facts, scope), scope);
   return rows.slice(0, limit);
+}
+
+function metricPeriodLabel(
+  rowFp: string | null | undefined,
+  detail: MetricValueDetail | undefined
+): string | null {
+  if (!detail) return rowFp ?? null;
+  // Cash-flow / duration YTD facts must keep their duration label even on a Q3 row.
+  if (isYtdDurationBucket(detail.durationBucket) && !detail.derivedStandalone) {
+    return durationBucketLabel(detail.durationBucket) ?? rowFp ?? null;
+  }
+  if (isYtdDurationBucket(detail.durationBucket) && detail.derivedStandalone) {
+    // Derived standalone quarter — label as the fiscal quarter.
+    return rowFp ?? null;
+  }
+  return durationBucketLabel(detail.durationBucket) ?? rowFp ?? null;
+}
+
+function cashFlowDisplayValue(
+  row: FinancialPeriodRow,
+  key: FinancialMetricKey
+): number | null {
+  const detail = row.metricDetails[key];
+  const metric = row.metrics[key];
+  if (detail && isYtdDurationBucket(detail.durationBucket)) {
+    // Statement panel shows the filing's reported YTD figures with a YTD label.
+    return detail.reportedValue;
+  }
+  return metric ?? null;
 }
 
 function buildLatestFromRows(rows: FinancialPeriodRow[]): Partial<Record<FinancialMetricKey, ExtractedMetricValue>> {
@@ -363,6 +462,7 @@ function buildLatestFromRows(rows: FinancialPeriodRow[]): Partial<Record<Financi
   for (const def of FINANCIAL_METRIC_DEFINITIONS) {
     const value = row.metrics[def.key];
     const source = row.metricSources[def.key];
+    const detail = row.metricDetails[def.key];
     if (value == null || !source) continue;
     latest[def.key] = {
       key: def.key,
@@ -374,9 +474,11 @@ function buildLatestFromRows(rows: FinancialPeriodRow[]): Partial<Record<Financi
       form: source.form,
       accn: source.accn,
       fp: row.fp,
+      periodLabel: metricPeriodLabel(row.fp, detail),
       fy: row.fy,
       gaapTag: source.gaapTag,
       namespace: source.namespace,
+      durationBucket: detail?.durationBucket ?? null,
     };
   }
   return latest;
@@ -399,6 +501,159 @@ function pickLatestRowForStatement(
     return [...annualMatches].sort(comparePeriodRows)[0] ?? null;
   }
   return quarterly[0] ?? annual[0] ?? null;
+}
+
+function cashFlowPeriodLabel(
+  rowFp: string | null | undefined,
+  detail: MetricValueDetail | undefined
+): string | null {
+  // Cash-flow statement shows filing-reported duration values with duration labels.
+  if (detail && isYtdDurationBucket(detail.durationBucket)) {
+    return durationBucketLabel(detail.durationBucket);
+  }
+  return rowFp ?? null;
+}
+
+function buildDerivationProvenance(
+  detail: MetricValueDetail | undefined
+): CashFlowDerivationProvenance | null {
+  if (
+    !detail?.derivedStandalone ||
+    detail.priorReportedValue == null ||
+    !Number.isFinite(detail.priorReportedValue)
+  ) {
+    return null;
+  }
+  return {
+    method: "ytd_minus_prior_ytd",
+    current: {
+      value: detail.reportedValue,
+      end: null, // filled by caller with row end
+      accn: null,
+      filed: null,
+      form: null,
+      durationBucket: detail.durationBucket ?? null,
+    },
+    prior: {
+      value: detail.priorReportedValue,
+      end: detail.priorEnd ?? null,
+      accn: detail.priorAccn ?? null,
+      filed: detail.priorFiled ?? null,
+      form: detail.priorForm ?? null,
+      durationBucket: detail.priorDurationBucket ?? null,
+    },
+  };
+}
+
+function completeDerivationProvenance(
+  detail: MetricValueDetail | undefined,
+  source: MetricSourceRef | undefined,
+  rowEnd: string
+): CashFlowDerivationProvenance | null {
+  const base = buildDerivationProvenance(detail);
+  if (!base) return null;
+  return {
+    ...base,
+    current: {
+      ...base.current,
+      end: rowEnd,
+      accn: source?.accn ?? null,
+      filed: source?.filed ?? null,
+      form: source?.form ?? null,
+    },
+  };
+}
+
+function buildCashFlowLatestFromRow(
+  row: FinancialPeriodRow,
+  mode: "reported" | "derived_quarter"
+): CashFlowLatestMetrics {
+  const latest: CashFlowLatestMetrics = {};
+  for (const def of FINANCIAL_METRIC_DEFINITIONS) {
+    if (def.statement !== "cashflow") continue;
+    const source = row.metricSources[def.key];
+    const detail = row.metricDetails[def.key];
+    if (!source) continue;
+
+    if (mode === "reported") {
+      const value = cashFlowDisplayValue(row, def.key);
+      if (value == null) continue;
+      latest[def.key] = {
+        key: def.key,
+        label: def.label,
+        value,
+        unit: def.unit,
+        end: row.end,
+        filed: source.filed,
+        form: source.form,
+        accn: source.accn,
+        fp: row.fp,
+        periodLabel: cashFlowPeriodLabel(row.fp, detail),
+        fy: row.fy,
+        gaapTag: source.gaapTag,
+        namespace: source.namespace,
+        durationBucket: detail?.durationBucket ?? null,
+      };
+      continue;
+    }
+
+    // derived_quarter: only include metrics actually derived from YTD − prior YTD
+    if (
+      !detail?.derivedStandalone ||
+      detail.normalizedQuarterValue == null ||
+      !Number.isFinite(detail.normalizedQuarterValue)
+    ) {
+      continue;
+    }
+    const derivation = completeDerivationProvenance(detail, source, row.end);
+    latest[def.key] = {
+      key: def.key,
+      label: def.label,
+      value: detail.normalizedQuarterValue,
+      unit: def.unit,
+      end: null,
+      filed: source.filed,
+      form: source.form,
+      accn: source.accn,
+      fp: row.fp,
+      periodLabel: row.fp ? `${row.fp} · derived` : "derived",
+      fy: row.fy,
+      gaapTag: source.gaapTag,
+      namespace: source.namespace,
+      durationBucket: detail.durationBucket ?? null,
+      derivation,
+    };
+  }
+
+  const ocf =
+    mode === "reported"
+      ? latest.operating_cash_flow?.value
+      : latest.operating_cash_flow?.value;
+  const capex =
+    mode === "reported"
+      ? latest.capital_expenditures?.value
+      : latest.capital_expenditures?.value;
+  if (ocf != null && capex != null) {
+    const ocfDetail = row.metricDetails.operating_cash_flow;
+    const ocfSource = row.metricSources.operating_cash_flow;
+    latest.free_cash_flow = {
+      value: Math.round((ocf - Math.abs(capex)) * 100) / 100,
+      unit: "USD",
+      end: mode === "reported" ? row.end : null,
+      fp: row.fp,
+      periodLabel:
+        mode === "reported"
+          ? cashFlowPeriodLabel(row.fp, ocfDetail)
+          : row.fp
+            ? `${row.fp} · derived`
+            : "derived",
+      derivation:
+        mode === "derived_quarter"
+          ? completeDerivationProvenance(ocfDetail, ocfSource, row.end)
+          : null,
+    };
+  }
+  return latest;
 }
 
 function buildStatementBundle(
@@ -424,12 +679,30 @@ function buildStatementBundle(
   const annualFiltered = annual.map(filterRow);
   const quarterlyFiltered = quarterly.map(filterRow);
   const latestSource = pickLatestRowForStatement(annualFiltered, quarterlyFiltered, statement);
-  const latest: Partial<Record<FinancialMetricKey, ExtractedMetricValue>> = {};
+
+  if (statement === "cashflow") {
+    const latest = latestSource ? buildCashFlowLatestFromRow(latestSource, "reported") : {};
+    const latestDerivedQuarter = latestSource
+      ? buildCashFlowLatestFromRow(latestSource, "derived_quarter")
+      : undefined;
+    const derivedCount = latestDerivedQuarter
+      ? Object.keys(latestDerivedQuarter).filter((k) => k !== "free_cash_flow").length
+      : 0;
+    return {
+      latest,
+      latestDerivedQuarter: derivedCount > 0 ? latestDerivedQuarter : undefined,
+      annual: annualFiltered,
+      quarterly: quarterlyFiltered,
+    };
+  }
+
+  const latest: CashFlowLatestMetrics = {};
   if (latestSource) {
     for (const def of FINANCIAL_METRIC_DEFINITIONS) {
       if (def.statement !== statement) continue;
-      const value = latestSource.metrics[def.key];
       const source = latestSource.metricSources[def.key];
+      const detail = latestSource.metricDetails[def.key];
+      const value = latestSource.metrics[def.key] ?? null;
       if (value == null || !source) continue;
       latest[def.key] = {
         key: def.key,
@@ -441,9 +714,11 @@ function buildStatementBundle(
         form: source.form,
         accn: source.accn,
         fp: latestSource.fp,
+        periodLabel: metricPeriodLabel(latestSource.fp, detail),
         fy: latestSource.fy,
         gaapTag: source.gaapTag,
         namespace: source.namespace,
+        durationBucket: detail?.durationBucket ?? null,
       };
     }
   }
@@ -455,13 +730,21 @@ export function extractFinancialPeriods(
   options: { annualLimit?: number; quarterlyLimit?: number } = {}
 ): { annual: FinancialPeriodRow[]; quarterly: FinancialPeriodRow[] } {
   const annualLimit = Math.min(20, Math.max(1, options.annualLimit ?? 5));
+  // Keep enough quarters for TTM NI (4) + beginning balance-sheet point.
   const quarterlyLimit = Math.min(24, Math.max(1, options.quarterlyLimit ?? 8));
-  const annual = buildPeriodRows(facts, "annual", annualLimit);
-  const quarterly = validateQuarterlyRevenue(
-    buildPeriodRows(facts, "quarterly", quarterlyLimit),
-    annual
-  );
-  return { annual, quarterly };
+
+  let annual = collectFinalizedPeriodRows(facts, "annual");
+  let quarterly = collectFinalizedPeriodRows(facts, "quarterly");
+
+  const ctx = { annual, quarterly };
+  annual = enrichPeriodRows(annual, "annual", ctx);
+  quarterly = enrichPeriodRows(quarterly, "quarterly", ctx);
+  quarterly = validateQuarterlyRevenue(quarterly, annual);
+
+  return {
+    annual: annual.slice(0, annualLimit),
+    quarterly: quarterly.slice(0, quarterlyLimit),
+  };
 }
 
 export function extractLatestMetrics(

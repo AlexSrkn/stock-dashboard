@@ -10,19 +10,22 @@
  *   npx tsx scripts/ingest-all-insider-form4.ts --ticker AAPL
  *   npx tsx scripts/ingest-all-insider-form4.ts --symbols-file watchlist.txt
  *   npx tsx scripts/ingest-all-insider-form4.ts --filings 25 --delay 300
+ *   npx tsx scripts/ingest-all-insider-form4.ts --since-db --existing-only
+ *   npx tsx scripts/ingest-all-insider-form4.ts --since 2026-06-03 --existing-only
  *
  * Default universe: all tickers in SEC company_tickers.json (~10k+). Use --limit to batch.
  */
 import fs from "node:fs";
-import { closePool, loadEnvFile } from "../src/db/pool.js";
+import { closePool, getPool, loadEnvFile } from "../src/db/pool.js";
 import { ingestForm4ForTicker } from "../src/sec/form4/ingestForm4.js";
 import { loadAllSecCompanyTickers } from "../src/sec/submissions.js";
 
 loadEnvFile();
 
-const SEC_DELAY_MS = 300;
+const SEC_DELAY_MS = 250;
 const DEFAULT_FILING_LIMIT = 20;
 const TICKER_RE = /^[A-Z][A-Z0-9.\-^=]{0,14}$/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -36,6 +39,9 @@ function parseArgs(argv: string[]) {
   let filingLimit = DEFAULT_FILING_LIMIT;
   let delayMs = SEC_DELAY_MS;
   let includeAllTickers = false;
+  let sinceDate: string | null = null;
+  let sinceDb = false;
+  let existingOnly = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -44,19 +50,36 @@ function parseArgs(argv: string[]) {
     } else if (arg === "--limit" && argv[i + 1]) {
       limit = Math.max(1, Number(argv[++i]) || 1);
     } else if (arg === "--filings" && argv[i + 1]) {
-      filingLimit = Math.max(1, Math.min(80, Number(argv[++i]) || DEFAULT_FILING_LIMIT));
+      filingLimit = Math.max(1, Math.min(200, Number(argv[++i]) || DEFAULT_FILING_LIMIT));
     } else if (arg === "--delay" && argv[i + 1]) {
       delayMs = Math.max(0, Number(argv[++i]) || SEC_DELAY_MS);
     } else if (arg === "--ticker" && argv[i + 1]) {
       singleTicker = String(argv[++i]).trim().toUpperCase();
     } else if (arg === "--symbols-file" && argv[i + 1]) {
       symbolsFile = String(argv[++i]).trim();
+    } else if (arg === "--since" && argv[i + 1]) {
+      sinceDate = String(argv[++i]).trim();
+    } else if (arg === "--since-db") {
+      sinceDb = true;
+    } else if (arg === "--existing-only") {
+      existingOnly = true;
     } else if (arg === "--all-tickers") {
       includeAllTickers = true;
     }
   }
 
-  return { from, limit, singleTicker, symbolsFile, filingLimit, delayMs, includeAllTickers };
+  return {
+    from,
+    limit,
+    singleTicker,
+    symbolsFile,
+    filingLimit,
+    delayMs,
+    includeAllTickers,
+    sinceDate,
+    sinceDb,
+    existingOnly,
+  };
 }
 
 function loadTickersFromFile(filePath: string): string[] {
@@ -75,12 +98,39 @@ function filterTickerSymbol(ticker: string, includeAll: boolean): boolean {
   return true;
 }
 
+async function loadExistingTickers(): Promise<string[]> {
+  const pool = getPool();
+  const res = await pool.query<{ ticker: string }>(`
+    SELECT DISTINCT UPPER(BTRIM(ticker)) AS ticker
+    FROM insider_transaction
+    WHERE ticker IS NOT NULL AND BTRIM(ticker) <> ''
+    ORDER BY 1
+  `);
+  return res.rows.map((r) => r.ticker).filter((t) => TICKER_RE.test(t));
+}
+
+async function loadMaxFilingDate(): Promise<string | null> {
+  const pool = getPool();
+  const res = await pool.query<{ max_filing: string | null }>(`
+    SELECT MAX(filing_date)::text AS max_filing
+    FROM insider_transaction
+    WHERE filing_date IS NOT NULL
+  `);
+  return res.rows[0]?.max_filing ?? null;
+}
+
 async function resolveTickerList(options: ReturnType<typeof parseArgs>): Promise<string[]> {
   if (options.singleTicker) {
     return [options.singleTicker];
   }
   if (options.symbolsFile) {
     return loadTickersFromFile(options.symbolsFile);
+  }
+  if (options.existingOnly) {
+    console.log("Loading tickers already present in insider_transaction…");
+    const tickers = await loadExistingTickers();
+    console.log(`Universe: ${tickers.length} existing tickers`);
+    return tickers;
   }
 
   console.log("Loading SEC company_tickers.json…");
@@ -95,8 +145,28 @@ async function resolveTickerList(options: ReturnType<typeof parseArgs>): Promise
   return tickers;
 }
 
+async function resolveSinceDate(options: ReturnType<typeof parseArgs>): Promise<string | null> {
+  if (options.sinceDate) {
+    if (!ISO_DATE_RE.test(options.sinceDate)) {
+      throw new Error(`Invalid --since date (expected YYYY-MM-DD): ${options.sinceDate}`);
+    }
+    return options.sinceDate;
+  }
+  if (options.sinceDb) {
+    const maxFiling = await loadMaxFilingDate();
+    if (!maxFiling) {
+      console.log("No filing_date in DB yet — ingesting without a since filter.");
+      return null;
+    }
+    console.log(`Using DB max filing_date as since watermark: ${maxFiling} (exclusive)`);
+    return maxFiling;
+  }
+  return null;
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
+  const sinceDate = await resolveSinceDate(opts);
   let tickers = await resolveTickerList(opts);
 
   if (!tickers.length) {
@@ -111,8 +181,12 @@ async function main() {
     return;
   }
 
+  const filingLimit = sinceDate ? Math.max(opts.filingLimit, 80) : opts.filingLimit;
+
   console.log(
-    `Ingesting last ${opts.filingLimit} Form 4 filing(s) per issuer for ${tickers.length} ticker(s)…`
+    sinceDate
+      ? `Incremental Form 4 ingest since ${sinceDate} (exclusive) for ${tickers.length} ticker(s); up to ${filingLimit} new filing(s) each…`
+      : `Ingesting last ${filingLimit} Form 4 filing(s) per issuer for ${tickers.length} ticker(s)…`
   );
   if (opts.from > 0 || opts.limit != null) {
     console.log(`Batch: from=${opts.from} count=${tickers.length}`);
@@ -130,6 +204,8 @@ async function main() {
 
   let schemaReady = false;
   let totalInserted = 0;
+  let totalFilings = 0;
+  let tickersWithNew = 0;
 
   for (let i = 0; i < tickers.length; i++) {
     const ticker = tickers[i];
@@ -138,11 +214,14 @@ async function main() {
     try {
       const result = await ingestForm4ForTicker({
         ticker,
-        limit: opts.filingLimit,
+        limit: filingLimit,
+        sinceDate,
         ensureSchema: !schemaReady,
       });
       schemaReady = true;
       totalInserted += result.transactionsInserted;
+      totalFilings += result.filingsProcessed;
+      if (result.transactionsInserted > 0) tickersWithNew += 1;
       summary.push({
         ticker,
         ok: true,
@@ -168,7 +247,9 @@ async function main() {
 
   const ok = summary.filter((s) => s.ok).length;
   const failed = summary.length - ok;
-  console.log(`\nDone: ${ok} succeeded, ${failed} failed, ${totalInserted} transactions inserted.`);
+  console.log(
+    `\nDone: ${ok} succeeded, ${failed} failed, ${totalFilings} filings processed, ${totalInserted} transactions inserted (${tickersWithNew} tickers with new rows).`
+  );
   if (failed) {
     console.log("Failures (first 20):");
     for (const row of summary.filter((s) => !s.ok).slice(0, 20)) {

@@ -28,10 +28,11 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function filingValueUsd(valueThousands: number | null | undefined): number {
-  const x = Number(valueThousands);
+/** sec_holding.value is USD dollars in this database — do not multiply by 1,000. */
+function filingValueUsd(valueFromDb: number | null | undefined): number {
+  const x = Number(valueFromDb);
   if (!Number.isFinite(x) || x <= 0) return 0;
-  return round2(x * 1000);
+  return round2(x);
 }
 
 async function loadStockEnrichment(

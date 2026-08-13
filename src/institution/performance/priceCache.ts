@@ -4,7 +4,14 @@ import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import { closeOnOrBefore, loadAllPricesBatch, type DailyBarsByTicker } from "./dataLoader.js";
 import { loadInstitutionHoldings } from "./holdingsLoader.js";
-import { quartersForHoldings, quarterDateRange, sortQuarters } from "./quarters.js";
+import {
+  filterHoldingsToLatestQuarters,
+  previousQuarter,
+  quartersForHoldings,
+  quarterDateRange,
+  quarterReturnDateRange,
+  sortQuarters,
+} from "./quarters.js";
 import type { QuarterlyStockReturn } from "./types.js";
 
 function round6(n: number): number {
@@ -19,7 +26,8 @@ export interface ReturnsMatrixEntry {
 
 /**
  * Pivot table: index = ticker, columns = quarter, values = quarterly return.
- * return = (price_end_of_quarter / price_start_of_quarter) - 1
+ * return = (price at current 13F quarter-end / price at previous 13F quarter-end) - 1
+ * Uses unadjusted closes (price return, not dividend total return).
  */
 export class ReturnsMatrix {
   private readonly byTicker = new Map<string, Map<string, number | null>>();
@@ -120,7 +128,7 @@ export function computeTickerQuarterReturns(
 
   for (const [ticker, bars] of barsByTicker) {
     for (const quarter of uniqueQuarters) {
-      const range = quarterDateRange(quarter);
+      const range = quarterReturnDateRange(quarter);
       if (!range) {
         entries.push({ ticker, quarter, return: null });
         continue;
@@ -188,8 +196,14 @@ function resolvePriceDateBoundsFromQuarters(quarters: string[]): { minDate: stri
   const sorted = sortQuarters(quarters);
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
-  const start = quarterDateRange(first)?.start ?? "2010-01-01";
-  const end = quarterDateRange(last)?.end ?? new Date().toISOString().slice(0, 10);
+  const start =
+    quarterReturnDateRange(first)?.start ??
+    quarterDateRange(previousQuarter(first) ?? first)?.end ??
+    "2010-01-01";
+  const end =
+    quarterReturnDateRange(last)?.end ??
+    quarterDateRange(last)?.end ??
+    new Date().toISOString().slice(0, 10);
   return { minDate: start, maxDate: end };
 }
 
@@ -208,10 +222,11 @@ export async function warmReturnsMatrix(
     let quarters = opts.quarters;
 
     if (!tickers?.length || !quarters?.length) {
-      const holdings = await loadInstitutionHoldings(pool ?? getPool());
-      if (!holdings.length) {
+      const holdingsRaw = await loadInstitutionHoldings(pool ?? getPool());
+      if (!holdingsRaw.length) {
         throw new Error("No institutional holdings in database to warm performance cache.");
       }
+      const holdings = filterHoldingsToLatestQuarters(holdingsRaw, null);
       tickers = tickers?.length ? tickers : [...new Set(holdings.map((h) => h.ticker))];
       quarters = quarters?.length ? quarters : quartersForHoldings(holdings);
     }

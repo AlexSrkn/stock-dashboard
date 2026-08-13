@@ -2,6 +2,7 @@ import type { XbrlFactObservation } from "./types.js";
 import {
   classifyDuration,
   durationDays,
+  is10KForm,
   is10QForm,
   normalizeFiscalPeriod,
   observationEnd,
@@ -11,10 +12,18 @@ import {
 
 export interface DurationNormalizedValue {
   reportedValue: number;
-  normalizedQuarterValue: number;
+  /**
+   * Standalone quarter value when known (direct quarter fact, or YTD − prior YTD).
+   * Null when only a multi-quarter YTD fact exists and derivation is not possible.
+   */
+  normalizedQuarterValue: number | null;
   durationDays: number | null;
   durationBucket: DurationBucket;
+  /** True when normalizedQuarterValue was computed as current YTD − prior YTD. */
+  derivedStandalone: boolean;
   obs: XbrlFactObservation;
+  /** Prior YTD observation used for derivation (when derivedStandalone). */
+  priorObs: XbrlFactObservation | null;
 }
 
 function pickBestByBucket(
@@ -34,10 +43,26 @@ function periodKey(fp: NormalizedFiscalPeriod, end: string): string {
   return `${fp}|${end}`;
 }
 
-function findPriorQ1QuarterValue(
+function findPriorDurationObservation(
+  beforeEnd: string,
+  bucket: DurationBucket,
+  observations: XbrlFactObservation[]
+): XbrlFactObservation | null {
+  let best: XbrlFactObservation | null = null;
+  for (const obs of observations) {
+    if (!is10QForm(obs.form)) continue;
+    if (classifyDuration(durationDays(obs)) !== bucket) continue;
+    const end = observationEnd(obs);
+    if (!end || end >= beforeEnd) continue;
+    if (!best || end.localeCompare(observationEnd(best)!) > 0) best = obs;
+  }
+  return best;
+}
+
+function findPriorQ1QuarterObservation(
   beforeEnd: string,
   observations: XbrlFactObservation[]
-): number | null {
+): XbrlFactObservation | null {
   let best: XbrlFactObservation | null = null;
   for (const obs of observations) {
     if (!is10QForm(obs.form)) continue;
@@ -47,7 +72,7 @@ function findPriorQ1QuarterValue(
     if (!end || end >= beforeEnd) continue;
     if (!best || end.localeCompare(observationEnd(best)!) > 0) best = obs;
   }
-  return best ? Number(best.val) : null;
+  return best;
 }
 
 function resolveFp(observations: XbrlFactObservation[]): NormalizedFiscalPeriod | null {
@@ -58,9 +83,25 @@ function resolveFp(observations: XbrlFactObservation[]): NormalizedFiscalPeriod 
   return null;
 }
 
+function directQuarter(
+  quarter: XbrlFactObservation
+): DurationNormalizedValue {
+  const val = Number(quarter.val);
+  return {
+    reportedValue: val,
+    normalizedQuarterValue: val,
+    durationDays: durationDays(quarter),
+    durationBucket: "quarter",
+    derivedStandalone: false,
+    obs: quarter,
+    priorObs: null,
+  };
+}
+
 /**
  * Normalize 10-Q duration metrics per period end (not SEC fy tag).
- * Q2 = H1(180d) − prior Q1 quarter, Q3 = 9M(270d) − H1 at same period end.
+ * Q2 = H1(180d) − prior Q1 quarter, Q3 = 9M(270d) − prior H1(180d) at earlier period end.
+ * Never treat a multi-quarter YTD fact as a standalone quarter without derivation.
  */
 export function normalizeQuarterlyDurations(
   observations: XbrlFactObservation[]
@@ -94,36 +135,26 @@ export function normalizeQuarterlyDurations(
     const key = periodKey(fp, end);
 
     if (fp === "Q1" && quarter) {
-      const val = Number(quarter.val);
-      out.set(key, {
-        reportedValue: val,
-        normalizedQuarterValue: val,
-        durationDays: durationDays(quarter),
-        durationBucket: "quarter",
-        obs: quarter,
-      });
+      out.set(key, directQuarter(quarter));
       continue;
     }
 
     if (fp === "Q2") {
       if (quarter) {
-        const val = Number(quarter.val);
-        out.set(key, {
-          reportedValue: val,
-          normalizedQuarterValue: val,
-          durationDays: durationDays(quarter),
-          durationBucket: "quarter",
-          obs: quarter,
-        });
+        out.set(key, directQuarter(quarter));
       } else if (h1) {
         const reported = Number(h1.val);
-        const q1Val = findPriorQ1QuarterValue(end, eligible);
+        const priorQ1 = findPriorQ1QuarterObservation(end, eligible);
+        const q1Val = priorQ1 != null ? Number(priorQ1.val) : null;
+        const derived = q1Val != null;
         out.set(key, {
           reportedValue: reported,
-          normalizedQuarterValue: q1Val != null ? reported - q1Val : reported,
+          normalizedQuarterValue: derived ? reported - q1Val! : null,
           durationDays: durationDays(h1),
           durationBucket: "h1_ytd",
+          derivedStandalone: derived,
           obs: h1,
+          priorObs: derived ? priorQ1 : null,
         });
       }
       continue;
@@ -131,23 +162,21 @@ export function normalizeQuarterlyDurations(
 
     if (fp === "Q3") {
       if (quarter) {
-        const val = Number(quarter.val);
-        out.set(key, {
-          reportedValue: val,
-          normalizedQuarterValue: val,
-          durationDays: durationDays(quarter),
-          durationBucket: "quarter",
-          obs: quarter,
-        });
+        out.set(key, directQuarter(quarter));
       } else if (nineM) {
         const reported = Number(nineM.val);
-        const h1AtEnd = h1 ? Number(h1.val) : null;
+        // Prior 6M YTD ends at Q2 period end — not at this Q3 end.
+        const priorH1Obs = findPriorDurationObservation(end, "h1_ytd", eligible);
+        const priorH1 = priorH1Obs != null ? Number(priorH1Obs.val) : null;
+        const derived = priorH1 != null;
         out.set(key, {
           reportedValue: reported,
-          normalizedQuarterValue: h1AtEnd != null ? reported - h1AtEnd : reported,
+          normalizedQuarterValue: derived ? reported - priorH1! : null,
           durationDays: durationDays(nineM),
           durationBucket: "nine_m_ytd",
+          derivedStandalone: derived,
           obs: nineM,
+          priorObs: derived ? priorH1Obs : null,
         });
       }
     }
@@ -172,20 +201,37 @@ export function normalizeQuarterlyDurationForFy(
   return out;
 }
 
+/**
+ * Pick the annual (≈12-month) duration value for a period end.
+ * Prefer the latest filing (restatements) for the numeric value.
+ * Does not fall back to quarterly/YTD stubs that appear in 10-Ks as comparatives.
+ */
 export function pickAnnualDurationValue(
   observations: XbrlFactObservation[]
 ): DurationNormalizedValue | null {
-  const annual =
-    pickBestByBucket(observations, "annual_ytd") ??
-    observations.sort((a, b) => String(b.filed ?? "").localeCompare(String(a.filed ?? "")))[0];
-  const obs = annual;
+  let obs = pickBestByBucket(observations, "annual_ytd");
+  if (!obs) {
+    // Some fixtures / older facts omit `start`; treat unknown-duration 10-K facts
+    // as annual when they are not classified as quarter/YTD.
+    const unknownAnnual = observations
+      .filter((o) => is10KForm(o.form))
+      .filter((o) => {
+        const bucket = classifyDuration(durationDays(o));
+        return bucket === "unknown" || bucket === "annual_ytd";
+      })
+      .sort((a, b) => String(b.filed ?? "").localeCompare(String(a.filed ?? "")));
+    obs = unknownAnnual[0] ?? null;
+  }
   if (!obs) return null;
   const val = Number(obs.val);
+  const bucket = classifyDuration(durationDays(obs));
   return {
     reportedValue: val,
     normalizedQuarterValue: val,
     durationDays: durationDays(obs),
-    durationBucket: classifyDuration(durationDays(obs)),
+    durationBucket: bucket === "unknown" ? "annual_ytd" : bucket,
+    derivedStandalone: false,
     obs,
+    priorObs: null,
   };
 }

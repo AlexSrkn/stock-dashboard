@@ -83,4 +83,4 @@ export interface OwnershipHistoryPayload {
   category: OwnershipHistoryCategory | "";
   stocks: OwnershipHistoryRow[];
 }
-
+

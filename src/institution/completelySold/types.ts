@@ -1,36 +1,30 @@
 export interface CompletelySoldPositionRow {
-  institutionId: string;
-  institutionName: string;
-  institutionType: string;
-  ticker: string | null;
+  /** Aggregated exit row keyed by ticker across all tracked institutions. */
+  ticker: string;
   companyName: string | null;
   sector: string | null;
-  cusip: string;
-  quarter: string;
-  filingDate: string | null;
-  previousPositionValueUsd: number | null;
+  /** Sum of prior-quarter 13F market values for this ticker across exiting institutions. */
+  previousPositionValueUsd: number;
+  /** Sum of prior-quarter share counts across exiting institutions. */
   previousShares: number;
-  previousPortfolioWeightPct: number | null;
+  /** Number of institutions that fully exited this ticker. */
+  institutionsExiting: number;
+  /** Quarters represented among the underlying institution exits. */
+  quarters: string[];
   currentPosition: "Sold";
 }
 
 export interface CompletelySoldSummary {
-  totalPositionsSold: number;
+  totalStocksSold: number;
   institutionsReporting: number;
   uniqueStocksSold: number;
   totalValueExitedUsd: number;
-}
-
-export interface CompletelySoldInstitutionOption {
-  cik: string;
-  name: string;
 }
 
 export interface CompletelySoldPayload {
   computedAt: string;
   quarters: string[];
   sectors: string[];
-  institutions: CompletelySoldInstitutionOption[];
   summary: CompletelySoldSummary;
   positions: CompletelySoldPositionRow[];
 }

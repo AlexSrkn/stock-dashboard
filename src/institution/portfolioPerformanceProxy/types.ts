@@ -48,6 +48,7 @@ export interface PortfolioProxyFilters {
   minGrowth1yPct?: number | null;
   minGrowth3yPct?: number | null;
   name?: string | null;
+  cik?: string | null;
   sort?: PortfolioProxySortKey;
   sortDir?: "asc" | "desc";
   page?: number;
@@ -55,7 +56,7 @@ export interface PortfolioProxyFilters {
 }
 
 export interface PortfolioProxyRankingsPayload {
-  label: "13F Portfolio Performance Proxy";
+  label: string;
   disclaimer: string;
   methodology: string;
   computedAt: string;
@@ -74,4 +75,4 @@ export const PORTFOLIO_PROXY_DISCLAIMER =
   "This ranking reflects changes in the reported value of an institution's disclosed 13F portfolio between filing periods. It is not the institution's actual investment return.";
 
 export const PORTFOLIO_PROXY_METHODOLOGY =
-  "Portfolio Value = SUM(value of all reported 13F holdings) for the latest filing in each quarter. QoQ / 1Y / 3Y compare exact reporting quarters only; missing quarters are never interpolated.";
+  "Portfolio Value = SUM(value of all reported 13F holdings) in USD for the primary filing in each quarter (largest reported total). QoQ / 1Y / 3Y compare exact reporting quarters only using those raw USD totals; missing quarters are N/A and never interpolated. This is a reported-value proxy, not an investment return.";

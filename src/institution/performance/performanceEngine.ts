@@ -1,12 +1,13 @@
 import { buildPortfolioSnapshots } from "./portfolioWeights.js";
-import { quartersForHoldings } from "./quarters.js";
+import { filterHoldingsToLatestQuarters, quartersForHoldings } from "./quarters.js";
 import type { ReturnsMatrix } from "./priceCache.js";
-import { computeInstitutionPerformanceSummaries } from "./portfolioEngine.js";
+import { computeInstitutionPerformanceWithDebug } from "./portfolioEngine.js";
 import type {
   InstitutionHolding,
   InstitutionPerformanceOptions,
   InstitutionPerformanceSummary,
   InstitutionQuarterPerformance,
+  QuarterPerformanceDebug,
   QuarterlyStockReturn,
 } from "./types.js";
 
@@ -22,36 +23,35 @@ export interface PerformanceEngineResult {
   portfolioSnapshots: ReturnType<typeof buildPortfolioSnapshots>;
   stockReturns: QuarterlyStockReturn[];
   institutionQuarterReturns: InstitutionQuarterPerformance[];
+  debug: QuarterPerformanceDebug[];
 }
 
 /**
- * End-to-end performance pipeline — uses only precomputed ticker-quarter returns.
- * No external API calls.
+ * End-to-end 13F-implied performance pipeline — uses only precomputed ticker-quarter returns.
+ * No external API calls. Does not fabricate returns for missing holdings quarters.
+ * Uses all available consecutive 13F holdings quarters unless `maxHoldingsQuarters` is set.
  */
 export function runInstitutionPerformanceEngine(
   input: PerformanceEngineInput
 ): PerformanceEngineResult {
-  const { holdings, returnsMatrix, options } = input;
+  const { returnsMatrix, options } = input;
+  const maxQ = options?.maxHoldingsQuarters ?? null;
+  const holdings = filterHoldingsToLatestQuarters(input.holdings, maxQ);
   const quarters = input.quarters ?? quartersForHoldings(holdings);
 
   const portfolioSnapshots = buildPortfolioSnapshots(holdings);
-  const summaries = computeInstitutionPerformanceSummaries(
+  const { summaries, debug, institutionQuarterReturns } = computeInstitutionPerformanceWithDebug(
     holdings,
     returnsMatrix,
     quarters,
     options
   );
 
-  const institutionQuarterReturns = summaries.map((s) => ({
-    institutionId: s.institutionId,
-    quarter: s.quarter,
-    return: s.qoqReturn,
-  }));
-
   return {
     summaries,
     portfolioSnapshots,
     stockReturns: returnsMatrix.toRows(),
     institutionQuarterReturns,
+    debug,
   };
 }

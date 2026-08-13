@@ -7,7 +7,8 @@ import type { PoliticianTrade } from "../politicians/types.js";
 import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
-import { fetchQuarterPairMap, loadOwnershipMeta } from "./ownershipAnalytics.js";
+import { loadOwnershipMeta } from "./ownershipAnalytics.js";
+import { loadOwnershipCacheSnapshot } from "./ownershipCacheReader.js";
 import type { FundHoldingAggregate } from "./types.js";
 
 function round2(n: number): number {
@@ -196,26 +197,28 @@ export async function getOwnershipIntelligence(
     };
 
     if (ownershipMeta.currentQuarter) {
-      const { current, previous } = await fetchQuarterPairMap(
-        pool,
-        ownershipMeta.cusips,
-        ownershipMeta.currentQuarter,
-        ownershipMeta.previousQuarter,
-        ownershipMeta.impliedSharesOutstanding,
-        ownershipMeta.stockPrice
-      );
-      const flow = computeShareFlow(current, previous);
-      institutional = {
-        ...institutional,
-        trend: flow.trend,
-        institutionCountChange: ownershipMeta.previousQuarter
-          ? countHolders(current) - countHolders(previous)
-          : null,
-        newPositions: countNewPositions(current, previous),
-        netShares: flow.netShares,
-        buyShares: flow.buyShares,
-        sellShares: flow.sellShares,
-      };
+      const snapshot = await loadOwnershipCacheSnapshot(pool, sym);
+      if (snapshot?.currentQuarter === ownershipMeta.currentQuarter) {
+        const netShares = round2(snapshot.currentShares - snapshot.previousShares);
+        const buyShares = netShares > 0 ? netShares : 0;
+        const sellShares = netShares < 0 ? Math.abs(netShares) : 0;
+        const trend =
+          snapshot.ownershipTrend === "increasing" ||
+          snapshot.ownershipTrend === "decreasing" ||
+          snapshot.ownershipTrend === "neutral"
+            ? snapshot.ownershipTrend
+            : classifyActivityTrend(netShares, buyShares, sellShares);
+        institutional = {
+          ...institutional,
+          trend,
+          ownershipPct: snapshot.institutionalOwnershipPct ?? institutional.ownershipPct,
+          institutionCountChange: null,
+          newPositions: 0,
+          netShares,
+          buyShares: round2(buyShares),
+          sellShares: round2(sellShares),
+        };
+      }
     }
   } catch {
     /* 13F data optional */

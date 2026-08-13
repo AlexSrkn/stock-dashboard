@@ -3,7 +3,10 @@ import { getPool } from "../../db/pool.js";
 import { formatSecCik } from "../../sec/http.js";
 import { runInstitutionPerformanceEngine } from "./performanceEngine.js";
 import { loadInstitutionHoldings } from "./holdingsLoader.js";
-import { getOrComputePerformanceSummaries } from "./cache.js";
+import {
+  getCachedPerformanceSummaries,
+  getOrComputePerformanceSummaries,
+} from "./cache.js";
 import {
   buildInstitutionRankings,
   parsePerformancePeriod,

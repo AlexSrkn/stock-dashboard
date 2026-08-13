@@ -98,4 +98,4 @@ export function pickCategory(scores: {
   if (ranked[0].score <= 0 && scores.ownershipChange < 0) return "ownership_decliner";
   return ranked[0].cat;
 }
-
+

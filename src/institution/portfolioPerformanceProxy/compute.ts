@@ -160,12 +160,21 @@ export function applyProxyFilters(
   const nameQ = String(filters.name || "")
     .trim()
     .toLowerCase();
+  const cikQ = String(filters.cik || "")
+    .replace(/\D/g, "")
+    .replace(/^0+/, "");
   const minValue = filters.minPortfolioValue ?? null;
   const minHoldings = filters.minHoldings ?? null;
   const min1y = filters.minGrowth1yPct ?? null;
   const min3y = filters.minGrowth3yPct ?? null;
 
   return rows.filter((row) => {
+    if (cikQ) {
+      const rowCik = String(row.cik || "")
+        .replace(/\D/g, "")
+        .replace(/^0+/, "");
+      if (rowCik !== cikQ) return false;
+    }
     if (nameQ) {
       const hay = `${row.name} ${row.cik}`.toLowerCase();
       if (!hay.includes(nameQ)) return false;

@@ -73,6 +73,19 @@ export function quarterDateRange(quarter: string): { start: string; end: string 
   return { start, end };
 }
 
+/**
+ * Price window for a reconstructed 13F QoQ return:
+ * previous calendar quarter-end → current calendar quarter-end.
+ */
+export function quarterReturnDateRange(returnQuarter: string): { start: string; end: string } | null {
+  const prev = previousQuarter(returnQuarter);
+  if (!prev) return null;
+  const prevRange = quarterDateRange(prev);
+  const curRange = quarterDateRange(returnQuarter);
+  if (!prevRange || !curRange) return null;
+  return { start: prevRange.end, end: curRange.end };
+}
+
 /** Quarters in the same calendar year from Q1 through `quarter` inclusive. */
 export function quartersYtdThrough(quarter: string): string[] {
   const p = parseQuarter(quarter);
@@ -84,12 +97,48 @@ export function quartersYtdThrough(quarter: string): string[] {
   return out;
 }
 
-/** Quarters spanned by holdings plus one follow-on quarter for return chaining. */
+/**
+ * Distinct holdings quarters (no gap-filling).
+ * Used as portfolio snapshot dates — do not invent missing 13F periods.
+ */
+export function holdingsQuarters(holdings: { quarter: string }[]): string[] {
+  return sortQuarters(holdings.map((h) => h.quarter));
+}
+
+/**
+ * Keep only the latest `maxQuarters` distinct holdings quarters (global across the set).
+ */
+export function filterHoldingsToLatestQuarters<T extends { quarter: string }>(
+  holdings: T[],
+  maxQuarters: number | null | undefined = 4
+): T[] {
+  if (maxQuarters == null || maxQuarters <= 0) return holdings;
+  const all = holdingsQuarters(holdings);
+  if (all.length <= maxQuarters) return holdings;
+  const keep = new Set(all.slice(-maxQuarters));
+  return holdings.filter((h) => keep.has(h.quarter));
+}
+
+/**
+ * Return quarters that can be attempted from holdings: each consecutive prior→current
+ * pair where both snapshot quarters exist on the holdings timeline for *some* filer.
+ * Does not expand gaps (e.g. missing 2015–2023) into fabricated return periods.
+ */
+export function returnQuartersFromHoldings(holdings: { quarter: string }[]): string[] {
+  const snaps = holdingsQuarters(holdings);
+  const snapSet = new Set(snaps);
+  const out: string[] = [];
+  for (const q of snaps) {
+    const prev = previousQuarter(q);
+    if (prev && snapSet.has(prev)) out.push(q);
+  }
+  return out;
+}
+
+/**
+ * Quarters needed for the ticker-return matrix: holdings quarters that participate
+ * in a consecutive pair (as prior or current). No historical gap-filling.
+ */
 export function quartersForHoldings(holdings: { quarter: string }[]): string[] {
-  const snapshotQuarters = sortQuarters(holdings.map((h) => h.quarter));
-  const quarters = [...expandQuarterRange(snapshotQuarters)];
-  const tail = quarters[quarters.length - 1];
-  const follow = tail ? nextQuarter(tail) : null;
-  if (follow) quarters.push(follow);
-  return quarters;
+  return returnQuartersFromHoldings(holdings);
 }

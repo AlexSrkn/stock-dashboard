@@ -35,13 +35,68 @@ async function loadStockEnrichment(
   return out;
 }
 
-function buildSummary(positions: CompletelySoldPositionRow[]): CompletelySoldSummary {
-  const institutionIds = new Set(positions.map((p) => p.institutionId));
-  const tickers = new Set(positions.map((p) => p.ticker).filter(Boolean));
+interface RawExit {
+  institutionId: string;
+  ticker: string;
+  companyName: string | null;
+  quarter: string;
+  previousPositionValueUsd: number;
+  previousShares: number;
+}
+
+export function aggregateCompletelySoldByTicker(raw: RawExit[]): CompletelySoldPositionRow[] {
+  return aggregateByTicker(raw);
+}
+
+function aggregateByTicker(raw: RawExit[]): CompletelySoldPositionRow[] {
+  const byTicker = new Map<
+    string,
+    {
+      companyName: string | null;
+      previousPositionValueUsd: number;
+      previousShares: number;
+      institutionIds: Set<string>;
+      quarters: Set<string>;
+    }
+  >();
+
+  for (const row of raw) {
+    const ticker = row.ticker.toUpperCase();
+    const cur = byTicker.get(ticker) ?? {
+      companyName: row.companyName,
+      previousPositionValueUsd: 0,
+      previousShares: 0,
+      institutionIds: new Set<string>(),
+      quarters: new Set<string>(),
+    };
+    if (!cur.companyName && row.companyName) cur.companyName = row.companyName;
+    cur.previousPositionValueUsd += row.previousPositionValueUsd;
+    cur.previousShares += row.previousShares;
+    cur.institutionIds.add(row.institutionId);
+    if (row.quarter) cur.quarters.add(row.quarter);
+    byTicker.set(ticker, cur);
+  }
+
+  return [...byTicker.entries()].map(([ticker, agg]) => ({
+    ticker,
+    companyName: agg.companyName,
+    sector: null,
+    previousPositionValueUsd: round2(agg.previousPositionValueUsd),
+    previousShares: round2(agg.previousShares),
+    institutionsExiting: agg.institutionIds.size,
+    quarters: sortQuarters(agg.quarters),
+    currentPosition: "Sold" as const,
+  }));
+}
+
+function buildSummary(
+  positions: CompletelySoldPositionRow[],
+  institutionCount: number
+): CompletelySoldSummary {
   return {
-    totalPositionsSold: positions.length,
-    institutionsReporting: institutionIds.size,
-    uniqueStocksSold: tickers.size,
+    totalStocksSold: positions.length,
+    institutionsReporting: institutionCount,
+    uniqueStocksSold: positions.length,
     totalValueExitedUsd: round2(
       positions.reduce((sum, p) => sum + (p.previousPositionValueUsd ?? 0), 0)
     ),
@@ -52,60 +107,63 @@ export async function computeCompletelySoldPositions(
   pool: pg.Pool = getPool()
 ): Promise<CompletelySoldPayload> {
   const funds = listTrackedInstitutions();
-  const positions: CompletelySoldPositionRow[] = [];
+  const raw: RawExit[] = [];
+  const institutionsWithExits = new Set<string>();
 
   for (let i = 0; i < funds.length; i += BATCH_SIZE) {
     const batch = funds.slice(i, i + BATCH_SIZE);
     const batchRows = await Promise.all(
       batch.map(async (fund) => {
         const activity = await getInstitutionActivity(pool, fund.cik, 5000);
-        if (!activity?.meta.currentQuarter) return [];
-
-        const prevPortfolioUsd = activity.previousPortfolioValueUsd;
-        return activity.completelySold.map((row) => ({
-          institutionId: fund.cik,
-          institutionName: fund.name,
-          institutionType: fund.type,
-          ticker: row.ticker ? String(row.ticker).toUpperCase() : null,
-          companyName: row.issuer ? String(row.issuer) : null,
-          sector: null as string | null,
-          cusip: row.cusip,
-          quarter: activity.meta.currentQuarter ?? "",
-          filingDate: activity.meta.latestFilingDate,
-          previousPositionValueUsd: row.previousValueUsd,
-          previousShares: row.previousShares,
-          previousPortfolioWeightPct:
-            row.previousValueUsd != null && prevPortfolioUsd != null && prevPortfolioUsd > 0
-              ? round2((row.previousValueUsd / prevPortfolioUsd) * 100)
-              : null,
-          currentPosition: "Sold" as const,
-        }));
+        if (!activity?.meta.currentQuarter) return [] as RawExit[];
+        if (!activity.completelySold.length) return [] as RawExit[];
+        institutionsWithExits.add(fund.cik);
+        return activity.completelySold
+          .map((row) => {
+            const ticker = row.ticker ? String(row.ticker).trim().toUpperCase() : "";
+            if (!ticker) return null;
+            const previousPositionValueUsd = Number(row.previousValueUsd);
+            const previousShares = Number(row.previousShares);
+            if (!Number.isFinite(previousPositionValueUsd) || previousPositionValueUsd <= 0) {
+              return null;
+            }
+            return {
+              institutionId: fund.cik,
+              ticker,
+              companyName: row.issuer ? String(row.issuer) : null,
+              quarter: activity.meta.currentQuarter ?? "",
+              previousPositionValueUsd,
+              previousShares: Number.isFinite(previousShares) ? previousShares : 0,
+            } satisfies RawExit;
+          })
+          .filter((r): r is RawExit => r != null);
       })
     );
-    positions.push(...batchRows.flat());
+    raw.push(...batchRows.flat());
   }
 
-  const tickers = [...new Set(positions.map((p) => p.ticker).filter(Boolean))] as string[];
+  const positions = aggregateByTicker(raw);
+  const tickers = positions.map((p) => p.ticker);
   const enrichment = await loadStockEnrichment(pool, tickers);
   for (const row of positions) {
-    if (!row.ticker) continue;
     const meta = enrichment.get(row.ticker);
     if (!meta) continue;
     if (meta.companyName) row.companyName = meta.companyName;
     row.sector = meta.sector;
   }
 
-  positions.sort((a, b) => (b.previousPositionValueUsd ?? 0) - (a.previousPositionValueUsd ?? 0));
+  positions.sort((a, b) => b.previousPositionValueUsd - a.previousPositionValueUsd);
 
-  const quarters = sortQuarters([...new Set(positions.map((p) => p.quarter).filter(Boolean))]);
+  const quarters = sortQuarters([
+    ...new Set(positions.flatMap((p) => p.quarters).filter(Boolean)),
+  ]);
   const sectors = [...new Set(positions.map((p) => p.sector).filter(Boolean))].sort() as string[];
 
   return {
     computedAt: new Date().toISOString(),
     quarters,
     sectors,
-    institutions: funds.map((f) => ({ cik: f.cik, name: f.name })),
-    summary: buildSummary(positions),
+    summary: buildSummary(positions, institutionsWithExits.size),
     positions,
   };
 }

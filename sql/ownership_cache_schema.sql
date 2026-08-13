@@ -38,8 +38,11 @@ CREATE TABLE IF NOT EXISTS ownership_cache (
   top_institutions JSONB NOT NULL DEFAULT '[]'::jsonb,
   institution_types TEXT[] NOT NULL DEFAULT '{}',
   current_quarter VARCHAR(8),
+  primary_cusip CHAR(9),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE ownership_cache ADD COLUMN IF NOT EXISTS primary_cusip CHAR(9);
 
 CREATE INDEX IF NOT EXISTS idx_ownership_cache_inst_pct
   ON ownership_cache (institutional_ownership_pct);

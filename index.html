@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=landing-cards-2" />
   </head>
   <body>
     <div class="app">
@@ -46,10 +46,7 @@
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="holder-overlap">Holder overlap</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-history">Ownership history</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="compare">Stock Comparison</button></li>
-                    <li><span class="workspace-nav__subsection">Watchlist</span></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="screener">Screener</button></li>
-                    <li><span class="workspace-nav__subsection">Earnings calendar</span></li>
-                    <li><span class="workspace-nav__subsection">Market movers</span></li>
                   </ul>
                 </div>
               </li>
@@ -68,15 +65,11 @@
                 <div class="workspace-nav__dropdown" role="menu" aria-label="Institutions sections">
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="directory">All institutions</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="performance">Performance rankings</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="proxy-performance">Proxy Performance</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="performance">Performance</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="most-accumulated">Most accumulated</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="new-positions">New positions</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="completely-sold">Completely sold</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="compare">Institution comparison</button></li>
-                    <li><span class="workspace-nav__subsection">Top holders</span></li>
-                    <li><span class="workspace-nav__subsection">13F activity</span></li>
-                    <li><span class="workspace-nav__subsection">New positions</span></li>
                   </ul>
                 </div>
               </li>
@@ -261,6 +254,46 @@
               Browse institutions
             </button>
           </article>
+          <article class="landing-card landing-card--insiders">
+            <div class="landing-card__icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <h2 class="landing-card__title">Insider trades</h2>
+            <p class="landing-card__desc">
+              Follow open-market Form 4 purchases and sales — clusters, conviction buys, repeat
+              buyers, and heavy selling across executives and directors.
+            </p>
+            <ul class="landing-card__list">
+              <li>Recent Form 4 trade feed</li>
+              <li>Cluster &amp; conviction buying</li>
+              <li>Sentiment, first-time &amp; heavy selling</li>
+            </ul>
+            <button type="button" class="btn btn--ghost landing-card__cta" id="landing-enter-insiders">
+              Browse insider trades
+            </button>
+          </article>
+          <article class="landing-card landing-card--congress">
+            <div class="landing-card__icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M4 20h16M6 20V10l6-4 6 4v10M9 14h6M12 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <h2 class="landing-card__title">Congress trades</h2>
+            <p class="landing-card__desc">
+              Track disclosed House and Senate trades from periodic transaction reports — buys,
+              sells, largest portfolios, and sector exposure.
+            </p>
+            <ul class="landing-card__list">
+              <li>House &amp; Senate PTR disclosures</li>
+              <li>Most accumulated &amp; large portfolios</li>
+              <li>Repeat buyers &amp; sector maps</li>
+            </ul>
+            <button type="button" class="btn btn--ghost landing-card__cta" id="landing-enter-politicians">
+              Browse congress trades
+            </button>
+          </article>
         </div>
         <p class="landing__footnote muted small">
           Data from Yahoo Finance and SEC EDGAR. Set <code class="inline-code">SEC_USER_AGENT</code> in
@@ -393,7 +426,7 @@
                   hidden
                 >
                   <ul class="market-pulse__list" id="pulse-discoveries-preview" aria-label="Signal discoveries"></ul>
-                  <a href="/signals/smart-money" class="market-pulse__view-all" id="pulse-discoveries-view-all">View All →</a>
+                  <a href="/signals/double-signal" class="market-pulse__view-all" id="pulse-discoveries-view-all">View All →</a>
                 </div>
               </div>
             </aside>
@@ -1283,7 +1316,7 @@
               <button type="button" class="stock-tabs__btn" data-stock-tab="signals" role="tab" aria-selected="false">
                 Signals
               </button>
-              <button type="button" class="stock-tabs__btn" data-stock-tab="fundamentals" role="tab" aria-selected="false">
+              <button type="button" class="stock-tabs__btn" data-stock-tab="filings-fundamentals" role="tab" aria-selected="false">
                 Fundamentals
               </button>
               <button type="button" class="stock-tabs__btn" data-stock-tab="ownership" role="tab" aria-selected="false">
@@ -1298,14 +1331,8 @@
               <button type="button" class="stock-tabs__btn" data-stock-tab="congress-activity" role="tab" aria-selected="false">
                 Congress Activity
               </button>
-              <button type="button" class="stock-tabs__btn" data-stock-tab="earnings" role="tab" aria-selected="false">
-                Earnings
-              </button>
               <button type="button" class="stock-tabs__btn" data-stock-tab="sec-filings" role="tab" aria-selected="false">
                 SEC Filings
-              </button>
-              <button type="button" class="stock-tabs__btn" data-stock-tab="filings-fundamentals" role="tab" aria-selected="false">
-                Filings Fundamentals
               </button>
             </nav>
           </section>
@@ -1508,13 +1535,13 @@
             </section>
 
             <section class="overview-key-stats trades-card" aria-labelledby="overview-key-stats-heading">
-              <h2 id="overview-key-stats-heading" class="overview-section-title">Key statistics</h2>
+              <h2 id="overview-key-stats-heading" class="overview-section-title">Metrics</h2>
               <div
                 id="overview-key-stats-grid"
                 class="overview-key-stats__grid overview-key-stats__grid--empty"
-                aria-label="Key statistics"
+                aria-label="Metrics"
               >
-                <p class="fundamentals-grid__empty">Select a stock to load key statistics.</p>
+                <p class="fundamentals-grid__empty">Select a stock to load metrics.</p>
               </div>
             </section>
 
@@ -1571,18 +1598,6 @@
             </section>
           </div>
 
-          <div id="stock-panel-fundamentals" class="stock-panel" data-stock-panel="fundamentals" hidden>
-            <section class="overview-snapshot trades-card" aria-label="Fundamentals">
-              <div
-                id="overview-snapshot-grid"
-                class="overview-snapshot-body overview-snapshot-body--empty"
-                aria-label="Fundamentals"
-              >
-                <p class="fundamentals-grid__empty">Select a stock to load company data.</p>
-              </div>
-            </section>
-          </div>
-
           <div id="stock-panel-ownership" class="stock-panel" data-stock-panel="ownership" hidden>
           <section class="trades-card ownership-card" aria-labelledby="ownership-heading">
             <div class="panel-head panel-head--row">
@@ -1598,7 +1613,7 @@
                     <th class="num">Value</th>
                     <th class="num">% Outstanding</th>
                     <th class="num" title="Common-stock share change vs prior quarter (puts/calls excluded)">QoQ change</th>
-                    <th class="num" title="Change in live position value vs prior quarter (millions USD)">Value added ($M)</th>
+                    <th class="num" title="Change in live position value vs prior quarter (USD)">Value added</th>
                   </tr>
                 </thead>
                 <tbody id="ownership-holders-body"></tbody>
@@ -1626,7 +1641,7 @@
 
               <div class="activity-block">
                 <h3 class="activity-block__title" id="activity-buyers-heading">Biggest buyers</h3>
-                <p class="muted small activity-block__hint">Top 5 by shares added vs prior quarter (common stock)</p>
+                <p class="muted small activity-block__hint">Top 5 by shares added vs prior quarter (existing positions)</p>
                 <div class="table-scroll">
                   <table class="trades-table activity-table" aria-labelledby="activity-buyers-heading">
                     <thead>
@@ -1635,7 +1650,7 @@
                         <th class="num">Shares added</th>
                         <th class="num">Prior shares</th>
                         <th class="num">Current shares</th>
-                        <th class="num">Value change ($M)</th>
+                        <th class="num">Value change</th>
                       </tr>
                     </thead>
                     <tbody id="activity-buyers-body"></tbody>
@@ -1655,7 +1670,7 @@
 
               <div class="activity-block">
                 <h3 class="activity-block__title" id="activity-sellers-heading">Biggest sellers</h3>
-                <p class="muted small activity-block__hint">Top 5 by shares sold vs prior quarter (common stock)</p>
+                <p class="muted small activity-block__hint">Top 5 by shares sold vs prior quarter (still held)</p>
                 <div class="table-scroll">
                   <table class="trades-table activity-table" aria-labelledby="activity-sellers-heading">
                     <thead>
@@ -1664,7 +1679,7 @@
                         <th class="num">Shares sold</th>
                         <th class="num">Prior shares</th>
                         <th class="num">Current shares</th>
-                        <th class="num">Value change ($M)</th>
+                        <th class="num">Value change</th>
                       </tr>
                     </thead>
                     <tbody id="activity-sellers-body"></tbody>
@@ -1678,6 +1693,60 @@
                     aria-expanded="false"
                   >
                     Show all sellers
+                  </button>
+                </div>
+              </div>
+
+              <div class="activity-block">
+                <h3 class="activity-block__title" id="activity-exits-heading">Exits</h3>
+                <p class="muted small activity-block__hint">Funds that filed this quarter and fully sold the stock (not merely late filers)</p>
+                <div class="table-scroll">
+                  <table class="trades-table activity-table" aria-labelledby="activity-exits-heading">
+                    <thead>
+                      <tr>
+                        <th>Fund</th>
+                        <th class="num">Prior value</th>
+                        <th class="num">Shares exited</th>
+                      </tr>
+                    </thead>
+                    <tbody id="activity-exits-body"></tbody>
+                  </table>
+                </div>
+                <div class="activity-foot" id="activity-exits-foot" hidden>
+                  <button
+                    type="button"
+                    class="btn btn--ghost activity-more"
+                    id="activity-exits-more-btn"
+                    aria-expanded="false"
+                  >
+                    Show all exits
+                  </button>
+                </div>
+              </div>
+
+              <div class="activity-block">
+                <h3 class="activity-block__title" id="activity-new-heading">New positions</h3>
+                <p class="muted small activity-block__hint">Funds that opened a brand-new position this quarter</p>
+                <div class="table-scroll">
+                  <table class="trades-table activity-table" aria-labelledby="activity-new-heading">
+                    <thead>
+                      <tr>
+                        <th>Fund</th>
+                        <th class="num">Value</th>
+                        <th class="num">Shares</th>
+                      </tr>
+                    </thead>
+                    <tbody id="activity-new-body"></tbody>
+                  </table>
+                </div>
+                <div class="activity-foot" id="activity-new-foot" hidden>
+                  <button
+                    type="button"
+                    class="btn btn--ghost activity-more"
+                    id="activity-new-more-btn"
+                    aria-expanded="false"
+                  >
+                    Show all new positions
                   </button>
                 </div>
               </div>
@@ -1833,31 +1902,6 @@
             </section>
           </div>
 
-          <div id="stock-panel-earnings" class="stock-panel" data-stock-panel="earnings" hidden>
-            <section class="trades-card earnings-card" id="earnings-section" aria-labelledby="earnings-heading">
-              <div class="panel-head panel-head--row">
-                <h2 id="earnings-heading">Earnings</h2>
-                <span class="muted small" id="earnings-subtitle">Yahoo Finance · Earnings history</span>
-              </div>
-              <div class="earnings-next" id="earnings-next" hidden>
-                <div class="earnings-next__card">
-                  <p class="earnings-next__label" id="earnings-next-label">Earnings Date</p>
-                  <p class="earnings-next__date mono" id="earnings-next-date">—</p>
-                  <p class="earnings-next__meta muted small" id="earnings-next-meta" hidden></p>
-                </div>
-              </div>
-              <div class="table-scroll">
-                <table class="trades-table earnings-table" id="earnings-table" aria-label="Earnings history">
-                  <tbody>
-                    <tr>
-                      <td colspan="5" class="trades-table__empty">Select a stock to load earnings history.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-
           <div id="stock-panel-sec-filings" class="stock-panel" data-stock-panel="sec-filings" hidden>
             <section class="trades-card sec-filings-card" aria-labelledby="sec-heading">
               <div class="panel-head panel-head--row">
@@ -1889,12 +1933,54 @@
                 </button>
               </div>
             </section>
+
+            <section class="trades-card sec-filings-card" aria-labelledby="sec-filings-10k-heading">
+              <div class="activity-block">
+                <h3 class="activity-block__title" id="sec-filings-10k-heading">10-K filings</h3>
+                <div class="table-scroll">
+                  <table class="trades-table sec-filings-table">
+                    <thead>
+                      <tr>
+                        <th>Form</th>
+                        <th>Filing date</th>
+                        <th>Report date</th>
+                        <th>Description</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="sec-filings-10k-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section class="trades-card sec-filings-card" aria-labelledby="sec-filings-earnings-heading">
+              <div class="activity-block">
+                <h3 class="activity-block__title" id="sec-filings-earnings-heading">8-K Item 2.02 earnings releases</h3>
+                <div class="table-scroll">
+                  <table class="trades-table filings-fundamentals-table">
+                    <thead>
+                      <tr>
+                        <th>Filing date</th>
+                        <th>Items</th>
+                        <th class="num">Revenue</th>
+                        <th class="num">Net income</th>
+                        <th class="num">EPS (dil.)</th>
+                        <th>Source</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="sec-filings-earnings-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           </div>
 
           <div id="stock-panel-filings-fundamentals" class="stock-panel" data-stock-panel="filings-fundamentals" hidden>
             <section class="trades-card filings-fundamentals-card" aria-labelledby="filings-fundamentals-heading">
               <div class="panel-head panel-head--row">
-                <h2 id="filings-fundamentals-heading">Filings Fundamentals</h2>
+                <h2 id="filings-fundamentals-heading">Fundamentals</h2>
                 <span class="muted small" id="filings-fundamentals-subtitle">SEC Company Facts · XBRL</span>
               </div>
 
@@ -1996,117 +2082,8 @@
                   </table>
                 </div>
               </div>
-
-              <div class="activity-block">
-                <h3 class="activity-block__title">8-K Item 2.02 earnings releases</h3>
-                <div class="table-scroll">
-                  <table class="trades-table filings-fundamentals-table">
-                    <thead>
-                      <tr>
-                        <th>Filing date</th>
-                        <th>Items</th>
-                        <th class="num">Revenue</th>
-                        <th class="num">Net income</th>
-                        <th class="num">EPS (dil.)</th>
-                        <th>Source</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="filings-fundamentals-earnings-body"></tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="activity-block">
-                <h3 class="activity-block__title">10-K filings</h3>
-                <div class="table-scroll">
-                  <table class="trades-table sec-filings-table">
-                    <thead>
-                      <tr>
-                        <th>Form</th>
-                        <th>Filing date</th>
-                        <th>Report date</th>
-                        <th>Description</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="filings-fundamentals-10k-body"></tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="activity-block">
-                <h3 class="activity-block__title">10-Q filings</h3>
-                <div class="table-scroll">
-                  <table class="trades-table sec-filings-table">
-                    <thead>
-                      <tr>
-                        <th>Form</th>
-                        <th>Filing date</th>
-                        <th>Report date</th>
-                        <th>Description</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="filings-fundamentals-10q-body"></tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="activity-block">
-                <h3 class="activity-block__title">8-K filings</h3>
-                <div class="table-scroll">
-                  <table class="trades-table sec-filings-table">
-                    <thead>
-                      <tr>
-                        <th>Form</th>
-                        <th>Filing date</th>
-                        <th>Items</th>
-                        <th>Description</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="filings-fundamentals-8k-body"></tbody>
-                  </table>
-                </div>
-              </div>
             </section>
           </div>
-
-          <section class="trades-card earnings-calendar-page" id="view-earnings-calendar" hidden aria-labelledby="earnings-calendar-heading">
-            <div class="panel-head panel-head--row">
-              <h2 id="earnings-calendar-heading">Earnings Calendar</h2>
-              <span class="muted small" id="earnings-calendar-subtitle">Next 2 months · Yahoo Finance</span>
-            </div>
-            <div class="earnings-calendar-body" id="earnings-calendar-body">
-              <p class="muted small earnings-calendar__loading">Loading earnings calendar…</p>
-            </div>
-          </section>
-
-          <section class="trades-card market-movers-page" id="view-market-movers" hidden aria-labelledby="market-movers-heading">
-            <div class="panel-head panel-head--row">
-              <h2 id="market-movers-heading">Market movers</h2>
-              <span class="muted small" id="market-movers-subtitle">Today · Yahoo Finance</span>
-            </div>
-            <div class="table-scroll">
-              <table class="trades-table market-movers-table" id="market-movers-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Symbol</th>
-                    <th>Company</th>
-                    <th class="num">Price</th>
-                    <th class="num" id="market-movers-metric-heading">Change</th>
-                  </tr>
-                </thead>
-                <tbody id="market-movers-body">
-                  <tr>
-                    <td colspan="5" class="trades-table__empty">Loading market movers…</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
 
           </div>
 
@@ -2120,7 +2097,7 @@
               <header class="institution-performance-rankings__head">
                 <div>
                   <h2 id="institution-performance-rankings-heading" class="institution-hub__title">
-                    Performance rankings
+                    13F-implied performance rankings
                   </h2>
                   <p class="institution-hub__subtitle muted small" id="institution-performance-rankings-subtitle">
                     Portfolio returns from reconstructed 13F holdings
@@ -2128,11 +2105,11 @@
                 </div>
                 <div class="institution-performance-rankings__controls">
                   <div class="institution-performance-rankings__period-row" role="group" aria-label="Ranking period">
-                    <button type="button" class="institution-performance-rankings__period-btn is-active" data-performance-period="rolling_1y">
-                      Rolling 1Y
-                    </button>
-                    <button type="button" class="institution-performance-rankings__period-btn" data-performance-period="qoq">
+                    <button type="button" class="institution-performance-rankings__period-btn is-active" data-performance-period="qoq">
                       Latest quarter
+                    </button>
+                    <button type="button" class="institution-performance-rankings__period-btn" data-performance-period="rolling_1y">
+                      Rolling 1Y
                     </button>
                     <button type="button" class="institution-performance-rankings__period-btn" data-performance-period="ytd">
                       YTD
@@ -2158,8 +2135,8 @@
                       <th>Type</th>
                       <th>Quarter</th>
                       <th class="num">Return</th>
-                      <th class="num">Consistency</th>
-                      <th class="num">Volatility</th>
+                      <th class="num" title="Share of available quarters with positive QoQ returns">Consistency</th>
+                      <th class="num" title="Annualized volatility: stdev(QoQ) × √4">Ann. volatility</th>
                     </tr>
                   </thead>
                   <tbody id="institution-performance-rankings-body"></tbody>
@@ -2176,10 +2153,10 @@
               <header class="institution-most-accumulated__head">
                 <div>
                   <h2 id="institution-proxy-performance-heading" class="institution-hub__title">
-                    13F Portfolio Performance Proxy
+                    Performance
                   </h2>
                   <p class="institution-hub__subtitle muted small" id="institution-proxy-performance-subtitle">
-                    Rank institutions by change in reported 13F portfolio value
+                    Ranked by change in reported 13F portfolio value
                   </p>
                 </div>
                 <div class="institution-most-accumulated__controls">
@@ -2428,6 +2405,12 @@
                   <tbody id="institution-most-accumulated-body"></tbody>
                 </table>
               </div>
+
+              <footer class="institution-hub__pagination" id="institution-most-accumulated-pagination" hidden>
+                <button type="button" class="btn btn--ghost" id="institution-most-accumulated-prev">Previous</button>
+                <span class="institution-hub__count" id="institution-most-accumulated-page-label"></span>
+                <button type="button" class="btn btn--ghost" id="institution-most-accumulated-next">Next</button>
+              </footer>
             </section>
 
             <section
@@ -2548,6 +2531,12 @@
                   <tbody id="institution-new-positions-body"></tbody>
                 </table>
               </div>
+
+              <footer class="institution-hub__pagination" id="institution-new-positions-pagination" hidden>
+                <button type="button" class="btn btn--ghost" id="institution-new-positions-prev">Previous</button>
+                <span class="institution-hub__count" id="institution-new-positions-page-label"></span>
+                <button type="button" class="btn btn--ghost" id="institution-new-positions-next">Next</button>
+              </footer>
             </section>
 
             <section
@@ -2562,7 +2551,7 @@
                     Completely Sold Positions
                   </h2>
                   <p class="institution-hub__subtitle muted small" id="institution-completely-sold-subtitle">
-                    Stocks that institutions fully exited in their most recent 13F filing.
+                    Stocks fully exited across tracked institutions, ranked by aggregated prior 13F value.
                   </p>
                 </div>
                 <div class="institution-most-accumulated__controls">
@@ -2574,19 +2563,19 @@
 
               <div class="institution-most-accumulated__summary" id="institution-completely-sold-summary">
                 <div class="institution-most-accumulated__summary-card">
-                  <span class="institution-most-accumulated__summary-label">Total positions sold</span>
+                  <span class="institution-most-accumulated__summary-label">Stocks fully exited</span>
                   <span class="institution-most-accumulated__summary-value mono" id="completely-sold-total">—</span>
                 </div>
                 <div class="institution-most-accumulated__summary-card">
-                  <span class="institution-most-accumulated__summary-label">Institutions reporting</span>
+                  <span class="institution-most-accumulated__summary-label">Institutions reporting exits</span>
                   <span class="institution-most-accumulated__summary-value mono" id="completely-sold-institutions">—</span>
                 </div>
                 <div class="institution-most-accumulated__summary-card">
-                  <span class="institution-most-accumulated__summary-label">Unique stocks sold</span>
+                  <span class="institution-most-accumulated__summary-label">Total exit events</span>
                   <span class="institution-most-accumulated__summary-value mono" id="completely-sold-unique-stocks">—</span>
                 </div>
                 <div class="institution-most-accumulated__summary-card">
-                  <span class="institution-most-accumulated__summary-label">Total value exited</span>
+                  <span class="institution-most-accumulated__summary-label">Total prior value exited</span>
                   <span class="institution-most-accumulated__summary-value mono" id="completely-sold-total-value">—</span>
                 </div>
               </div>
@@ -2599,19 +2588,13 @@
                   </select>
                 </div>
                 <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="completely-sold-institution">Institution</label>
-                  <select id="completely-sold-institution" class="institution-hub__toolbar-select">
-                    <option value="">All institutions</option>
-                  </select>
-                </div>
-                <div class="institution-hub__toolbar-field">
                   <label class="institution-hub__toolbar-label" for="completely-sold-sector">Sector</label>
                   <select id="completely-sold-sector" class="institution-hub__toolbar-select">
                     <option value="">All sectors</option>
                   </select>
                 </div>
                 <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="completely-sold-min-value">Min previous position value ($)</label>
+                  <label class="institution-hub__toolbar-label" for="completely-sold-min-value">Min prior value ($)</label>
                   <input
                     type="number"
                     id="completely-sold-min-value"
@@ -2627,19 +2610,19 @@
                     type="search"
                     id="completely-sold-search"
                     class="institution-hub__toolbar-input"
-                    placeholder="Ticker or company…"
+                    placeholder="Company or ticker…"
                     autocomplete="off"
                     spellcheck="false"
                   />
                 </div>
                 <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="completely-sold-min-weight">Min previous portfolio weight (%)</label>
+                  <label class="institution-hub__toolbar-label" for="completely-sold-min-exits">Min institutions exiting</label>
                   <input
                     type="number"
-                    id="completely-sold-min-weight"
+                    id="completely-sold-min-exits"
                     class="institution-hub__toolbar-input institution-hub__toolbar-input--narrow"
                     min="0"
-                    step="0.1"
+                    step="1"
                     placeholder="0"
                   />
                 </div>
@@ -2656,18 +2639,22 @@
                     <tr>
                       <th><button type="button" class="table-sort-btn" data-completely-sold-sort="companyName">Stock</button></th>
                       <th><button type="button" class="table-sort-btn" data-completely-sold-sort="ticker">Ticker</button></th>
-                      <th><button type="button" class="table-sort-btn" data-completely-sold-sort="institutionName">Institution</button></th>
-                      <th class="num"><button type="button" class="table-sort-btn" data-completely-sold-sort="previousPositionValueUsd">Previous position value</button></th>
-                      <th class="num">Previous shares</th>
-                      <th class="num"><button type="button" class="table-sort-btn" data-completely-sold-sort="previousPortfolioWeightPct">Previous portfolio weight</button></th>
-                      <th>Filing quarter</th>
-                      <th class="num"><button type="button" class="table-sort-btn" data-completely-sold-sort="filingDate">Filing date</button></th>
-                      <th>Current position</th>
+                      <th class="num"><button type="button" class="table-sort-btn is-active" data-completely-sold-sort="previousPositionValueUsd">Prior value (all institutions)</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-completely-sold-sort="previousShares">Prior shares</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-completely-sold-sort="institutionsExiting">Institutions exiting</button></th>
+                      <th><button type="button" class="table-sort-btn" data-completely-sold-sort="sector">Sector</button></th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody id="institution-completely-sold-body"></tbody>
                 </table>
               </div>
+
+              <footer class="institution-hub__pagination" id="institution-completely-sold-pagination" hidden>
+                <button type="button" class="btn btn--ghost" id="institution-completely-sold-prev">Previous</button>
+                <span class="institution-hub__count" id="institution-completely-sold-page-label"></span>
+                <button type="button" class="btn btn--ghost" id="institution-completely-sold-next">Next</button>
+              </footer>
             </section>
 
             <section
@@ -2940,10 +2927,7 @@
                 <div class="institution-hub__strategy-head">
                   <h3 id="institution-hub-strategy-heading" class="institution-hub__section-label">Browse by Strategy</h3>
                   <button type="button" class="btn btn--ghost institution-hub__performance-link" id="institution-hub-performance-link">
-                    Performance rankings →
-                  </button>
-                  <button type="button" class="btn btn--ghost institution-hub__performance-link" id="institution-hub-proxy-performance-link">
-                    Proxy Performance →
+                    Performance →
                   </button>
                   <button type="button" class="btn btn--ghost institution-hub__performance-link" id="institution-hub-most-accumulated-link">
                     Most accumulated →
@@ -3094,14 +3078,14 @@
 
                   <div class="activity-block">
                     <h3 class="activity-block__title" id="institution-adds-heading">Biggest adds</h3>
-                    <p class="muted small activity-block__hint">Top 5 by value added vs prior quarter (existing positions)</p>
+                    <p class="muted small activity-block__hint">Existing positions with more shares; ranked by value of shares added (at quarter-end price)</p>
                     <div class="table-scroll">
                       <table class="trades-table activity-table" aria-labelledby="institution-adds-heading">
                         <thead>
                           <tr>
                             <th>Ticker</th>
                             <th>Stock</th>
-                            <th class="num">Value added ($M)</th>
+                            <th class="num">Value added</th>
                             <th class="num">Shares added</th>
                             <th class="num">Prior shares</th>
                             <th class="num">Current shares</th>
@@ -3119,14 +3103,14 @@
 
                   <div class="activity-block">
                     <h3 class="activity-block__title" id="institution-trims-heading">Biggest trims</h3>
-                    <p class="muted small activity-block__hint">Top 5 by value reduced vs prior quarter</p>
+                    <p class="muted small activity-block__hint">Existing positions with fewer shares (still held); ranked by value of shares reduced</p>
                     <div class="table-scroll">
                       <table class="trades-table activity-table" aria-labelledby="institution-trims-heading">
                         <thead>
                           <tr>
                             <th>Ticker</th>
                             <th>Stock</th>
-                            <th class="num">Value change ($M)</th>
+                            <th class="num">Value reduced</th>
                             <th class="num">Shares sold</th>
                             <th class="num">Prior shares</th>
                             <th class="num">Current shares</th>
@@ -3143,6 +3127,29 @@
                   </div>
 
                   <div class="activity-block">
+                    <h3 class="activity-block__title" id="institution-exits-heading">Exits</h3>
+                    <p class="muted small activity-block__hint">Positions held last quarter that are fully sold (current shares = 0)</p>
+                    <div class="table-scroll">
+                      <table class="trades-table activity-table" aria-labelledby="institution-exits-heading">
+                        <thead>
+                          <tr>
+                            <th>Ticker</th>
+                            <th>Stock</th>
+                            <th class="num">Prior value</th>
+                            <th class="num">Shares exited</th>
+                          </tr>
+                        </thead>
+                        <tbody id="institution-exits-body"></tbody>
+                      </table>
+                    </div>
+                    <div class="activity-foot" id="institution-exits-foot" hidden>
+                      <button type="button" class="btn btn--ghost activity-more" id="institution-exits-more-btn" aria-expanded="false">
+                        Show all exits
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="activity-block">
                     <h3 class="activity-block__title" id="institution-new-heading">New positions</h3>
                     <p class="muted small activity-block__hint">Positions not held in the prior quarter</p>
                     <div class="table-scroll">
@@ -3151,7 +3158,7 @@
                           <tr>
                             <th>Ticker</th>
                             <th>Stock</th>
-                            <th class="num">Value ($M)</th>
+                            <th class="num">Value</th>
                             <th class="num">Shares</th>
                           </tr>
                         </thead>
@@ -3271,8 +3278,11 @@
                 <section class="trades-card" aria-labelledby="institution-performance-heading">
                   <div class="panel-head panel-head--row">
                     <h2 id="institution-performance-heading">Performance</h2>
-                    <span class="muted small" id="institution-performance-subtitle">Quarterly portfolio returns</span>
+                    <span class="muted small" id="institution-performance-subtitle">Reported 13F portfolio value changes</span>
                   </div>
+                  <p class="muted small institution-performance-methodology" id="institution-performance-methodology">
+                    This reflects changes in the reported value of the institution's disclosed 13F portfolio between filing periods. It is not the institution's actual investment return.
+                  </p>
                   <div class="institution-performance-summary" id="institution-performance-summary" hidden>
                     <div class="institution-performance-summary__grid" id="institution-performance-summary-grid"></div>
                   </div>
@@ -3281,11 +3291,11 @@
                       <thead>
                         <tr>
                           <th>Quarter</th>
-                          <th class="num">QoQ</th>
-                          <th class="num">Rolling 1Y</th>
-                          <th class="num">YTD</th>
-                          <th class="num">Consistency</th>
-                          <th class="num">Volatility</th>
+                          <th class="num">Portfolio value</th>
+                          <th class="num">QoQ $</th>
+                          <th class="num">QoQ %</th>
+                          <th class="num">Holdings</th>
+                          <th class="num">Filing date</th>
                         </tr>
                       </thead>
                       <tbody id="institution-performance-body"></tbody>
@@ -3461,8 +3471,7 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th><button type="button" class="table-sort-btn" data-conviction-buys-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn" data-conviction-buys-sort="ticker">Company</button></th>
                       <th>Insider</th>
                       <th>Role</th>
                       <th class="num"><button type="button" class="table-sort-btn" data-conviction-buys-sort="valueUsd">Trade value</button></th>
@@ -3473,7 +3482,7 @@
                     </tr>
                   </thead>
                   <tbody id="conviction-buys-body">
-                    <tr><td colspan="10" class="trades-table__empty">Loading conviction buys…</td></tr>
+                    <tr><td colspan="9" class="trades-table__empty">Loading conviction buys…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -3597,8 +3606,7 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th><button type="button" class="table-sort-btn" data-repeat-buyers-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn" data-repeat-buyers-sort="ticker">Company</button></th>
                       <th>Insider</th>
                       <th>Role</th>
                       <th class="num"><button type="button" class="table-sort-btn" data-repeat-buyers-sort="purchaseCount">Purchases</button></th>
@@ -3611,7 +3619,7 @@
                     </tr>
                   </thead>
                   <tbody id="repeat-buyers-body">
-                    <tr><td colspan="12" class="trades-table__empty">Loading repeat buyers…</td></tr>
+                    <tr><td colspan="11" class="trades-table__empty">Loading repeat buyers…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -3713,8 +3721,7 @@
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th><button type="button" class="table-sort-btn" data-insider-sentiment-sort="ticker">Ticker</button></th>
-                        <th>Company</th>
+                        <th><button type="button" class="table-sort-btn" data-insider-sentiment-sort="ticker">Company</button></th>
                         <th class="num">Buyers</th>
                         <th class="num">Sellers</th>
                         <th class="num"><button type="button" class="table-sort-btn" data-insider-sentiment-sort="netDollarFlow">Net $ flow</button></th>
@@ -3724,7 +3731,7 @@
                       </tr>
                     </thead>
                     <tbody id="insider-sentiment-body">
-                      <tr><td colspan="9" class="trades-table__empty">Loading insider sentiment…</td></tr>
+                      <tr><td colspan="8" class="trades-table__empty">Loading insider sentiment…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -3846,8 +3853,7 @@
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th><button type="button" class="table-sort-btn" data-first-time-buyers-sort="ticker">Ticker</button></th>
-                        <th>Company</th>
+                        <th><button type="button" class="table-sort-btn" data-first-time-buyers-sort="ticker">Company</button></th>
                         <th>Insider</th>
                         <th>Role</th>
                         <th class="num"><button type="button" class="table-sort-btn" data-first-time-buyers-sort="yearsSinceLastBuy">Years since last</button></th>
@@ -3858,7 +3864,7 @@
                       </tr>
                     </thead>
                     <tbody id="first-time-buyers-body">
-                      <tr><td colspan="10" class="trades-table__empty">Loading first-time buyers…</td></tr>
+                      <tr><td colspan="9" class="trades-table__empty">Loading first-time buyers…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -3988,8 +3994,7 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th><button type="button" class="table-sort-btn" data-heavy-selling-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn" data-heavy-selling-sort="ticker">Company</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-heavy-selling-sort="uniqueSellers">Unique sellers</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-heavy-selling-sort="executiveSellers">Exec sellers</button></th>
                       <th class="num">Shares sold</th>
@@ -4000,7 +4005,7 @@
                     </tr>
                   </thead>
                   <tbody id="heavy-selling-body">
-                    <tr><td colspan="10" class="trades-table__empty">Loading heavy selling…</td></tr>
+                    <tr><td colspan="9" class="trades-table__empty">Loading heavy selling…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -4332,8 +4337,7 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="ticker">Company</button></th>
                       <th>Politician</th>
                       <th>Party</th>
                       <th>State</th>
@@ -4347,7 +4351,7 @@
                     </tr>
                   </thead>
                   <tbody id="politicians-repeat-buyers-body">
-                    <tr><td colspan="13" class="trades-table__empty">Loading repeat buyers…</td></tr>
+                    <tr><td colspan="12" class="trades-table__empty">Loading repeat buyers…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -4475,8 +4479,7 @@
                 <table class="trades-table institution-most-accumulated__table politicians-first-time-buyers-table" aria-label="Politician first-time buyers">
                   <thead>
                     <tr>
-                      <th><button type="button" class="table-sort-btn is-active" data-politicians-ftb-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn is-active" data-politicians-ftb-sort="ticker">Company</button></th>
                       <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="politicianName">Politician</button></th>
                       <th>Party</th>
                       <th>State</th>
@@ -4487,7 +4490,7 @@
                     </tr>
                   </thead>
                   <tbody id="politicians-first-time-buyers-body">
-                    <tr><td colspan="9" class="trades-table__empty">Loading first-time buyers…</td></tr>
+                    <tr><td colspan="8" class="trades-table__empty">Loading first-time buyers…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -4629,8 +4632,7 @@
                 <table class="trades-table institution-most-accumulated__table politicians-heavy-selling-table" aria-label="Politician heavy selling">
                   <thead>
                     <tr>
-                      <th><button type="button" class="table-sort-btn" data-politicians-hs-sort="ticker">Ticker</button></th>
-                      <th>Company</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-hs-sort="ticker">Company</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="sellTransactions">Sell transactions</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="uniqueSellers">Unique sellers</button></th>
                       <th class="num"><button type="button" class="table-sort-btn is-active" data-politicians-hs-sort="estimatedTotalSold">Est. value sold</button></th>
@@ -4641,7 +4643,7 @@
                     </tr>
                   </thead>
                   <tbody id="politicians-heavy-selling-body">
-                    <tr><td colspan="9" class="trades-table__empty">Loading…</td></tr>
+                    <tr><td colspan="8" class="trades-table__empty">Loading…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -4933,37 +4935,41 @@
           </div>
 
           <div id="view-signals" hidden>
-            <section class="institution-hub signals-hub" id="signals-smart-money-hub" aria-labelledby="signals-smart-money-heading">
-              <header class="institution-hub__header">
-                <h2 id="signals-smart-money-heading" class="institution-hub__title">Smart money</h2>
-                <p class="institution-hub__subtitle">
-                  Conviction scores when institutions, insiders, and Congress align on direction.
-                </p>
-              </header>
-              <section class="trades-card smart-money-hub" aria-labelledby="smart-money-hub-heading">
-                <div class="panel-head panel-head--row">
-                  <h3 id="smart-money-hub-heading" class="institution-hub__section-label">Rankings</h3>
+            <section
+              class="institution-most-accumulated trades-card signals-hub smart-money-hub"
+              id="signals-smart-money-hub"
+              aria-labelledby="signals-smart-money-heading"
+            >
+              <header class="institution-most-accumulated__head">
+                <div>
+                  <h2 id="signals-smart-money-heading" class="institution-hub__title">Smart money</h2>
+                  <p class="institution-hub__subtitle muted small">
+                    Conviction scores when institutions, insiders, and Congress align on direction.
+                  </p>
+                </div>
+                <div class="institution-most-accumulated__controls">
                   <span class="muted small" id="smart-money-hub-meta">Loading…</span>
                 </div>
-                <div class="table-scroll">
-                  <table class="trades-table smart-money-hub__table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Ticker</th>
-                        <th class="num">Score</th>
-                        <th class="num">Institutional</th>
-                        <th class="num">Insider</th>
-                        <th class="num">Congress</th>
-                        <th class="num">Alignment</th>
-                      </tr>
-                    </thead>
-                    <tbody id="smart-money-hub-body">
-                      <tr><td colspan="7" class="trades-table__empty">Loading smart money scores…</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+              </header>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap">
+                <table class="trades-table institution-most-accumulated__table smart-money-hub__table" aria-label="Smart money rankings">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Ticker</th>
+                      <th class="num">Score</th>
+                      <th class="num">Institutional</th>
+                      <th class="num">Insider</th>
+                      <th class="num">Congress</th>
+                      <th class="num">Alignment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="smart-money-hub-body">
+                    <tr><td colspan="7" class="trades-table__empty">Loading smart money scores…</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section
@@ -5565,7 +5571,6 @@
                     <thead>
                       <tr>
                         <th><button type="button" class="table-sort-btn" data-conflict-signals-sort="companyName">Stock</button></th>
-                        <th><button type="button" class="table-sort-btn" data-conflict-signals-sort="ticker">Ticker</button></th>
                         <th><button type="button" class="table-sort-btn" data-conflict-signals-sort="signalType">Signal</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conflict-signals-sort="institutionScore">Institution score</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conflict-signals-sort="insiderScore">Insider score</button></th>
@@ -5577,7 +5582,7 @@
                       </tr>
                     </thead>
                     <tbody id="conflict-signals-body">
-                      <tr><td colspan="10" class="muted">Select Conflict Signals to load.</td></tr>
+                      <tr><td colspan="9" class="muted">Select Conflict Signals to load.</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -5687,7 +5692,6 @@
                     <thead>
                       <tr>
                         <th><button type="button" class="table-sort-btn" data-hidden-gems-sort="companyName">Stock</button></th>
-                        <th><button type="button" class="table-sort-btn" data-hidden-gems-sort="ticker">Ticker</button></th>
                         <th><button type="button" class="table-sort-btn" data-hidden-gems-sort="label">Label</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-hidden-gems-sort="hiddenGemScore">Gem score</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-hidden-gems-sort="institutionalOwnership">Ownership %</button></th>
@@ -5700,7 +5704,7 @@
                       </tr>
                     </thead>
                     <tbody id="hidden-gems-body">
-                      <tr><td colspan="11" class="muted">Select Hidden Gems to load.</td></tr>
+                      <tr><td colspan="10" class="muted">Select Hidden Gems to load.</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -5829,20 +5833,19 @@
                     <thead>
                       <tr>
                         <th class="num">Rank</th>
-                        <th><button type="button" class="table-sort-btn" data-conviction-score-sort="ticker">Ticker</button></th>
-                        <th><button type="button" class="table-sort-btn" data-conviction-score-sort="companyName">Company</button></th>
-                        <th class="num"><button type="button" class="table-sort-btn is-active" data-conviction-score-sort="convictionScore">Conviction Score</button></th>
-                        <th><button type="button" class="table-sort-btn" data-conviction-score-sort="classification">Classification</button></th>
+                        <th><button type="button" class="table-sort-btn" data-conviction-score-sort="companyName">Stock</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="institutionalHolders">Holders</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="medianPortfolioWeight">Median weight</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="holdersAbove2Percent">&gt;2% holders</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="institutionsIncreasing">Increasing</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="accumulationRatio">Accumulation</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-conviction-score-sort="averageAccumulationStreak">Persistence</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn is-active" data-conviction-score-sort="convictionScore">Conviction Score</button></th>
+                        <th><button type="button" class="table-sort-btn" data-conviction-score-sort="classification">Classification</button></th>
                       </tr>
                     </thead>
                     <tbody id="conviction-score-body">
-                      <tr><td colspan="11" class="trades-table__empty">Loading conviction scores…</td></tr>
+                      <tr><td colspan="10" class="trades-table__empty">Loading conviction scores…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -5946,8 +5949,7 @@
                     <thead>
                       <tr>
                         <th class="num">Rank</th>
-                        <th><button type="button" class="table-sort-btn" data-institutional-discovery-sort="ticker">Ticker</button></th>
-                        <th><button type="button" class="table-sort-btn" data-institutional-discovery-sort="companyName">Company</button></th>
+                        <th><button type="button" class="table-sort-btn" data-institutional-discovery-sort="companyName">Stock</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-institutional-discovery-sort="currentHolderCount">Current holders</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-institutional-discovery-sort="newHolderCount">New holders</button></th>
                         <th class="num"><button type="button" class="table-sort-btn" data-institutional-discovery-sort="holderGrowthPercent">Holder growth</button></th>
@@ -5959,7 +5961,7 @@
                       </tr>
                     </thead>
                     <tbody id="institutional-discovery-body">
-                      <tr><td colspan="11" class="trades-table__empty">Loading institutional discovery…</td></tr>
+                      <tr><td colspan="10" class="trades-table__empty">Loading institutional discovery…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -7142,6 +7144,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=landing-cards-2"></script>
   </body>
 </html>

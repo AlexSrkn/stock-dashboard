@@ -17,7 +17,7 @@ import {
   getMostAccumulatedPeriod,
   parseMostAccumulatedPeriod,
 } from "../institution/mostAccumulated/service.js";
-import { getNewInstitutionalPositions } from "../institution/newPositions/service.js";
+import { getNewInstitutionalPositions, getNewInstitutionalPositionsPage, parseNewPositionsSortDir, parseNewPositionsSortKey } from "../institution/newPositions/service.js";
 import { getCompletelySoldPositions } from "../institution/completelySold/service.js";
 import { getInstitutionComparison } from "../institution/compare/service.js";
 import {
@@ -103,6 +103,7 @@ export async function tryHandleInstitutions(
           minGrowth1yPct: num("minGrowth1y"),
           minGrowth3yPct: num("minGrowth3y"),
           name: url.searchParams.get("name"),
+          cik: url.searchParams.get("cik"),
           sort: parseSortKey(url.searchParams.get("sort")),
           sortDir: parseSortDir(url.searchParams.get("sortDir")),
           page: num("page") ?? 1,
@@ -144,8 +145,46 @@ export async function tryHandleInstitutions(
     try {
       const { getPool } = await import("../db/pool.js");
       const pool = getPool();
-      const payload = await getNewInstitutionalPositions(pool);
-      json(res, 200, payload, 300);
+      const num = (key: string): number | undefined => {
+        const raw = url.searchParams.get(key);
+        if (raw == null || raw === "") return undefined;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const hasPagination =
+        url.searchParams.has("page") ||
+        url.searchParams.has("pageSize") ||
+        url.searchParams.has("limit") ||
+        url.searchParams.has("sort") ||
+        url.searchParams.has("sortDir") ||
+        url.searchParams.has("quarter") ||
+        url.searchParams.has("institution") ||
+        url.searchParams.has("sector") ||
+        url.searchParams.has("minValue") ||
+        url.searchParams.has("minWeight") ||
+        url.searchParams.has("search");
+
+      if (hasPagination) {
+        const payload = await getNewInstitutionalPositionsPage(
+          {
+            quarter: url.searchParams.get("quarter") || undefined,
+            institution: url.searchParams.get("institution") || undefined,
+            sector: url.searchParams.get("sector") || undefined,
+            minValue: num("minValue"),
+            minWeight: num("minWeight"),
+            search: url.searchParams.get("search") || undefined,
+            sort: parseNewPositionsSortKey(url.searchParams.get("sort")),
+            sortDir: parseNewPositionsSortDir(url.searchParams.get("sortDir")),
+            page: num("page") ?? 1,
+            pageSize: num("pageSize") ?? num("limit") ?? 50,
+          },
+          pool
+        );
+        json(res, 200, payload, 120);
+      } else {
+        const payload = await getNewInstitutionalPositions(pool);
+        json(res, 200, payload, 300);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("DATABASE_URL")) {
@@ -282,16 +321,42 @@ export async function tryHandleInstitutions(
         json(res, 404, { error: "not_found", message: "Institution not found" });
         return true;
       }
+      const { PERFORMANCE_METHODOLOGY } = await import("../institution/performance/types.js");
+      const { getReturnsMatrix } = await import("../institution/performance/priceCache.js");
       const service = getInstitutionPerformanceService();
-      const series = await service.getPerformanceSeries(cik);
+
+      let series = await service.getPerformanceSeries(cik);
+      let debug: unknown[] = [];
+
+      // Prefer a live recompute with debug when the returns matrix is loaded.
+      const matrix = getReturnsMatrix();
+      if (matrix) {
+        try {
+          const { runInstitutionPerformanceEngine } = await import(
+            "../institution/performance/performanceEngine.js"
+          );
+          const holdings = await service.loadHoldings([cik]);
+          const result = runInstitutionPerformanceEngine({
+            holdings,
+            returnsMatrix: matrix,
+          });
+          series = result.summaries;
+          debug = result.debug;
+        } catch {
+          // Fall back to cached series without debug.
+        }
+      }
+
       const latest = series.length ? series[series.length - 1] : null;
       json(res, 200, {
         meta: {
           ...meta,
           asOfQuarter: latest?.quarter ?? meta.currentQuarter,
         },
+        methodology: PERFORMANCE_METHODOLOGY,
         series,
         latest,
+        debug,
       });
       return true;
     }
