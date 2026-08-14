@@ -34,6 +34,8 @@ import {
 } from "./trackedInstitutions.js";
 import { formatSecCik } from "../sec/http.js";
 import { fetchStockPrice } from "../market/stockPrice.js";
+import { valueAttributableToShareChange } from "../institution/institutionAnalytics.js";
+import { filingValueUsd, resolvePositionValueUsd } from "./holdingValue.js";
 
 interface FundAggRow {
   fund_name: string;
@@ -59,21 +61,6 @@ function pctOfOutstanding(shares: number, sharesOutstanding: number | null): num
   return round2((shares / sharesOutstanding) * 100);
 }
 
-function holdingValueUsd(shares: number, stockPrice: number | null): number | null {
-  if (!stockPrice || stockPrice <= 0) return null;
-  return round2(shares * stockPrice);
-}
-
-/**
- * sec_holding.value is stored as USD dollars in this database (despite the
- * historical value_usd_thousands column name). Do not multiply by 1,000.
- */
-function filingValueUsd(valueFromDb: number | null | undefined): number | null {
-  const x = Number(valueFromDb);
-  if (!Number.isFinite(x) || x <= 0) return null;
-  return round2(x);
-}
-
 function mapOptionRows(
   rows: TrackedFundAggRow[],
   nameForRow: (row: TrackedFundAggRow) => string
@@ -96,7 +83,7 @@ function withHolderMetrics(
     const row: FundHoldingAggregate = {
       fundName: nameForRow(r),
       shares,
-      valueUsd: holdingValueUsd(shares, stockPrice),
+      valueUsd: resolvePositionValueUsd(shares, r.value_usd_thousands, stockPrice),
       pctOutstanding: pctOfOutstanding(shares, sharesOutstanding),
     };
     if ("filer_cik" in r && r.filer_cik) {
@@ -110,21 +97,40 @@ function sortByValueDesc(holders: FundHoldingAggregate[]): FundHoldingAggregate[
   return [...holders].sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
 }
 
+function holderByCikMap(holders: Iterable<FundHoldingAggregate>): Map<string, FundHoldingAggregate> {
+  const out = new Map<string, FundHoldingAggregate>();
+  for (const h of holders) {
+    if (h.filerCik) out.set(formatSecCik(h.filerCik), h);
+  }
+  return out;
+}
+
+function matchHolder(
+  holder: FundHoldingAggregate,
+  byName: Map<string, FundHoldingAggregate>,
+  byCik: Map<string, FundHoldingAggregate>
+): FundHoldingAggregate | undefined {
+  return (holder.filerCik ? byCik.get(formatSecCik(holder.filerCik)) : undefined) ?? byName.get(holder.fundName);
+}
+
 function attachQuarterOverQuarterChange(
   holders: FundHoldingAggregate[],
   previous: Map<string, FundHoldingAggregate>
 ): FundHoldingAggregate[] {
+  const prevByCik = holderByCikMap(previous.values());
   return holders.map((h) => {
-    const prev = previous.get(h.fundName);
+    const prev = matchHolder(h, previous, prevByCik);
     const previousShares = prev?.shares ?? null;
     const sharesChangePct =
       prev != null && Number.isFinite(prev.shares) && prev.shares > 0
         ? pctChange(h.shares, prev.shares)
         : null;
-    const valueChangeUsd =
-      prev != null && h.valueUsd != null && prev.valueUsd != null
-        ? round2(h.valueUsd - prev.valueUsd)
-        : null;
+    const valueChangeUsd = valueAttributableToShareChange(
+      prev?.shares ?? 0,
+      h.shares,
+      prev?.valueUsd ?? null,
+      h.valueUsd
+    );
     return { ...h, previousShares, sharesChangePct, valueChangeUsd };
   });
 }
@@ -197,9 +203,10 @@ export async function fetchQuarterPairMap(
   previousQuarter: string | null,
   sharesOutstanding: number | null,
   stockPrice: number | null,
-  ticker?: string
+  ticker?: string,
+  options: { skipCache?: boolean } = {}
 ): Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }> {
-  if (ticker) {
+  if (ticker && !options.skipCache) {
     const snapshot = await loadOwnershipCacheSnapshot(pool, ticker);
     if (snapshot?.currentQuarter === currentQuarter) {
       return fetchCachedQuarterPairMap(
@@ -257,12 +264,15 @@ export async function getTopHolders(
   const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, meta.ticker);
   let holders: FundHoldingAggregate[];
   if (cacheSnapshot?.currentQuarter === meta.currentQuarter) {
-    holders = await fetchCachedTopHolders(
-      pool,
-      meta.ticker,
-      meta.impliedSharesOutstanding,
-      meta.stockPrice,
-      limit
+    holders = sortByValueDesc(
+      await fetchCachedTopHolders(
+        pool,
+        meta.ticker,
+        meta.impliedSharesOutstanding,
+        meta.stockPrice,
+        limit,
+        { cusips: meta.cusips, quarter: meta.currentQuarter }
+      )
     );
   } else {
     holders = await fetchTrackedAggregatesForQuarter(
@@ -325,8 +335,9 @@ export async function getOwnershipChanges(
   );
 
   const changes: OwnershipChangeRow[] = [];
+  const prevByCik = holderByCikMap(previous.values());
   for (const [fundName, cur] of current) {
-    const prev = previous.get(fundName);
+    const prev = matchHolder(cur, previous, prevByCik);
     if (!prev) continue;
     changes.push({
       fundName,
@@ -336,7 +347,12 @@ export async function getOwnershipChanges(
       previousShares: prev.shares,
       previousValueUsd: prev.valueUsd,
       sharesChange: round2(cur.shares - prev.shares),
-      valueChangeUsd: round2((cur.valueUsd ?? 0) - (prev.valueUsd ?? 0)),
+      valueChangeUsd: valueAttributableToShareChange(
+        prev.shares,
+        cur.shares,
+        prev.valueUsd,
+        cur.valueUsd
+      ),
       sharesChangePct: pctChange(cur.shares, prev.shares),
       currentPctOutstanding: cur.pctOutstanding,
       previousPctOutstanding: prev.pctOutstanding,
@@ -369,8 +385,9 @@ export async function getNewPositions(
   );
 
   const positions: PositionEventRow[] = [];
+  const prevByCik = holderByCikMap(previous.values());
   for (const [fundName, cur] of current) {
-    const prev = previous.get(fundName);
+    const prev = matchHolder(cur, previous, prevByCik);
     if (!prev || prev.shares <= 0) {
       positions.push({
         fundName,

@@ -1,10 +1,17 @@
-import { convictionScoreFromFinal, signNonZero, zScoreNormalizeMap } from "./normalize.js";
+import {
+  blendToConvictionScore,
+  signNonZero,
+  signedLog1p,
+  zScoreNormalizeMap,
+} from "./normalize.js";
 import type { SmartMoneyScore, TickerRawSignals } from "./types.js";
 
 const INSTITUTIONAL_WEIGHT = 0.5;
 const INSIDER_WEIGHT = 0.35;
 const POLITICIAN_WEIGHT = 0.15;
 const POLITICIAN_NOISE_DAMPING = 0.5;
+/** Ignore near-zero z-scores so noise does not count as 100% alignment. */
+const ALIGNMENT_FLOOR = 0.05;
 
 /**
  * Directional agreement in [0, 1].
@@ -16,7 +23,9 @@ export function computeAlignmentScore(
   politician: number
 ): number {
   const sum =
-    signNonZero(institutional) + signNonZero(insider) + signNonZero(politician);
+    signNonZero(institutional, ALIGNMENT_FLOOR) +
+    signNonZero(insider, ALIGNMENT_FLOOR) +
+    signNonZero(politician, ALIGNMENT_FLOOR);
   return Math.abs(sum) / 3;
 }
 
@@ -36,10 +45,10 @@ export function computeWeightedRawScore(
 export function buildSmartMoneyScores(rawRows: TickerRawSignals[]): SmartMoneyScore[] {
   if (!rawRows.length) return [];
 
-  const instMap = new Map(rawRows.map((r) => [r.ticker, r.institutionalFlowRaw]));
-  const insiderMap = new Map(rawRows.map((r) => [r.ticker, r.insiderFlowRaw]));
+  const instMap = new Map(rawRows.map((r) => [r.ticker, signedLog1p(r.institutionalFlowRaw)]));
+  const insiderMap = new Map(rawRows.map((r) => [r.ticker, signedLog1p(r.insiderFlowRaw)]));
   const polMap = new Map(
-    rawRows.map((r) => [r.ticker, r.politicianFlowRaw * POLITICIAN_NOISE_DAMPING])
+    rawRows.map((r) => [r.ticker, signedLog1p(r.politicianFlowRaw * POLITICIAN_NOISE_DAMPING)])
   );
 
   const instNorm = zScoreNormalizeMap(instMap);
@@ -47,7 +56,6 @@ export function buildSmartMoneyScores(rawRows: TickerRawSignals[]): SmartMoneySc
   const polNorm = zScoreNormalizeMap(polMap);
 
   const tickers = [...new Set(rawRows.map((r) => r.ticker))].sort();
-  const finals: number[] = [];
   const draft: Array<{
     ticker: string;
     institutionalScore: number;
@@ -72,7 +80,6 @@ export function buildSmartMoneyScores(rawRows: TickerRawSignals[]): SmartMoneySc
       politicianScore,
       alignmentScore
     );
-    finals.push(finalScore);
     draft.push({
       ticker,
       institutionalScore,
@@ -90,7 +97,7 @@ export function buildSmartMoneyScores(rawRows: TickerRawSignals[]): SmartMoneySc
       insiderScore: round4(row.insiderScore),
       politicianScore: round4(row.politicianScore),
       alignmentScore: round4(row.alignmentScore),
-      smartMoneyConvictionScore: convictionScoreFromFinal(row.finalScore, finals),
+      smartMoneyConvictionScore: blendToConvictionScore(row.finalScore),
     }))
     .sort((a, b) => b.smartMoneyConvictionScore - a.smartMoneyConvictionScore);
 }

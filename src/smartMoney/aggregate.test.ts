@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { intersectSmartMoneyTickers } from "./aggregate.js";
+import { filerShareFlow, intersectSmartMoneyTickers } from "./aggregate.js";
 
 test("intersectSmartMoneyTickers requires institutional, insider, and congress", () => {
   const institutional = new Map([
@@ -20,4 +20,12 @@ test("intersectSmartMoneyTickers requires institutional, insider, and congress",
   ]);
 
   assert.deepEqual(intersectSmartMoneyTickers(institutional, insider, politician), ["AAPL", "MSFT"]);
+});
+
+test("filerShareFlow ignores price-style notional and uses percent share change", () => {
+  const aum = Math.E - 1;
+  assert.equal(filerShareFlow(110, 100, aum), 10 / 110);
+  assert.equal(filerShareFlow(100, 100, aum), 0);
+  assert.equal(filerShareFlow(100, 0, aum), 1);
+  assert.equal(filerShareFlow(0, 100, aum), -1);
 });

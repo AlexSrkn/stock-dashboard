@@ -7,11 +7,33 @@ import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
 import { loadOwnershipMeta } from "./ownershipAnalytics.js";
-import { loadOwnershipCacheSnapshot } from "./ownershipCacheReader.js";
+import {
+  fetchCachedTopHolders,
+  fetchFilerSharesByCusipQuarter,
+  loadOwnershipCacheSnapshot,
+} from "./ownershipCacheReader.js";
 import type { FundHoldingAggregate } from "./types.js";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function holdingsByFiler(
+  map: Map<string, FundHoldingAggregate>
+): Map<string, FundHoldingAggregate> {
+  const out = new Map<string, FundHoldingAggregate>();
+  for (const h of map.values()) {
+    out.set(h.filerCik || h.fundName, h);
+  }
+  return out;
+}
+
+function trendFromOwnershipCache(raw: string | null): ActivityTrend | null {
+  const t = String(raw || "").toLowerCase();
+  if (t === "increasing" || t === "bullish") return "bullish";
+  if (t === "decreasing" || t === "bearish") return "bearish";
+  if (t === "neutral") return "neutral";
+  return null;
 }
 
 function countHolders(map: Map<string, FundHoldingAggregate>): number {
@@ -192,29 +214,57 @@ export async function getOwnershipIntelligence(
       trackedFundCount: ownershipMeta.trackedFundCount,
     };
 
+    const snapshot = await loadOwnershipCacheSnapshot(pool, sym).catch(() => null);
+    if (snapshot?.institutionalOwnershipPct != null) {
+      institutional.ownershipPct = snapshot.institutionalOwnershipPct;
+      meta.institutionalOwnership = snapshot.institutionalOwnershipPct / 100;
+    }
+
     if (ownershipMeta.currentQuarter) {
-      const snapshot = await loadOwnershipCacheSnapshot(pool, sym);
-      if (snapshot?.currentQuarter === ownershipMeta.currentQuarter) {
-        const netShares = round2(snapshot.currentShares - snapshot.previousShares);
-        const buyShares = netShares > 0 ? netShares : 0;
-        const sellShares = netShares < 0 ? Math.abs(netShares) : 0;
-        const trend =
-          snapshot.ownershipTrend === "increasing" ||
-          snapshot.ownershipTrend === "decreasing" ||
-          snapshot.ownershipTrend === "neutral"
-            ? snapshot.ownershipTrend
-            : classifyActivityTrend(netShares, buyShares, sellShares);
-        institutional = {
-          ...institutional,
-          trend,
-          ownershipPct: snapshot.institutionalOwnershipPct ?? institutional.ownershipPct,
-          institutionCountChange: null,
-          newPositions: 0,
-          netShares,
-          buyShares: round2(buyShares),
-          sellShares: round2(sellShares),
-        };
-      }
+      const currentHolders = await fetchCachedTopHolders(
+        pool,
+        ownershipMeta.ticker,
+        ownershipMeta.impliedSharesOutstanding,
+        ownershipMeta.stockPrice,
+        20000
+      );
+      const current = holdingsByFiler(new Map(currentHolders.map((h) => [h.filerCik || h.fundName, h])));
+      const previous =
+        ownershipMeta.previousQuarter && ownershipMeta.cusips.length
+          ? await fetchFilerSharesByCusipQuarter(
+              pool,
+              ownershipMeta.cusips,
+              ownershipMeta.previousQuarter
+            )
+          : new Map();
+      const flow = computeShareFlow(current, previous);
+      const currentCount = countHolders(current);
+      const previousCount = countHolders(previous);
+      institutional = {
+        ...institutional,
+        trend: flow.trend !== "neutral" ? flow.trend : trendFromOwnershipCache(snapshot?.ownershipTrend) ?? flow.trend,
+        ownershipPct: snapshot?.institutionalOwnershipPct ?? institutional.ownershipPct,
+        institutionCountChange:
+          previousCount > 0 || currentCount > 0 ? currentCount - previousCount : null,
+        newPositions: countNewPositions(current, previous),
+        netShares: flow.netShares,
+        buyShares: flow.buyShares,
+        sellShares: flow.sellShares,
+      };
+    } else if (snapshot) {
+      const netShares = round2(snapshot.currentShares - snapshot.previousShares);
+      const buyShares = netShares > 0 ? netShares : 0;
+      const sellShares = netShares < 0 ? Math.abs(netShares) : 0;
+      institutional = {
+        ...institutional,
+        trend:
+          trendFromOwnershipCache(snapshot.ownershipTrend) ??
+          classifyActivityTrend(netShares, buyShares, sellShares),
+        ownershipPct: snapshot.institutionalOwnershipPct ?? institutional.ownershipPct,
+        netShares,
+        buyShares: round2(buyShares),
+        sellShares: round2(sellShares),
+      };
     }
   } catch {
     /* 13F data optional */

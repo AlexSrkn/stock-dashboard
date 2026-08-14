@@ -4,7 +4,7 @@ import {
   normalizeQuarterlyDurations,
   pickAnnualDurationValue,
 } from "./durationNormalize.js";
-import { resolveAnnualFiscalYear } from "./fiscalYear.js";
+import { resolveAnnualFiscalYear, resolveQuarterlyFiscalYear } from "./fiscalYear.js";
 import { FINANCIAL_METRIC_DEFINITIONS, METRICS_BY_STATEMENT } from "./metrics.js";
 import {
   comparePeriodRows,
@@ -232,7 +232,9 @@ function collectDurationRows(
 
       for (const [periodId, pick] of normalized) {
         const [fp, end] = periodId.split("|") as [NormalizedFiscalPeriod, string];
-        const fy = pick.obs.fy != null ? Number(pick.obs.fy) : NaN;
+        const fy =
+          resolveQuarterlyFiscalYear(observations, end) ??
+          (pick.obs.fy != null ? Number(pick.obs.fy) : NaN);
         if (!Number.isFinite(fy)) continue;
         const row = ensureRow(rows, scope, fy, fp, end, pick.obs);
         applyMetric(

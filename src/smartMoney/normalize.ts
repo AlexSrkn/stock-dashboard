@@ -43,8 +43,24 @@ export function convictionScoreFromFinal(
   return Math.max(0, Math.min(100, Math.round(centered * 100) / 100));
 }
 
-export function signNonZero(value: number): number {
-  if (value > 0) return 1;
-  if (value < 0) return -1;
+/**
+ * Map a blended score already in ~[-1, 1] onto 0–100.
+ * 100 requires all three normalized signals at the clip and full alignment —
+ * universe tanh/median scaling is not used (that saturates mega-caps at 100).
+ */
+export function blendToConvictionScore(finalScore: number): number {
+  const x = Number.isFinite(finalScore) ? finalScore : 0;
+  return Math.max(0, Math.min(100, Math.round((50 + 50 * x) * 100) / 100));
+}
+
+/** Compress signed dollar (or other heavy-tailed) flows before z-scoring. */
+export function signedLog1p(value: number): number {
+  if (!Number.isFinite(value) || value === 0) return 0;
+  return Math.sign(value) * Math.log1p(Math.abs(value));
+}
+
+export function signNonZero(value: number, floor = 0): number {
+  if (value > floor) return 1;
+  if (value < -floor) return -1;
   return 0;
 }

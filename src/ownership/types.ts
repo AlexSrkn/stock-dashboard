@@ -8,7 +8,7 @@ export interface OwnershipQueryMeta {
   trackedFundCount: number;
   /** Shares outstanding used as denominator for % Outstanding (ownership cache / SEC). */
   impliedSharesOutstanding: number | null;
-  /** Live share price for position value when available (shares × price); null without a price provider. */
+  /** Live share price when a provider is wired; ownership Value uses 13F reported value first. */
   stockPrice: number | null;
   currency: string;
 }
@@ -18,7 +18,7 @@ export interface FundHoldingAggregate {
   /** Padded SEC CIK when the filer is in the curated institutional list. */
   filerCik?: string;
   shares: number;
-  /** Current market value: shares × stockPrice. */
+  /** 13F reported market value (USD); live mark only if filing value is missing. */
   valueUsd: number | null;
   /** Fund shares as % of company implied shares outstanding (0–100). */
   pctOutstanding: number | null;
@@ -26,7 +26,7 @@ export interface FundHoldingAggregate {
   previousShares?: number | null;
   /** QoQ % change in common-stock shares: (current − previous) / previous × 100. */
   sharesChangePct?: number | null;
-  /** Live-marked value change vs prior quarter: current shares×price − previous shares×price (USD). */
+  /** Dollar value of the QoQ share-count change at 13F quarter-end price (USD). */
   valueChangeUsd?: number | null;
 }
 

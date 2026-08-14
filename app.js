@@ -838,9 +838,12 @@ function setOverviewDataSource(text) {
   if (el) el.textContent = text;
 }
 
-function setOwnershipSubtitle(text) {
+function setOwnershipSubtitle(_text) {
   const el = document.getElementById("ownership-subtitle");
-  if (el) el.textContent = text;
+  if (el) {
+    el.textContent = "";
+    el.hidden = true;
+  }
 }
 
 function formatHoldingValueUsd(usd, currency = activeCurrency) {
@@ -879,7 +882,12 @@ function enrichOwnershipHolders(holders) {
     const valueUsd = resolveOwnershipRowValueUsd(h);
     let valueChangeUsd = h.valueChangeUsd ?? null;
     const prevSh = h.previousShares;
-    if (px != null && prevSh != null && Number.isFinite(Number(prevSh))) {
+    if (
+      valueChangeUsd == null &&
+      px != null &&
+      prevSh != null &&
+      Number.isFinite(Number(prevSh))
+    ) {
       const curVal =
         valueUsd ?? (Number.isFinite(Number(h.shares)) ? Number(h.shares) * px : null);
       if (curVal != null) {
@@ -892,9 +900,7 @@ function enrichOwnershipHolders(holders) {
       valueChangeUsd,
     };
   });
-  if (px != null) {
-    enriched.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
-  }
+  enriched.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
   return enriched;
 }
 
@@ -948,8 +954,8 @@ function renderOwnershipValueAddedCell(h) {
   const curQ = lastOwnershipQuarterMeta.currentQuarter;
   const title =
     prevQ && curQ
-      ? `Live value change: ${curQ} position value minus ${prevQ} (both at current share price)`
-      : "Change in live position value vs prior quarter";
+      ? `13F value of share-count change: ${curQ} vs ${prevQ} (quarter-end reported price)`
+      : "Dollar value of the share-count change at 13F quarter-end price";
   const valueChangeUsd = h.valueChangeUsd;
   if (valueChangeUsd == null || !Number.isFinite(Number(valueChangeUsd))) {
     return `<td class="mono num ownership-value-added" title="${escapeHtml(title)}">—</td>`;
@@ -11469,20 +11475,46 @@ function setInsiderActivitySubtitle(text) {
 }
 
 const INSIDER_TX_CODE_LABELS = {
-  P: "Open market buy",
+  P: "Open market purchase",
   S: "Open market sale",
-  M: "Option exercise",
   A: "Grant / award",
+  C: "Conversion of derivative",
+  D: "Disposition to issuer",
+  E: "Expiration of short derivative",
   F: "Tax withholding",
   G: "Gift",
+  H: "Expiration of long derivative",
+  I: "Discretionary transaction",
+  J: "Other acquisition or disposition",
+  K: "Equity swap or similar",
+  L: "Small acquisition",
+  M: "Option / derivative exercise",
+  U: "Tender of shares",
+  W: "Acquisition or disposition by will",
+  X: "In-the-money derivative exercise",
+  Z: "Voting trust deposit or withdrawal",
 };
 
 let lastInsiderTransactions = [];
 let insiderSignalFilter = "high";
 
 function formatInsiderTxCode(code) {
-  const c = String(code ?? "").toUpperCase();
-  return INSIDER_TX_CODE_LABELS[c] || c || "—";
+  const c = String(code ?? "").trim().toUpperCase();
+  if (!c) return "—";
+  return INSIDER_TX_CODE_LABELS[c] || `Code ${c}`;
+}
+
+function insiderActivityShowsSignal() {
+  return insiderSignalFilter === "all" || insiderSignalFilter === "low";
+}
+
+function insiderActivityColspan() {
+  return insiderActivityShowsSignal() ? 8 : 7;
+}
+
+function syncInsiderSignalColumn() {
+  const th = document.getElementById("insider-activity-signal-col");
+  if (th) th.hidden = !insiderActivityShowsSignal();
 }
 
 function renderInsiderSignalCell(isHighSignal, code) {
@@ -11507,19 +11539,22 @@ function insiderRowHighlightClass(transactionCode) {
 }
 
 function renderInsiderTransactionRow(row) {
-  const ad = String(row.acquisitionDisposition ?? "").toUpperCase();
-  const adLabel = ad === "A" ? "Acquire" : ad === "D" ? "Dispose" : ad || "—";
-  const rowClass = insiderRowHighlightClass(row.transactionCode);
+  const code = String(row.transactionCode || "").trim().toUpperCase();
+  const codeLabel = formatInsiderTxCode(code);
+  const rowClass = insiderRowHighlightClass(code);
+  const signalCell = insiderActivityShowsSignal()
+    ? `<td>${renderInsiderSignalCell(row.isHighSignal, code)}</td>`
+    : "";
   return `
     <tr${rowClass ? ` class="${rowClass}"` : ""}>
       <td><span class="ownership-fund__name">${escapeHtml(row.insiderName)}</span></td>
       <td>${escapeHtml(row.insiderTitle || "—")}</td>
-      <td class="mono" title="${escapeHtml(formatInsiderTxCode(row.transactionCode))}">${escapeHtml(String(row.transactionCode || "—").toUpperCase())}</td>
-      <td>${renderInsiderSignalCell(row.isHighSignal, row.transactionCode)}</td>
+      <td title="${escapeHtml(code || "—")}">${escapeHtml(codeLabel)}</td>
+      ${signalCell}
       <td class="mono num">${escapeHtml(formatShareCount(row.shares))}</td>
       <td class="mono num">${escapeHtml(formatInsiderPricePerShare(row.pricePerShare))}</td>
       <td class="mono num">${escapeHtml(formatHoldingValueUsd(row.transactionValue, lastOwnershipCurrency))}</td>
-      <td class="mono">${escapeHtml(row.transactionDate || row.filingDate || "—")} <span class="muted small">${escapeHtml(adLabel)}</span></td>
+      <td class="mono">${escapeHtml(row.transactionDate || row.filingDate || "—")}</td>
     </tr>
   `;
 }
@@ -11527,6 +11562,7 @@ function renderInsiderTransactionRow(row) {
 function renderInsiderActivityTable() {
   const body = document.getElementById("insider-activity-body");
   if (!body) return;
+  syncInsiderSignalColumn();
 
   let rows = lastInsiderTransactions;
   if (insiderSignalFilter === "high") rows = rows.filter((r) => r.isHighSignal);
@@ -11534,7 +11570,7 @@ function renderInsiderActivityTable() {
 
   if (!rows.length) {
     body.innerHTML =
-      '<tr><td colspan="8" class="trades-table__empty">No insider transactions match this filter. Run <code class="inline-code">npm run db:ingest-insider-form4 -- TICKER</code> to load Form 4 data.</td></tr>';
+      `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">No insider transactions match this filter. Run <code class="inline-code">npm run db:ingest-insider-form4 -- TICKER</code> to load Form 4 data.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(renderInsiderTransactionRow).join("");
@@ -11544,7 +11580,7 @@ async function loadInsiderActivityPanel(symbol) {
   const body = document.getElementById("insider-activity-body");
   if (!body) return;
   body.innerHTML =
-    '<tr><td colspan="8" class="trades-table__empty">Loading insider activity…</td></tr>';
+    `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">Loading insider activity…</td></tr>`;
   setInsiderActivitySubtitle("Loading…");
   try {
     const sym = encodeURIComponent(symbol);
@@ -11565,14 +11601,17 @@ async function loadInsiderActivityPanel(symbol) {
   } catch (err) {
     lastInsiderTransactions = [];
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${msg}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">${msg}</td></tr>`;
     setInsiderActivitySubtitle("Insider activity (error)");
   }
 }
 
-function setCongressActivitySubtitle(text) {
+function setCongressActivitySubtitle(_text) {
   const el = document.getElementById("congress-activity-subtitle");
-  if (el) el.textContent = text;
+  if (el) {
+    el.textContent = "";
+    el.hidden = true;
+  }
 }
 
 let lastCongressTrades = [];
@@ -11650,9 +11689,12 @@ const SIGNAL_CATEGORY_HINTS = {
   politician: "Congressional buys vs sells (PTR)",
 };
 
-function setSignalsSubtitle(text) {
+function setSignalsSubtitle(_text) {
   const el = document.getElementById("signals-subtitle");
-  if (el) el.textContent = text;
+  if (el) {
+    el.textContent = "";
+    el.hidden = true;
+  }
 }
 
 function formatSignalValue(value) {
@@ -13254,6 +13296,7 @@ function renderOwnershipIntelItem(label, valueHtml) {
 }
 
 function formatSignedCount(value) {
+  if (value == null || value === "") return "—";
   const x = Number(value);
   if (!Number.isFinite(x)) return "—";
   if (x > 0) return `+${x.toLocaleString()}`;
@@ -17454,22 +17497,8 @@ function renderOwnershipIntelligencePanel(data, errMsg) {
   ].join("");
 
   if (metaEl) {
-    const parts = [];
-    const meta = data.meta || {};
-    if (meta.currentQuarter && meta.previousQuarter) {
-      parts.push(`13F ${meta.currentQuarter} vs ${meta.previousQuarter}`);
-    } else if (meta.currentQuarter) {
-      parts.push(`13F ${meta.currentQuarter}`);
-    }
-    if (meta.trackedFundCount) {
-      parts.push(`${meta.trackedFundCount} tracked filers`);
-    }
-    parts.push("Insider: high-signal Form 4 P/S");
-    if (meta.politicianDataAt) {
-      parts.push("Congress: PTR cache");
-    }
-    metaEl.textContent = parts.join(" · ");
-    metaEl.hidden = parts.length === 0;
+    metaEl.textContent = "";
+    metaEl.hidden = true;
   }
 }
 
@@ -18834,10 +18863,7 @@ function renderFilingsFundamentalsDerivedGrid(derived, periodLabels) {
 function renderFilingsFundamentalsPeriodRow(row) {
   const m = row.metrics || {};
   const d = row.derived || {};
-  const source = row.metricSources?.revenue || row.metricSources?.net_income || null;
   const fyLabel = row.fy != null ? `FY${row.fy}` : "—";
-  const inclusion = row.inclusionReason || "";
-  const debugTitle = [inclusion, formatMetricSourceDebug(source)].filter(Boolean).join(" · ");
   return `
     <tr>
       <td class="mono">${escapeHtml(fyLabel)}</td>
@@ -18849,7 +18875,6 @@ function renderFilingsFundamentalsPeriodRow(row) {
       <td class="mono num">${escapeHtml(formatSecFundamentalCell(m.eps_diluted, "USD/shares"))}</td>
       <td class="mono num">${escapeHtml(formatSecFundamentalCell(m.total_assets))}</td>
       <td class="mono num">${escapeHtml(formatSecDerivedPercent(d.revenue_growth_yoy))}</td>
-      <td class="mono small filings-fundamentals-debug" title="${escapeHtml(debugTitle)}">${escapeHtml(inclusion || formatMetricSourceDebug(source))}</td>
     </tr>
   `;
 }
@@ -18899,7 +18924,7 @@ function renderFilingsFundamentalsPeriodTable(bodyId, rows, emptyMsg) {
   const body = document.getElementById(bodyId);
   if (!body) return;
   if (!rows?.length) {
-    body.innerHTML = `<tr><td colspan="10" class="trades-table__empty">${escapeHtml(emptyMsg)}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(emptyMsg)}</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(renderFilingsFundamentalsPeriodRow).join("");
@@ -19007,7 +19032,7 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
         el.innerHTML = `<p class="fundamentals-grid__empty">${escapeHtml(errMsg)}</p>`;
       }
     }
-    const empty = `<tr><td colspan="10" class="trades-table__empty">${escapeHtml(errMsg)}</td></tr>`;
+    const empty = `<tr><td colspan="9" class="trades-table__empty">${escapeHtml(errMsg)}</td></tr>`;
     for (const id of ["filings-fundamentals-annual-body", "filings-fundamentals-quarterly-body"]) {
       const body = document.getElementById(id);
       if (body) body.innerHTML = empty;

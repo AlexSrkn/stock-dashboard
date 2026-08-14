@@ -1,10 +1,12 @@
 import type pg from "pg";
 import { previousQuarter } from "../institution/performance/quarters.js";
 import { formatSecCik } from "../sec/http.js";
+import { resolvePositionValueUsd } from "./holdingValue.js";
 import {
   SELECT_OWNERSHIP_CACHE_BY_TICKER_SQL,
   SELECT_OWNERSHIP_HOLDINGS_BY_TICKER_SQL,
   SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_CIKS_SQL,
+  SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL,
 } from "./queries.js";
 import type { FundHoldingAggregate } from "./types.js";
 
@@ -49,14 +51,25 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function holdingValueUsd(shares: number, stockPrice: number | null): number | null {
-  if (!stockPrice || stockPrice <= 0) return null;
-  return round2(shares * stockPrice);
-}
-
 function pctOfOutstanding(shares: number, sharesOutstanding: number | null): number | null {
   if (!sharesOutstanding || sharesOutstanding <= 0) return null;
   return round2((shares / sharesOutstanding) * 100);
+}
+
+export function overlayHolderValues(
+  holders: FundHoldingAggregate[],
+  valued: Map<string, FundHoldingAggregate>
+): FundHoldingAggregate[] {
+  const byCik = new Map<string, FundHoldingAggregate>();
+  for (const h of valued.values()) {
+    if (h.filerCik) byCik.set(formatSecCik(h.filerCik), h);
+  }
+  return holders.map((h) => {
+    const match =
+      (h.filerCik ? byCik.get(formatSecCik(h.filerCik)) : undefined) ?? valued.get(h.fundName);
+    if (match?.valueUsd == null) return h;
+    return { ...h, valueUsd: match.valueUsd };
+  });
 }
 
 export async function loadOwnershipCacheSnapshot(
@@ -96,25 +109,39 @@ export async function fetchCachedTopHolders(
   ticker: string,
   sharesOutstanding: number | null,
   stockPrice: number | null,
-  limit = 500
+  limit = 500,
+  valueLookup?: { cusips: string[]; quarter: string }
 ): Promise<FundHoldingAggregate[]> {
   const sym = String(ticker || "").trim().toUpperCase();
-  const cap = Math.min(500, Math.max(1, limit));
+  const cap = Math.min(20000, Math.max(1, limit));
   const res = await pool.query<HoldingRow>(SELECT_OWNERSHIP_HOLDINGS_BY_TICKER_SQL, [sym, cap]);
-  return res.rows.map((row) => {
+  const holders = res.rows.map((row) => {
     const shares = round2(Number(row.shares));
     const filerCik = formatSecCik(String(row.filer_cik));
     return {
       fundName: String(row.fund_name || filerCik),
       filerCik,
       shares,
-      valueUsd: holdingValueUsd(shares, stockPrice),
+      valueUsd: resolvePositionValueUsd(shares, null, stockPrice),
       pctOutstanding:
         row.ownership_pct != null && Number.isFinite(Number(row.ownership_pct))
           ? round2(Number(row.ownership_pct))
           : pctOfOutstanding(shares, sharesOutstanding),
     };
   });
+
+  const ciks = holders.map((h) => h.filerCik).filter((c): c is string => Boolean(c));
+  if (!valueLookup?.cusips.length || !valueLookup.quarter || !ciks.length) return holders;
+
+  const valued = await fetchPreviousHoldersForCiks(
+    pool,
+    valueLookup.cusips,
+    valueLookup.quarter,
+    ciks,
+    sharesOutstanding,
+    stockPrice
+  );
+  return overlayHolderValues(holders, valued);
 }
 
 export async function fetchPreviousHoldersForCiks(
@@ -142,7 +169,7 @@ export async function fetchPreviousHoldersForCiks(
       fundName,
       filerCik: formatSecCik(String(row.filer_cik)),
       shares,
-      valueUsd: holdingValueUsd(shares, stockPrice),
+      valueUsd: resolvePositionValueUsd(shares, row.value_usd_thousands, stockPrice),
       pctOutstanding: pctOfOutstanding(shares, sharesOutstanding),
     });
   }
@@ -162,7 +189,8 @@ export async function fetchCachedQuarterPairMap(
     ticker,
     sharesOutstanding,
     stockPrice,
-    5000
+    5000,
+    { cusips, quarter: snapshot.currentQuarter }
   );
   const current = new Map(holders.map((h) => [h.fundName, h]));
 
@@ -180,4 +208,30 @@ export async function fetchCachedQuarterPairMap(
     stockPrice
   );
   return { current, previous };
+}
+
+export async function fetchFilerSharesByCusipQuarter(
+  pool: pg.Pool,
+  cusips: string[],
+  quarter: string
+): Promise<Map<string, FundHoldingAggregate>> {
+  const out = new Map<string, FundHoldingAggregate>();
+  if (!cusips.length || !quarter) return out;
+  const res = await pool.query<{ filer_cik: string; fund_name: string; shares: string | number }>(
+    SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL,
+    [cusips, quarter]
+  );
+  for (const row of res.rows) {
+    const filerCik = formatSecCik(String(row.filer_cik));
+    const shares = round2(Number(row.shares));
+    if (!filerCik || !(shares > 0)) continue;
+    out.set(filerCik, {
+      fundName: String(row.fund_name || filerCik),
+      filerCik,
+      shares,
+      valueUsd: null,
+      pctOutstanding: null,
+    });
+  }
+  return out;
 }

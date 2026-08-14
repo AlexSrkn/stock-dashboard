@@ -3,6 +3,8 @@ export { insiderRoleWeight, signedTransactionValue } from "./roleWeights.js";
 export {
   zScoreNormalizeMap,
   convictionScoreFromFinal,
+  blendToConvictionScore,
+  signedLog1p,
   signNonZero,
 } from "./normalize.js";
 export {

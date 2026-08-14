@@ -288,6 +288,14 @@ test(
 
     const q2fy2025 = findQuarterlyRow(quarterly, "Q2", "2025-03-29");
     assert.ok(q2fy2025?.metrics.revenue, "Q2 FY2025 revenue missing");
+    assert.equal(q1fy2026.fy, 2026);
+    assert.equal(q2fy2026.fy, 2026);
+    assert.equal(q3fy2026.fy, 2026);
+    assert.equal(q2fy2025.fy, 2025);
+    const q3fy2025 = findQuarterlyRow(quarterly, "Q3", "2025-06-28");
+    assert.equal(q3fy2025?.fy, 2025, "period ending 2025-06-28 must be FY2025, not a later 10-Q comparative fy");
+    const fy2026Count = quarterly.filter((r) => r.fy === 2026).length;
+    assert.ok(fy2026Count <= 3, `FY2026 should have at most Q1–Q3, got ${fy2026Count}`);
     assert.ok(
       withinPct(q2fy2025.metrics.revenue!, 95_000_000_000, 8),
       `Q2 FY2025 revenue ${q2fy2025.metrics.revenue} not near $95B`

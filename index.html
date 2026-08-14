@@ -1899,9 +1899,7 @@
             <section class="trades-card signals-card" aria-labelledby="signals-heading">
               <div class="panel-head panel-head--row">
                 <h2 id="signals-heading">Signals</h2>
-                <span class="muted small" id="signals-subtitle">
-                  Institutional, insider &amp; congressional buying vs selling
-                </span>
+                <span class="muted small" id="signals-subtitle" hidden></span>
               </div>
               <div class="signals-grid" id="signals-grid">
                 <p class="fundamentals-grid__empty">Select a stock to compute signals.</p>
@@ -1949,7 +1947,7 @@
           <section class="trades-card ownership-card" aria-labelledby="ownership-heading">
             <div class="panel-head panel-head--row">
               <h2 id="ownership-heading">Institutional ownership</h2>
-              <span class="muted small" id="ownership-subtitle">Tracked institutional filers</span>
+              <span class="muted small" id="ownership-subtitle" hidden></span>
             </div>
             <div class="table-scroll">
               <table class="trades-table ownership-table">
@@ -1957,10 +1955,10 @@
                   <tr>
                     <th>Fund</th>
                     <th class="num">Shares</th>
-                    <th class="num">Value</th>
+                    <th class="num" title="13F reported market value (USD)">Value</th>
                     <th class="num">% Outstanding</th>
                     <th class="num" title="Common-stock share change vs prior quarter (puts/calls excluded)">QoQ change</th>
-                    <th class="num" title="Change in live position value vs prior quarter (USD)">Value added</th>
+                    <th class="num" title="Dollar value of the share-count change at 13F quarter-end price (USD)">Value added</th>
                   </tr>
                 </thead>
                 <tbody id="ownership-holders-body"></tbody>
@@ -2205,7 +2203,7 @@
                       <th>Insider</th>
                       <th>Role</th>
                       <th>Code</th>
-                      <th>Signal</th>
+                      <th id="insider-activity-signal-col" hidden>Signal</th>
                       <th class="num">Shares</th>
                       <th class="num">Price</th>
                       <th class="num">Value</th>
@@ -2214,7 +2212,7 @@
                   </thead>
                   <tbody id="insider-activity-body">
                     <tr>
-                      <td colspan="8" class="trades-table__empty">Select a stock to load insider transactions.</td>
+                      <td colspan="7" class="trades-table__empty">Select a stock to load insider transactions.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2226,7 +2224,7 @@
             <section class="trades-card congress-activity-card" aria-labelledby="congress-activity-heading">
               <div class="panel-head panel-head--row">
                 <h2 id="congress-activity-heading">Congress activity</h2>
-                <span class="muted small" id="congress-activity-subtitle">Politician purchases (PTR)</span>
+                <span class="muted small" id="congress-activity-subtitle" hidden></span>
               </div>
               <div class="table-scroll">
                 <table class="trades-table congress-activity-table">
@@ -2399,7 +2397,6 @@
                         <th class="num">EPS (dil.)</th>
                         <th class="num">Assets</th>
                         <th class="num">Rev YoY</th>
-                        <th>Inclusion</th>
                       </tr>
                     </thead>
                     <tbody id="filings-fundamentals-annual-body"></tbody>
@@ -2422,7 +2419,6 @@
                         <th class="num">EPS (dil.)</th>
                         <th class="num">Assets</th>
                         <th class="num">Rev YoY</th>
-                        <th>Inclusion</th>
                       </tr>
                     </thead>
                     <tbody id="filings-fundamentals-quarterly-body"></tbody>
@@ -7551,6 +7547,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=tradeatlant-logo-1"></script>
+    <script type="module" src="/app.js?v=insider-codes-1"></script>
   </body>
 </html>

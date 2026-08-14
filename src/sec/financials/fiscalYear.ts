@@ -3,6 +3,7 @@ import {
   classifyDuration,
   durationDays,
   is10KForm,
+  is10QForm,
   observationEnd,
   parseIsoDate,
 } from "./periodUtils.js";
@@ -43,6 +44,45 @@ export function resolveAnnualFiscalYear(
     const filedCmp = String(a.filed ?? "").localeCompare(String(b.filed ?? ""));
     if (filedCmp !== 0) return filedCmp;
     // Stable tie-break: lower fy is usually the native year when filed dates match.
+    return Number(a.fy) - Number(b.fy);
+  })[0];
+
+  if (!original) return null;
+  const fy = Number(original.fy);
+  return Number.isFinite(fy) ? fy : null;
+}
+
+/**
+ * Fiscal year for a quarterly (10-Q) period end.
+ *
+ * Comparative figures in a later 10-Q often carry that later filing's `fy`
+ * (e.g. Q3 FY2025 inside the FY2026 Q3 10-Q tagged fy=2026). Using the latest
+ * observation's `fy` then lists the same fiscal year many times.
+ *
+ * Prefer the earliest-filed 10-Q observation for this period end — the original
+ * quarterly report — and use its `fy`.
+ */
+export function resolveQuarterlyFiscalYear(
+  observations: XbrlFactObservation[],
+  periodEnd?: string | null
+): number | null {
+  const end = periodEnd ? parseIsoDate(periodEnd) : null;
+  const atEnd = observations.filter((obs) => {
+    if (!is10QForm(obs.form)) return false;
+    if (obs.fy == null || !Number.isFinite(Number(obs.fy))) return false;
+    if (end) return observationEnd(obs) === end;
+    return true;
+  });
+  if (!atEnd.length) return null;
+
+  const quarterDuration = atEnd.filter(
+    (obs) => classifyDuration(durationDays(obs)) === "quarter"
+  );
+  const pool = quarterDuration.length ? quarterDuration : atEnd;
+
+  const original = [...pool].sort((a, b) => {
+    const filedCmp = String(a.filed ?? "").localeCompare(String(b.filed ?? ""));
+    if (filedCmp !== 0) return filedCmp;
     return Number(a.fy) - Number(b.fy);
   })[0];
 

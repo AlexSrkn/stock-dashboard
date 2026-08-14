@@ -39,6 +39,18 @@ function addToMap(map: Map<string, number>, ticker: string, delta: number): void
   map.set(ticker, (map.get(ticker) ?? 0) + delta);
 }
 
+/**
+ * AUM-weighted QoQ share change in (-1, 1] for one filer/ticker.
+ * Uses shares (not market value) so price moves are not counted as flow.
+ */
+export function filerShareFlow(curShares: number, prevShares: number, aumUsd: number): number {
+  const cur = Number.isFinite(curShares) ? curShares : 0;
+  const prev = Number.isFinite(prevShares) ? prevShares : 0;
+  if (cur === 0 && prev === 0) return 0;
+  const denom = Math.max(Math.abs(prev), Math.abs(cur), 1);
+  return ((cur - prev) / denom) * Math.log(1 + Math.max(aumUsd, 0));
+}
+
 async function loadFilerAumByQuarter(pool: pg.Pool, ciks: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   try {
@@ -76,25 +88,32 @@ export async function loadInstitutionalFlowByTicker(pool: pg.Pool): Promise<Map<
     const prevQ = quarters.length >= 2 ? quarters[quarters.length - 2] : null;
     if (!curQ) return out;
 
-    const positionByKey = new Map<string, number>();
+    const sharesByKey = new Map<string, number>();
     for (const h of holdings) {
+      if (!h.ticker) continue;
+      const shares = h.shares;
+      if (shares == null || !Number.isFinite(shares)) continue;
       const key = `${h.institutionId}::${h.quarter}::${h.ticker}`;
-      positionByKey.set(key, (positionByKey.get(key) ?? 0) + h.marketValue);
+      sharesByKey.set(key, (sharesByKey.get(key) ?? 0) + shares);
     }
 
     const seenInstTicker = new Set<string>();
     for (const h of holdings) {
-      if (h.quarter !== curQ) continue;
+      if (h.quarter !== curQ || !h.ticker) continue;
       const instTickerKey = `${h.institutionId}::${h.ticker}`;
       if (seenInstTicker.has(instTickerKey)) continue;
       seenInstTicker.add(instTickerKey);
 
-      const curMv = positionByKey.get(`${h.institutionId}::${curQ}::${h.ticker}`) ?? 0;
-      const prevMv = prevQ
-        ? (positionByKey.get(`${h.institutionId}::${prevQ}::${h.ticker}`) ?? 0)
+      const curShares = sharesByKey.get(`${h.institutionId}::${curQ}::${h.ticker}`);
+      if (curShares == null) {
+        if (!out.has(h.ticker)) out.set(h.ticker, 0);
+        continue;
+      }
+      const prevShares = prevQ
+        ? (sharesByKey.get(`${h.institutionId}::${prevQ}::${h.ticker}`) ?? 0)
         : 0;
       const aumUsd = aumByFilerQuarter.get(`${h.institutionId}::${curQ}`) ?? 0;
-      const flow = (curMv - prevMv) * Math.log(1 + Math.max(aumUsd, 0));
+      const flow = filerShareFlow(curShares, prevShares, aumUsd);
 
       if (!out.has(h.ticker)) out.set(h.ticker, 0);
       if (Number.isFinite(flow)) {

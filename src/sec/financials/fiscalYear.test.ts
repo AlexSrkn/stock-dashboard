@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveAnnualFiscalYear, fiscalYearFromFrame } from "./fiscalYear.js";
+import { resolveAnnualFiscalYear, resolveQuarterlyFiscalYear, fiscalYearFromFrame } from "./fiscalYear.js";
 import { pickAnnualDurationValue } from "./durationNormalize.js";
 import { extractFinancialsFromCompanyFacts } from "./extractFacts.js";
 import type { SecCompanyFacts, XbrlFactObservation } from "./types.js";
@@ -45,6 +45,33 @@ test("resolveAnnualFiscalYear uses original 10-K fy, not later comparative fy", 
     }),
   ];
   assert.equal(resolveAnnualFiscalYear(observations, end), 2023);
+});
+
+test("resolveQuarterlyFiscalYear uses original 10-Q fy, not later comparative fy", () => {
+  const end = "2025-06-28";
+  const observations: XbrlFactObservation[] = [
+    {
+      end,
+      start: "2025-03-30",
+      val: 94e9,
+      fy: 2025,
+      fp: "Q3",
+      form: "10-Q",
+      filed: "2025-08-01",
+      accn: "aapl-q3-2025",
+    },
+    {
+      end,
+      start: "2025-03-30",
+      val: 94e9,
+      fy: 2026,
+      fp: "Q3",
+      form: "10-Q",
+      filed: "2026-08-01",
+      accn: "aapl-q3-2026",
+    },
+  ];
+  assert.equal(resolveQuarterlyFiscalYear(observations, end), 2025);
 });
 
 test("resolveAnnualFiscalYear works for December fiscal year-end", () => {

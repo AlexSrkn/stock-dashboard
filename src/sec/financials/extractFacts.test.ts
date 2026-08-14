@@ -539,6 +539,90 @@ test("9M cash flow without prior H1 stays YTD in metrics and FCF margin uses YTD
   assert.equal(q3.derived.free_cash_flow_margin, expected);
 });
 
+test("quarterly comparatives in a later 10-Q keep the original fiscal year", () => {
+  const facts: SecCompanyFacts = {
+    cik: "0000320193",
+    facts: {
+      "us-gaap": {
+        Revenues: {
+          units: {
+            USD: [
+              {
+                end: "2025-06-28",
+                start: "2025-03-30",
+                val: 94_036_000_000,
+                fy: 2025,
+                fp: "Q3",
+                form: "10-Q",
+                filed: "2025-08-01",
+                accn: "orig-q3-2025",
+              },
+              {
+                end: "2025-06-28",
+                start: "2025-03-30",
+                val: 94_036_000_000,
+                fy: 2026,
+                fp: "Q3",
+                form: "10-Q",
+                filed: "2026-08-01",
+                accn: "cmp-q3-2026",
+              },
+              {
+                end: "2026-06-27",
+                start: "2026-03-29",
+                val: 109_417_000_000,
+                fy: 2026,
+                fp: "Q3",
+                form: "10-Q",
+                filed: "2026-08-01",
+                accn: "orig-q3-2026",
+              },
+              {
+                end: "2025-03-29",
+                start: "2024-12-29",
+                val: 95_359_000_000,
+                fy: 2025,
+                fp: "Q2",
+                form: "10-Q",
+                filed: "2025-05-02",
+                accn: "orig-q2-2025",
+              },
+              {
+                end: "2025-03-29",
+                start: "2024-12-29",
+                val: 95_359_000_000,
+                fy: 2026,
+                fp: "Q2",
+                form: "10-Q",
+                filed: "2026-05-02",
+                accn: "cmp-q2-2026",
+              },
+              {
+                end: "2026-03-28",
+                start: "2025-12-28",
+                val: 111_184_000_000,
+                fy: 2026,
+                fp: "Q2",
+                form: "10-Q",
+                filed: "2026-05-02",
+                accn: "orig-q2-2026",
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const { quarterly } = extractFinancialsFromCompanyFacts(facts);
+  assert.equal(quarterly.find((r) => r.end === "2026-06-27")?.fy, 2026);
+  assert.equal(quarterly.find((r) => r.end === "2025-06-28")?.fy, 2025);
+  assert.equal(quarterly.find((r) => r.end === "2026-03-28")?.fy, 2026);
+  assert.equal(quarterly.find((r) => r.end === "2025-03-29")?.fy, 2025);
+  assert.equal(quarterly.filter((r) => r.fy === 2026).length, 2);
+  assert.equal(quarterly.filter((r) => r.end === "2025-06-28").length, 1);
+});
+
 test("parse8kEarningsReleases extracts Item 2.02 metrics by accession", () => {
   const eightK: SecFinancialFilingRow[] = [
     {

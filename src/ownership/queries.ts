@@ -234,6 +234,37 @@ ORDER BY shares DESC
 LIMIT $2
 `.trim();
 
+/** Latest common-stock shares by filer for a CUSIP set in one quarter (no full tracked-CIK scan). */
+export const SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL = `
+WITH filers AS (
+  SELECT DISTINCT filer_cik
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = $2
+    ${sqlCommonStockOnly()}
+),
+latest_filings AS (
+  SELECT DISTINCT ON (s.filer_cik)
+    s.id AS filing_id,
+    s.filer_cik
+  FROM sec_filing s
+  INNER JOIN filers f ON f.filer_cik = s.filer_cik
+  WHERE s.quarter = $2
+  ORDER BY s.filer_cik, s.filing_date DESC, s.id DESC
+)
+SELECT
+  h.filer_cik,
+  MAX(h.fund_name) AS fund_name,
+  SUM(h.shares)::float8 AS shares
+FROM sec_holding h
+INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
+WHERE h.cusip = ANY($1::bpchar[])
+  AND h.quarter = $2
+  ${sqlCommonStockOnly("h")}
+GROUP BY h.filer_cik
+HAVING SUM(h.shares) > 0
+`.trim();
+
 /** Resolve primary CUSIP via top cached holders' share counts (fast when sec_holding.ticker is unset). */
 export const SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL = `
 WITH oc AS (
