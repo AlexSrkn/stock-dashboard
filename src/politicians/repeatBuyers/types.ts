@@ -11,7 +11,11 @@ export type PoliticianRepeatBuyerSortKey =
   | "estimatedTotalInvested"
   | "latestPurchase"
   | "purchasesLast12Months"
-  | "ticker";
+  | "ticker"
+  | "politicianName"
+  | "party"
+  | "state"
+  | "classification";
 
 export type MarketCapBucket = "" | "mega" | "large" | "mid" | "small";
 

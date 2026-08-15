@@ -8,8 +8,8 @@ export interface OwnershipChangeRow {
   sector: string | null;
   exchange: string | null;
   marketCapUsd: number | null;
-  currentOwnershipPct: number;
-  previousOwnershipPct: number;
+  currentOwnershipPct: number | null;
+  previousOwnershipPct: number | null;
   changePct: number;
   institutionCount: number;
   totalInstitutionalShares: number;
@@ -28,6 +28,8 @@ export interface OwnershipChangesPayload {
   computedAt: string;
   quarter: string;
   previousQuarter: string;
+  /** Preferred default when client asks for "latest" (skips sparse in-progress quarters). */
+  defaultQuarter: string;
   direction: OwnershipChangeDirection;
   summary: OwnershipChangesSummary;
   sectors: string[];
@@ -42,6 +44,8 @@ export interface OwnershipChangesPayload {
 export interface OwnershipChangesCachePayload {
   computedAt: string;
   quarters: string[];
+  /** Latest mostly complete quarter — used when UI/API request "latest". */
+  defaultQuarter: string | null;
   sectors: string[];
   exchanges: string[];
   /** Quarter -> rows comparing that quarter to the immediately prior quarter. */

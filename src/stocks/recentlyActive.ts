@@ -1,14 +1,11 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
-import { queryRecentInsiderTransactions } from "../db/insiderTransactions.js";
 import { openMarketInsiderActionLabel } from "../insider/openMarketSide.js";
-import { listTrackedInstitutions } from "../institution/institutionAnalytics.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 import { normalizeTicker } from "../politicians/byTicker.js";
 import { SELECT_STOCK_ENRICHMENT_SQL } from "../institution/mostAccumulated/queries.js";
-import { sqlCommonStockOnly } from "../ownership/queries.js";
 
-export type RecentlyActiveSource = "all" | "institution" | "insider" | "politician";
+export type RecentlyActiveSource = "all" | "insider" | "politician";
 
 export interface RecentlyActiveFilters {
   source: RecentlyActiveSource;
@@ -17,7 +14,7 @@ export interface RecentlyActiveFilters {
 }
 
 export interface RecentlyActiveItem {
-  source: "Institution" | "Insider" | "Politician";
+  source: "Insider" | "Politician";
   actorName: string;
   action: string;
   filingDate: string;
@@ -51,72 +48,35 @@ interface NormalizedEvent {
   ticker: string;
   companyName: string | null;
   filingDate: string;
-  source: "Institution" | "Insider" | "Politician";
+  source: "Insider" | "Politician";
   actorName: string;
   action: string;
 }
 
 const MAX_RETURNED_EVENTS = 2500;
 const MAX_ITEMS_PER_STOCK_CARD = 8;
-/** Default lookback when no --from date is provided (keeps the page fast after universe expansion). */
-const DEFAULT_INSTITUTION_LOOKBACK_DAYS = 45;
+const INSIDER_LOOKBACK_DAYS = 180;
+const INSIDER_FEED_LIMIT = 1000;
+const EVENT_CACHE_MS = 15 * 60 * 1000;
 
-const SELECT_RECENT_INSTITUTION_ACTIVITY_SQL = `
-WITH recent_filers AS (
-  SELECT DISTINCT filer_cik
-  FROM sec_filing
-  WHERE filer_cik = ANY($1::bpchar[])
-    AND filing_date >= $2::date
-    AND ($3::date IS NULL OR filing_date <= $3::date)
-),
-latest_filings AS (
-  SELECT DISTINCT ON (f.filer_cik, f.quarter)
-    f.id AS filing_id,
-    f.filer_cik,
-    f.quarter,
-    f.filing_date
-  FROM sec_filing f
-  INNER JOIN recent_filers rf ON rf.filer_cik = f.filer_cik
-  ORDER BY f.filer_cik, f.quarter, f.filing_date DESC, f.id DESC
-),
-ranked_quarters AS (
-  SELECT
-    filing_id,
-    filer_cik,
-    quarter,
-    filing_date::text AS filing_date,
-    ROW_NUMBER() OVER (
-      PARTITION BY filer_cik
-      ORDER BY quarter DESC, filing_date DESC, filing_id DESC
-    ) AS rn
-  FROM latest_filings
-)
+const SELECT_RECENT_INSIDER_FEED_SQL = `
 SELECT
-  rq.filer_cik AS institution_id,
-  rq.quarter,
-  rq.filing_date,
-  rq.rn,
-  MAX(h.ticker) AS ticker,
-  MAX(h.issuer) AS issuer,
-  SUM(h.shares)::float8 AS shares,
-  SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS market_value
-FROM ranked_quarters rq
-INNER JOIN sec_holding h
-  ON h.filing_id = rq.filing_id
-  AND h.filer_cik = rq.filer_cik
-  AND h.quarter = rq.quarter
-WHERE rq.rn <= 2
-  ${sqlCommonStockOnly("h")}
-GROUP BY rq.filer_cik, rq.quarter, rq.filing_date, rq.rn, h.cusip
-HAVING SUM(h.shares) > 0
+  UPPER(BTRIM(ticker)) AS ticker,
+  insider_name,
+  insider_title,
+  filing_date::text AS filing_date,
+  transaction_date::text AS transaction_date,
+  transaction_code,
+  acquisition_disposition
+FROM insider_transaction
+WHERE ticker IS NOT NULL
+  AND ticker <> ''
+  AND NOT is_derivative
+  AND UPPER(transaction_code) IN ('P', 'S')
+  AND transaction_date >= (CURRENT_DATE - $1::int)
+ORDER BY transaction_date DESC
+LIMIT $2
 `.trim();
-
-function defaultInstitutionFromDate(filters: RecentlyActiveFilters): string {
-  if (filters.from) return filters.from;
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - DEFAULT_INSTITUTION_LOOKBACK_DAYS);
-  return d.toISOString().slice(0, 10);
-}
 
 function toIsoDate(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -134,13 +94,6 @@ function inDateRange(value: string, filters: RecentlyActiveFilters): boolean {
   if (filters.from && value < filters.from) return false;
   if (filters.to && value > filters.to) return false;
   return true;
-}
-
-function institutionActionLabel(eventType: "add" | "trim" | "new" | "sold-out"): string {
-  if (eventType === "new") return "Opened a new position";
-  if (eventType === "sold-out") return "Closed position";
-  if (eventType === "add") return "Increased position";
-  return "Reduced position";
 }
 
 function insiderActionLabel(
@@ -173,102 +126,35 @@ async function loadStockNames(
   return out;
 }
 
-async function loadInstitutionEvents(pool: pg.Pool, filters: RecentlyActiveFilters): Promise<NormalizedEvent[]> {
-  const institutions = listTrackedInstitutions();
-  const events: NormalizedEvent[] = [];
-  const institutionNameByCik = new Map(institutions.map((inst) => [inst.cik, inst.name]));
-  const fromDate = defaultInstitutionFromDate(filters);
-  const toDate = filters.to;
+async function loadInsiderEvents(pool: pg.Pool): Promise<NormalizedEvent[]> {
   const res = await pool.query<{
-    institution_id: string;
-    quarter: string;
-    filing_date: string;
-    rn: number;
     ticker: string | null;
-    issuer: string | null;
-    shares: number;
-    market_value: number;
-  }>(SELECT_RECENT_INSTITUTION_ACTIVITY_SQL, [
-    institutions.map((inst) => inst.cik),
-    fromDate,
-    toDate,
-  ]);
+    insider_name: string | null;
+    insider_title: string | null;
+    filing_date: string | null;
+    transaction_date: string | null;
+    transaction_code: string;
+    acquisition_disposition: string | null;
+  }>(SELECT_RECENT_INSIDER_FEED_SQL, [INSIDER_LOOKBACK_DAYS, INSIDER_FEED_LIMIT]);
 
-  const currentByInstitution = new Map<string, Map<string, { shares: number; marketValue: number }>>();
-  const previousByInstitution = new Map<string, Map<string, { shares: number; marketValue: number }>>();
-  const filingDateByInstitution = new Map<string, string>();
-
-  for (const row of res.rows) {
-    const ticker = row.ticker ? String(row.ticker).trim().toUpperCase() : "";
-    if (!ticker) continue;
-    const filingDate = toIsoDate(row.filing_date);
-    if (!filingDate) continue;
-    const target = Number(row.rn) === 1 ? currentByInstitution : previousByInstitution;
-    let holdings = target.get(String(row.institution_id));
-    if (!holdings) {
-      holdings = new Map();
-      target.set(String(row.institution_id), holdings);
-    }
-    holdings.set(ticker, {
-      shares: Number(row.shares ?? 0),
-      marketValue: Number(row.market_value ?? 0),
-    });
-    if (Number(row.rn) === 1) {
-      filingDateByInstitution.set(String(row.institution_id), filingDate);
-    }
-  }
-
-  for (const institution of institutions) {
-    const filingDate = filingDateByInstitution.get(institution.cik);
-    if (!filingDate || !inDateRange(filingDate, filters)) continue;
-    const current = currentByInstitution.get(institution.cik) ?? new Map();
-    const previous = previousByInstitution.get(institution.cik) ?? new Map();
-    const tickers = new Set([...current.keys(), ...previous.keys()]);
-    for (const ticker of tickers) {
-      const cur = current.get(ticker);
-      const prev = previous.get(ticker);
-      const curShares = Number(cur?.shares ?? 0);
-      const prevShares = Number(prev?.shares ?? 0);
-      if (curShares === prevShares) continue;
-      let eventType: "add" | "trim" | "new" | "sold-out";
-      if (prevShares <= 0 && curShares > 0) eventType = "new";
-      else if (curShares <= 0 && prevShares > 0) eventType = "sold-out";
-      else if ((cur?.marketValue ?? 0) >= (prev?.marketValue ?? 0)) eventType = "add";
-      else eventType = "trim";
-      events.push({
-        ticker,
-        companyName: null,
-        filingDate,
-        source: "Institution",
-        actorName: institutionNameByCik.get(institution.cik) || institution.name,
-        action: institutionActionLabel(eventType),
-      });
-    }
-  }
-
-  return events;
-}
-
-async function loadInsiderEvents(pool: pg.Pool, filters: RecentlyActiveFilters): Promise<NormalizedEvent[]> {
-  const recent = await queryRecentInsiderTransactions({ limit: 1000, sort: "date" }, pool);
-  return recent
+  return res.rows
     .map((row) => {
       const ticker = normalizeTicker(row.ticker || "");
-      const filingDate = toIsoDate(row.filingDate || row.transactionDate);
-      if (!ticker || !filingDate || !inDateRange(filingDate, filters)) return null;
+      const filingDate = toIsoDate(row.filing_date || row.transaction_date);
+      if (!ticker || !filingDate) return null;
       return {
         ticker,
         companyName: null,
         filingDate,
         source: "Insider" as const,
-        actorName: String(row.insiderName || row.insiderTitle || "Insider"),
-        action: insiderActionLabel(row.acquisitionDisposition, row.transactionCode),
+        actorName: String(row.insider_name || row.insider_title || "Insider"),
+        action: insiderActionLabel(row.acquisition_disposition, row.transaction_code),
       };
     })
     .filter((row): row is NormalizedEvent => Boolean(row));
 }
 
-async function loadPoliticianEvents(filters: RecentlyActiveFilters): Promise<NormalizedEvent[]> {
+function loadPoliticianEvents(): NormalizedEvent[] {
   const payload = readPoliticiansRecent();
   if (!payload) return [];
   const events: NormalizedEvent[] = [];
@@ -279,7 +165,7 @@ async function loadPoliticianEvents(filters: RecentlyActiveFilters): Promise<Nor
         normalizeTicker(trade.ticker || "") ||
         normalizeTicker(trade.assetName?.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/i)?.[1] || "");
       const filingDate = toIsoDate(trade.filingDate || bundle.filingDate || trade.notificationDate);
-      if (!ticker || !filingDate || !inDateRange(filingDate, filters)) continue;
+      if (!ticker || !filingDate) continue;
       events.push({
         ticker,
         companyName: trade.assetName ? String(trade.assetName) : null,
@@ -343,40 +229,52 @@ function buildDayGroups(events: NormalizedEvent[]): RecentlyActiveDayGroup[] {
 export function parseRecentlyActiveFilters(url: URL): RecentlyActiveFilters {
   const sourceRaw = url.searchParams.get("source");
   return {
-    source:
-      sourceRaw === "institution" || sourceRaw === "insider" || sourceRaw === "politician"
-        ? sourceRaw
-        : "all",
+    source: sourceRaw === "insider" || sourceRaw === "politician" ? sourceRaw : "all",
     from: toIsoDate(url.searchParams.get("from")) ?? null,
     to: toIsoDate(url.searchParams.get("to")) ?? null,
   };
 }
 
-let memoryCache: { loadedAt: number; key: string; payload: RecentlyActivePayload } | null = null;
-const MEMORY_CACHE_MS = 5 * 60 * 1000;
+let eventCache: { loadedAt: number; events: NormalizedEvent[] } | null = null;
+let eventInflight: Promise<NormalizedEvent[]> | null = null;
+
+async function loadBaseRecentlyActiveEvents(pool: pg.Pool): Promise<NormalizedEvent[]> {
+  const now = Date.now();
+  if (eventCache && now - eventCache.loadedAt < EVENT_CACHE_MS) return eventCache.events;
+  if (eventInflight) return eventInflight;
+
+  eventInflight = (async () => {
+    const [insider, politician] = await Promise.all([
+      loadInsiderEvents(pool),
+      Promise.resolve(loadPoliticianEvents()),
+    ]);
+    const events = [...insider, ...politician];
+    const names = await loadStockNames(
+      pool,
+      [...new Set(events.map((event) => event.ticker).filter(Boolean))]
+    );
+    for (const event of events) {
+      const stockName = names.get(event.ticker);
+      if (stockName) event.companyName = stockName;
+    }
+    eventCache = { loadedAt: Date.now(), events };
+    return events;
+  })().finally(() => {
+    eventInflight = null;
+  });
+
+  return eventInflight;
+}
 
 export async function getRecentlyActiveStocks(
   url: URL,
   pool: pg.Pool = getPool()
 ): Promise<RecentlyActivePayload> {
   const filters = parseRecentlyActiveFilters(url);
-  const key = JSON.stringify(filters);
-  const now = Date.now();
-  if (memoryCache && memoryCache.key === key && now - memoryCache.loadedAt < MEMORY_CACHE_MS) {
-    return memoryCache.payload;
-  }
-
-  const events: NormalizedEvent[] = [];
-
-  if (filters.source === "all" || filters.source === "institution") {
-    events.push(...(await loadInstitutionEvents(pool, filters)));
-  }
-  if (filters.source === "all" || filters.source === "insider") {
-    events.push(...(await loadInsiderEvents(pool, filters)));
-  }
-  if (filters.source === "all" || filters.source === "politician") {
-    events.push(...(await loadPoliticianEvents(filters)));
-  }
+  const events = (await loadBaseRecentlyActiveEvents(pool)).filter((event) => {
+    if (filters.source !== "all" && event.source.toLowerCase() !== filters.source) return false;
+    return inDateRange(event.filingDate, filters);
+  });
 
   events.sort((a, b) => {
     const byDate = b.filingDate.localeCompare(a.filingDate);
@@ -386,18 +284,9 @@ export async function getRecentlyActiveStocks(
     return a.actorName.localeCompare(b.actorName);
   });
 
-  const stockNames = await loadStockNames(
-    pool,
-    [...new Set(events.map((event) => event.ticker).filter(Boolean))]
-  );
-  for (const event of events) {
-    const stockName = stockNames.get(event.ticker);
-    if (stockName) event.companyName = stockName;
-  }
-
   const limitedEvents = events.slice(0, MAX_RETURNED_EVENTS);
   const days = buildDayGroups(limitedEvents);
-  const payload: RecentlyActivePayload = {
+  return {
     computedAt: new Date().toISOString(),
     filters,
     summary: {
@@ -406,7 +295,4 @@ export async function getRecentlyActiveStocks(
     },
     days,
   };
-
-  memoryCache = { loadedAt: now, key, payload };
-  return payload;
 }

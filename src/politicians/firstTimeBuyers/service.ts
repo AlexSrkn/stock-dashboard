@@ -51,6 +51,9 @@ function parseSortKey(raw: string | null): PoliticianFirstTimeBuyerSortKey {
     "estimatedPurchaseValue",
     "politicianName",
     "ticker",
+    "party",
+    "state",
+    "previousBuyDate",
   ];
   if (raw && (allowed as string[]).includes(raw)) return raw as PoliticianFirstTimeBuyerSortKey;
   return "transactionDate";
@@ -140,14 +143,14 @@ export function sortPoliticianFirstTimeBuyerRows(
     if (sortKey === "ticker") {
       return a.ticker.localeCompare(b.ticker) * dir;
     }
-    if (sortKey === "politicianName") {
-      return (
-        a.politicianName.localeCompare(b.politicianName) * dir || a.ticker.localeCompare(b.ticker)
-      );
+    if (sortKey === "politicianName" || sortKey === "party" || sortKey === "state") {
+      const av = String(a[sortKey] || "");
+      const bv = String(b[sortKey] || "");
+      return av.localeCompare(bv) * dir || a.ticker.localeCompare(b.ticker);
     }
-    if (sortKey === "transactionDate") {
-      const av = parseDateMs(a.transactionDate) || 0;
-      const bv = parseDateMs(b.transactionDate) || 0;
+    if (sortKey === "transactionDate" || sortKey === "previousBuyDate") {
+      const av = parseDateMs(a[sortKey]) || 0;
+      const bv = parseDateMs(b[sortKey]) || 0;
       return (av - bv) * dir || a.ticker.localeCompare(b.ticker);
     }
     if (sortKey === "yearsSinceLastBuy") {

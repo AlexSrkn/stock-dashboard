@@ -5,9 +5,12 @@ import {
   buildHistoryPoints,
   compareProxyRows,
   dollarChange,
+  filterCompleteHistoryPoints,
+  filterCompleteProxyQuarters,
   latestQuarterForInstitution,
   metricsAtQuarter,
   pctChange,
+  rowHasCompleteProxyMetrics,
   shiftQuartersBack,
 } from "./compute.js";
 import { formatProxyHoldings, formatProxyUsd } from "./formatDisplay.js";
@@ -205,6 +208,44 @@ describe("portfolio performance proxy math", () => {
       "1067983"
     );
     assert.equal(q, "2026-Q1");
+  });
+
+  it("drops ranking rows and history points that would show N/A", () => {
+    assert.equal(rowHasCompleteProxyMetrics(row({})), true);
+    assert.equal(rowHasCompleteProxyMetrics(row({ change1yPct: null })), false);
+    assert.equal(rowHasCompleteProxyMetrics(row({ qoqChangePct: null })), false);
+
+    const history = buildHistoryPoints([
+      {
+        institutionId: "1",
+        quarter: "2025-Q1",
+        filingDate: null,
+        holdingsCount: 10,
+        portfolioValueUsd: 100,
+      },
+      {
+        institutionId: "1",
+        quarter: "2025-Q2",
+        filingDate: null,
+        holdingsCount: 12,
+        portfolioValueUsd: 110,
+      },
+    ]);
+    const complete = filterCompleteHistoryPoints(history);
+    assert.equal(complete.length, 1);
+    assert.equal(complete[0].quarter, "2025-Q2");
+  });
+
+  it("filterCompleteProxyQuarters keeps only as-of quarters with QoQ and 1Y priors", () => {
+    const filtered = filterCompleteProxyQuarters([
+      "2024-Q1",
+      "2024-Q2",
+      "2024-Q3",
+      "2024-Q4",
+      "2025-Q1",
+      "2025-Q2",
+    ]);
+    assert.deepEqual(filtered, ["2025-Q1", "2025-Q2"]);
   });
 });
 

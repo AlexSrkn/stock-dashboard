@@ -381,7 +381,7 @@ export async function computeMostAccumulated(
   pool: pg.Pool = getPool()
 ): Promise<MostAccumulatedPayload> {
   const [holdings, recentFilingQuarters] = await Promise.all([
-    loadInstitutionHoldings(pool),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 6 }),
     loadRecentFilingQuarters(pool),
   ]);
 

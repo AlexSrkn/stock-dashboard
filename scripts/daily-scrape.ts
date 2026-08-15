@@ -169,6 +169,7 @@ async function main() {
       "stocks:warm-institutional-accumulation",
       "stocks:warm-ownership-changes",
       "institutions:warm-most-accumulated",
+      "stocks:warm-most-accumulated",
       "institutions:warm-new-positions",
       "institutions:warm-completely-sold",
     ];

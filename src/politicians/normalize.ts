@@ -1,5 +1,27 @@
 import type { PoliticianTransactionCategory } from "./types.js";
 
+/** Senate eFD (and some PDFs) put "--" / "N/A" in the ticker column when none applies. */
+export function cleanPoliticianTicker(value: string | null | undefined): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  if (
+    upper === "--" ||
+    upper === "—" ||
+    upper === "–" ||
+    upper === "-" ||
+    upper === "N/A" ||
+    upper === "NA" ||
+    upper === "NONE" ||
+    upper === "NULL"
+  ) {
+    return null;
+  }
+  if (upper.length > 10) return null;
+  if (!/^[A-Z][A-Z0-9./-]*$/.test(upper)) return null;
+  return upper;
+}
+
 export function mapTransactionCategory(type: string): PoliticianTransactionCategory {
   const t = type.trim().toUpperCase();
   if (t.startsWith("P")) return "buy";

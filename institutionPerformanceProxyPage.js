@@ -91,7 +91,9 @@ export function createInstitutionPerformanceProxyController(deps) {
   }
 
   function historyTable(history) {
-    const rows = [...(history || [])].reverse();
+    const rows = [...(history || [])]
+      .filter((h) => finite(h.qoqChangePct) && finite(h.portfolioValueUsd))
+      .reverse();
     if (!rows.length) {
       return `<p class="muted small">No portfolio value history available.</p>`;
     }

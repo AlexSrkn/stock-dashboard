@@ -1,6 +1,11 @@
 import { politicianFetch } from "../http.js";
 import type { PoliticianTrade } from "../types.js";
-import { mapTransactionCategory, parseAmountRange, parseUsDateToIso } from "../normalize.js";
+import {
+  cleanPoliticianTicker,
+  mapTransactionCategory,
+  parseAmountRange,
+  parseUsDateToIso,
+} from "../normalize.js";
 import {
   buildAcknowledgementBody,
   cookieHeader,
@@ -163,7 +168,7 @@ function parseSenatePtrHtml(
     if (cells.length >= 9) {
       transactionDate = cells[1] ?? "";
       owner = cells[2] ?? "";
-      ticker = cells[3] || null;
+      ticker = cleanPoliticianTicker(cells[3]);
       assetName = cells[4] ?? "";
       assetType = cells[5] || null;
       typeCell = cells[6] ?? "";
@@ -171,13 +176,18 @@ function parseSenatePtrHtml(
       comment = cells[8] ?? "";
     } else if (cells.length >= 6) {
       [transactionDate, owner, assetName, typeCell, amountCell, comment] = cells;
-      ticker = assetName.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/)?.[1]?.toUpperCase() ?? null;
+      ticker = cleanPoliticianTicker(assetName.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/)?.[1]);
       assetType = null;
     } else {
       continue;
     }
 
     if (!assetName || !typeCell || !/^\d{2}\/\d{2}\/\d{4}/.test(transactionDate)) continue;
+
+    // When eFD leaves ticker blank ("--"), recover a symbol from the asset name if present.
+    if (!ticker) {
+      ticker = cleanPoliticianTicker(assetName.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/)?.[1]);
+    }
 
     const amountRange = amountCell && amountCell !== "--" ? amountCell : null;
     const { min: amountMin, max: amountMax } = parseAmountRange(amountRange);
@@ -189,7 +199,7 @@ function parseSenatePtrHtml(
       district: undefined,
       owner: owner || undefined,
       assetName,
-      ticker: ticker?.toUpperCase() ?? null,
+      ticker,
       assetType,
       transactionType: typeCell,
       transactionCategory: mapTransactionCategory(typeCell),

@@ -113,9 +113,22 @@ function inDateWindow(
   return true;
 }
 
+function normalizePoliticianKeyMatch(value: string | null | undefined): string {
+  let key = politicianKey(String(value || ""));
+  // Legacy frontend slugs kept the House "Hon." prefix as "hon-…".
+  if (key.startsWith("hon-")) key = key.slice(4);
+  if (key.startsWith("rep-")) key = key.slice(4);
+  if (key.startsWith("sen-")) key = key.slice(4);
+  return key;
+}
+
 function matchesFilters(trade: EnrichedTrade, filters: PoliticianSectorExposureFilters): boolean {
   if (filters.chamber !== "all" && trade.chamber !== filters.chamber) return false;
-  if (filters.politicianKey && trade.politicianKey !== filters.politicianKey) return false;
+  if (filters.politicianKey) {
+    const want = normalizePoliticianKeyMatch(filters.politicianKey);
+    const got = normalizePoliticianKeyMatch(trade.politicianKey || trade.politicianName);
+    if (want !== got) return false;
+  }
   if (filters.state && String(trade.state || "").toUpperCase() !== filters.state) return false;
   if (filters.transactionType !== "all" && trade.transactionCategory !== filters.transactionType) {
     return false;

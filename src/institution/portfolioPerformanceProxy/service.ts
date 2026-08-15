@@ -9,11 +9,14 @@ import {
   compareProxyRows,
   defaultAsOfQuarter,
   dollarChange,
+  filterCompleteHistoryPoints,
+  filterCompleteProxyQuarters,
   latestQuarterForInstitution,
   metricsAtQuarter,
   parseSortDir,
   parseSortKey,
   pctChange,
+  rowHasCompleteProxyMetrics,
   type RawPortfolioSnapshot,
 } from "./compute.js";
 import { SELECT_PORTFOLIO_VALUE_HISTORY_SQL, trackedInstitutionCiks } from "./queries.js";
@@ -113,7 +116,7 @@ function buildRowsForQuarter(
       change3yUsd: dollarChange(m.current.portfolioValueUsd, m.threeYearAgo?.portfolioValueUsd),
       change3yPct: pctChange(m.current.portfolioValueUsd, m.threeYearAgo?.portfolioValueUsd),
       holdingsCount: m.current.holdingsCount,
-      history,
+      history: filterCompleteHistoryPoints(history),
     });
   }
   return rows;
@@ -124,15 +127,21 @@ export async function getPortfolioPerformanceProxyRankings(
   pool: pg.Pool = getPool()
 ): Promise<PortfolioProxyRankingsPayload> {
   const cache = await loadSnapshots(pool);
-  let asOfQuarter = defaultAsOfQuarter(cache.availableQuarters, filters.quarter);
+  const completeQuarters = filterCompleteProxyQuarters(cache.availableQuarters);
+  const cikFilter = String(filters.cik || "").trim();
+  const explicitQuarter = String(filters.quarter || "").trim();
+  // Profile lookups may need any quarter; hub rankings only offer complete ones.
+  const quarterUniverse = cikFilter ? cache.availableQuarters : completeQuarters;
+  let asOfQuarter = defaultAsOfQuarter(quarterUniverse, filters.quarter);
   const sort = parseSortKey(filters.sort);
   const sortDir = parseSortDir(filters.sortDir);
   const pageSize = Math.min(200, Math.max(1, Number(filters.pageSize) || 50));
   const page = Math.max(1, Number(filters.page) || 1);
-  const cikFilter = String(filters.cik || "").trim();
-  const explicitQuarter = String(filters.quarter || "").trim();
 
   let rows = asOfQuarter ? buildRowsForQuarter(cache.snapshots, asOfQuarter) : [];
+  if (!cikFilter) {
+    rows = rows.filter(rowHasCompleteProxyMetrics);
+  }
   rows = applyProxyFilters(rows, filters);
 
   // Profile tab passes `cik` without a quarter. If that filer hasn't reported for the
@@ -159,7 +168,7 @@ export async function getPortfolioPerformanceProxyRankings(
     methodology: PORTFOLIO_PROXY_METHODOLOGY,
     computedAt: new Date().toISOString(),
     asOfQuarter,
-    availableQuarters: cache.availableQuarters,
+    availableQuarters: quarterUniverse,
     sort,
     sortDir,
     page,

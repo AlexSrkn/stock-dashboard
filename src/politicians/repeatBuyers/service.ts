@@ -48,6 +48,10 @@ function parseSortKey(raw: string | null): PoliticianRepeatBuyerSortKey {
     "latestPurchase",
     "purchasesLast12Months",
     "ticker",
+    "politicianName",
+    "party",
+    "state",
+    "classification",
   ];
   if (raw && (allowed as string[]).includes(raw)) return raw as PoliticianRepeatBuyerSortKey;
   return "repeatBuyerScore";
@@ -134,6 +138,16 @@ export function sortPoliticianRepeatBuyerRows(
   return [...rows].sort((a, b) => {
     if (sortKey === "ticker") {
       return a.ticker.localeCompare(b.ticker) * dir || b.repeatBuyerScore - a.repeatBuyerScore;
+    }
+    if (
+      sortKey === "politicianName" ||
+      sortKey === "party" ||
+      sortKey === "state" ||
+      sortKey === "classification"
+    ) {
+      const av = String(a[sortKey] || "");
+      const bv = String(b[sortKey] || "");
+      return av.localeCompare(bv) * dir || a.ticker.localeCompare(b.ticker);
     }
     if (sortKey === "latestPurchase") {
       const av = parseDateMs(a.latestPurchase) || 0;

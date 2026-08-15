@@ -195,6 +195,49 @@ export function applyProxyFilters(
   });
 }
 
+/** True when ranking metrics shown in the hub table are all present (no N/A). */
+export function rowHasCompleteProxyMetrics(row: PortfolioProxyRankingRow): boolean {
+  return (
+    Number.isFinite(row.currentPortfolioValueUsd) &&
+    row.qoqChangePct != null &&
+    Number.isFinite(row.qoqChangePct) &&
+    row.change1yPct != null &&
+    Number.isFinite(row.change1yPct) &&
+    Number.isFinite(row.holdingsCount)
+  );
+}
+
+/** Drop history points that would render QoQ as N/A. */
+export function filterCompleteHistoryPoints(history: PortfolioValuePoint[]): PortfolioValuePoint[] {
+  return history.filter(
+    (h) =>
+      Number.isFinite(h.portfolioValueUsd) &&
+      h.qoqChangePct != null &&
+      Number.isFinite(h.qoqChangePct) &&
+      Number.isFinite(h.holdingsCount)
+  );
+}
+
+/**
+ * A quarter is usable for hub rankings only when prior QoQ and 1Y comparison
+ * quarters exist in the scrape (otherwise growth columns are mostly N/A).
+ */
+export function isProxyAsOfQuarterComplete(
+  quarter: string,
+  availableQuarters: Iterable<string>
+): boolean {
+  const set = availableQuarters instanceof Set ? availableQuarters : new Set(availableQuarters);
+  const prev = previousQuarter(quarter);
+  const yearAgo = shiftQuartersBack(quarter, 4);
+  return Boolean(prev && yearAgo && set.has(prev) && set.has(yearAgo));
+}
+
+export function filterCompleteProxyQuarters(availableQuarters: string[]): string[] {
+  const sorted = sortQuarters(availableQuarters);
+  const set = new Set(sorted);
+  return sorted.filter((q) => isProxyAsOfQuarterComplete(q, set));
+}
+
 export function defaultAsOfQuarter(
   availableQuarters: string[],
   requested: string | null | undefined

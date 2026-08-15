@@ -299,6 +299,49 @@ export function resolvePeriodTotalDebt(row: FinancialPeriodRow): TotalDebtResolu
   });
 }
 
+/**
+ * When period-end shares outstanding were not tagged (common on 10-Qs that only
+ * publish cover-page DEI shares on a later date), reuse the most recent earlier
+ * period that did publish them — typically the prior 10-K.
+ * Prefer exact period-end shares when present; never overwrite them.
+ */
+export function applyCarriedSharesOutstanding(
+  row: FinancialPeriodRow,
+  pool: FinancialPeriodRow[]
+): boolean {
+  const existing = row.metrics.shares_outstanding;
+  if (existing != null && Number.isFinite(existing) && existing > 0) return false;
+  if (!row.end) return false;
+
+  const prior = [...pool]
+    .filter((other) => {
+      if (other === row) return false;
+      const so = other.metrics.shares_outstanding;
+      if (so == null || !Number.isFinite(so) || !(so > 0)) return false;
+      if (!other.end) return false;
+      return other.end < row.end;
+    })
+    .sort((a, b) => String(b.end).localeCompare(String(a.end)))[0];
+
+  if (!prior?.metrics.shares_outstanding) return false;
+
+  row.metrics.shares_outstanding = prior.metrics.shares_outstanding;
+  const priorDetail = prior.metricDetails.shares_outstanding;
+  if (priorDetail) {
+    row.metricDetails.shares_outstanding = { ...priorDetail };
+  }
+  const priorSource = prior.metricSources.shares_outstanding;
+  if (priorSource) {
+    row.metricSources.shares_outstanding = { ...priorSource };
+  }
+  const label = `${prior.fp ?? "period"} ${prior.end}${prior.form ? ` (${prior.form})` : ""}`;
+  row.validationFlags = [
+    ...(row.validationFlags ?? []),
+    `shares_outstanding carried from ${label}`,
+  ];
+  return true;
+}
+
 export function computeDerivedForPeriod(
   metrics: Partial<Record<FinancialMetricKey, number>>,
   options: {
@@ -359,9 +402,12 @@ export function enrichPeriodRows(
 ): FinancialPeriodRow[] {
   const annualRows = context.annual ?? (scope === "annual" ? rows : []);
   const quarterlyRows = context.quarterly ?? (scope === "quarterly" ? rows : []);
+  // Cross-scope pool so quarterly rows can inherit the latest 10-K share count.
+  const sharesPool = [...annualRows, ...quarterlyRows];
 
   for (const row of rows) {
     refineLongTermDebtMetric(row);
+    applyCarriedSharesOutstanding(row, sharesPool);
     const debtResolution = resolvePeriodTotalDebt(row);
     if (debtResolution) {
       row.totalDebtProvenance = debtResolution;

@@ -29,7 +29,7 @@ export async function tryHandleStockActivity(
   if (ROUTE_MOST_ACCUMULATED_RE.test(url.pathname)) {
     try {
       const payload = await getStocksMostAccumulated(url);
-      json(res, 200, payload, 120);
+      json(res, 200, payload, 300);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("DATABASE_URL")) {
@@ -90,7 +90,7 @@ export async function tryHandleStockActivity(
 
   try {
     const payload = await getRecentlyActiveStocks(url);
-    json(res, 200, payload, 120);
+    json(res, 200, payload, 300);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("DATABASE_URL")) {

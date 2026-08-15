@@ -1,8 +1,9 @@
+import { cleanPoliticianTicker } from "./normalize.js";
 import { readPoliticiansRecent } from "./recent.js";
 import type { PoliticianTrade } from "./types.js";
 
 export function normalizeTicker(sym: string): string {
-  return String(sym || "").trim().toUpperCase();
+  return cleanPoliticianTicker(sym) || "";
 }
 
 export function tradeMatchesTicker(trade: PoliticianTrade, sym: string): boolean {

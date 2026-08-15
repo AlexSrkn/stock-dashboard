@@ -12,13 +12,14 @@ loadEnvFile();
 
 const payload = await computeOwnershipChangesCache();
 const latest = payload.quarters[0];
-const count = latest ? (payload.byQuarter[latest]?.length ?? 0) : 0;
+const def = payload.defaultQuarter ?? latest;
+const count = def ? (payload.byQuarter[def]?.length ?? 0) : 0;
 if (!count) {
   console.error("No ownership change rows computed. Existing cache was not overwritten.");
   process.exit(1);
 }
 saveOwnershipChangesToDisk(payload);
 console.log(
-  `Ownership changes cache saved: ${payload.quarters.length} quarters, latest=${latest} (${count} tickers) → data/cache/ownership-changes.json`
+  `Ownership movers cache saved: ${payload.quarters.length} quarters, default=${def} (newest=${latest}, ${count} tickers) → data/cache/ownership-changes.json`
 );
 await closePool();

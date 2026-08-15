@@ -54,6 +54,7 @@ import { ensureConvictionScoreCacheOnStartup } from "./src/signals/convictionSco
 import { ensureInstitutionalDiscoveryCacheOnStartup } from "./src/signals/institutionalDiscovery/cache.ts";
 import { ensureInstitutionalAccumulationCacheOnStartup } from "./src/stocks/institutionalAccumulationCache.ts";
 import { ensureMostAccumulatedCacheOnStartup } from "./src/institution/mostAccumulated/cache.ts";
+import { ensureStocksMostAccumulatedCacheOnStartup } from "./src/stocks/mostAccumulated/cache.ts";
 import { ensureNewPositionsCacheOnStartup } from "./src/institution/newPositions/cache.ts";
 import { ensureCompletelySoldCacheOnStartup } from "./src/institution/completelySold/cache.ts";
 import { ensureOwnershipChangesCacheOnStartup } from "./src/stocks/ownershipChanges/cache.ts";
@@ -639,6 +640,7 @@ http
     ensureInstitutionalDiscoveryCacheOnStartup();
     ensureInstitutionalAccumulationCacheOnStartup();
     ensureMostAccumulatedCacheOnStartup();
+    ensureStocksMostAccumulatedCacheOnStartup();
     ensureNewPositionsCacheOnStartup();
     ensureCompletelySoldCacheOnStartup();
     ensureOwnershipChangesCacheOnStartup();

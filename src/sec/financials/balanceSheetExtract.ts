@@ -203,5 +203,64 @@ export function collectInstantMetricsByPeriod(
     });
   }
 
+  // Cover-page DEI shares use an "as of" date after fiscal period end (e.g. NVDA).
+  // When period-end CommonStockSharesOutstanding is absent, attach DEI by accession.
+  if (def.key === "shares_outstanding") {
+    attachCoverPageSharesByAccession(picks, candidates, periodAccessions);
+  }
+
   return picks;
+}
+
+/**
+ * EntityCommonStockSharesOutstanding is often dated days/weeks after quarter end.
+ * Bind it to the duration period from the same filing accession when that period
+ * still lacks period-end shares.
+ *
+ * One 10-Q accession can span the current quarter and prior-year comparatives —
+ * prefer the latest period end on/before the cover-page "as of" date.
+ */
+function attachCoverPageSharesByAccession(
+  picks: Map<string, InstantMetricPick>,
+  candidates: Array<{ obs: XbrlFactObservation; gaapTag: string; namespace: string }>,
+  periodAccessions: Map<string, string>
+): void {
+  const accnToPeriods = new Map<string, string[]>();
+  for (const [periodKey, accn] of periodAccessions) {
+    if (!accn) continue;
+    const list = accnToPeriods.get(accn) ?? [];
+    list.push(periodKey);
+    accnToPeriods.set(accn, list);
+  }
+
+  for (const candidate of candidates) {
+    if (candidate.gaapTag !== "EntityCommonStockSharesOutstanding") continue;
+    const accn = String(candidate.obs.accn ?? "");
+    if (!accn) continue;
+    const periodKeys = accnToPeriods.get(accn);
+    if (!periodKeys?.length) continue;
+
+    const coverEnd = observationEnd(candidate.obs);
+    const ranked = periodKeys
+      .map((key) => ({ key, end: key.split("|")[2] ?? "" }))
+      .filter((p) => p.end.length > 0)
+      .sort((a, b) => b.end.localeCompare(a.end));
+
+    const chosen =
+      (coverEnd
+        ? ranked.find((p) => p.end <= coverEnd)?.key
+        : null) ??
+      ranked[0]?.key ??
+      null;
+    if (!chosen || picks.has(chosen)) continue;
+
+    const value = Number(candidate.obs.val);
+    if (!Number.isFinite(value) || !(value > 0)) continue;
+    picks.set(chosen, {
+      value,
+      obs: candidate.obs,
+      gaapTag: candidate.gaapTag,
+      namespace: candidate.namespace,
+    });
+  }
 }

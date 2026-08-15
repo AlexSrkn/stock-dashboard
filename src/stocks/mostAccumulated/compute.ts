@@ -1,12 +1,16 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
-import { getMostAccumulatedPeriod } from "../../institution/mostAccumulated/service.js";
-import type { MostAccumulatedPeriod } from "../../institution/mostAccumulated/types.js";
+import { loadMostAccumulated } from "../../institution/mostAccumulated/service.js";
+import type {
+  MostAccumulatedPeriod,
+  MostAccumulatedPeriodPayload,
+} from "../../institution/mostAccumulated/types.js";
 import { readPoliticiansRecent } from "../../politicians/recent.js";
 import { normalizeTicker } from "../../politicians/byTicker.js";
 import type { PoliticianTrade } from "../../politicians/types.js";
 import { insiderRoleWeight, signedTransactionValue } from "../../smartMoney/roleWeights.js";
 import { convictionScoreFromFinal } from "../../smartMoney/normalize.js";
+import { getOrComputeStocksMostAccumulated } from "./cache.js";
 import {
   SELECT_INSIDER_FLOW_IN_WINDOW_SQL,
   SELECT_SHARES_OUTSTANDING_SQL,
@@ -14,8 +18,10 @@ import {
 } from "./queries.js";
 import type {
   MarketCapBucket,
+  StocksMostAccumulatedCachePayload,
   StocksMostAccumulatedPayload,
   StocksMostAccumulatedPeriod,
+  StocksMostAccumulatedPeriodCache,
   StocksMostAccumulatedRow,
   StocksMostAccumulatedSummary,
 } from "./types.js";
@@ -25,7 +31,18 @@ const INSIDER_WEIGHT = 0.35;
 const POL_WEIGHT = 0.15;
 const NEW_POSITION_BOOST = 1.35;
 const MULTI_BUYER_COEFF = 0.2;
-const MEMORY_CACHE_MS = 5 * 60 * 1000;
+const ALL_PERIODS: StocksMostAccumulatedPeriod[] = ["30d", "90d", "year"];
+
+interface InsiderFlowRow {
+  ticker: string;
+  insider_name: string;
+  insider_title: string | null;
+  transaction_date: string | null;
+  filing_date: string | null;
+  transaction_value: number | null;
+  transaction_code: string;
+  acquisition_disposition: string | null;
+}
 
 interface TickerAgg {
   ticker: string;
@@ -40,12 +57,6 @@ interface TickerAgg {
   reportedValueUsd: number;
   reportedShares: number;
 }
-
-let memoryCache: {
-  loadedAt: number;
-  key: string;
-  payload: StocksMostAccumulatedPayload;
-} | null = null;
 
 function roundUsd(n: number): number {
   return Math.round(n * 100) / 100;
@@ -227,17 +238,12 @@ async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>
   return out;
 }
 
-async function accumulateInstitutional(
+function applyInstitutionalPayload(
   map: Map<string, TickerAgg>,
-  period: StocksMostAccumulatedPeriod,
-  lookbackDays: number,
-  pool: pg.Pool
-): Promise<string | null> {
-  const instPeriod = toInstitutionPeriod(period);
-  const payload = await getMostAccumulatedPeriod(instPeriod, pool);
-  if (!payload.available) {
-    return payload.unavailableReason;
-  }
+  payload: MostAccumulatedPeriodPayload,
+  lookbackDays: number
+): void {
+  if (!payload.available) return;
 
   // Approximate "as of" filing date from the current period label when it looks like a quarter.
   const periodAsOf = /^\d{4}-Q[1-4]$/.test(payload.currentPeriod)
@@ -292,73 +298,68 @@ async function accumulateInstitutional(
       lookbackDays
     );
   }
-
-  return null;
 }
 
-async function accumulateInsiders(
-  pool: pg.Pool,
-  map: Map<string, TickerAgg>,
-  lookbackDays: number
-): Promise<void> {
+async function loadInsiderFlowRows(pool: pg.Pool, lookbackDays: number): Promise<InsiderFlowRow[]> {
   try {
-    const res = await pool.query<{
-      ticker: string;
-      insider_name: string;
-      insider_title: string | null;
-      transaction_date: string | null;
-      filing_date: string | null;
-      transaction_value: number | null;
-      transaction_code: string;
-      acquisition_disposition: string | null;
-    }>(SELECT_INSIDER_FLOW_IN_WINDOW_SQL, [lookbackDays]);
-
-    const byTicker = new Map<
-      string,
-      { netUsd: number; buyers: Set<string>; lastDate: string | null }
-    >();
-
-    for (const row of res.rows) {
-      const ticker = String(row.ticker || "").trim().toUpperCase();
-      if (!ticker) continue;
-      const signed =
-        signedTransactionValue(
-          row.transaction_value,
-          row.transaction_code,
-          row.acquisition_disposition
-        ) * insiderRoleWeight(row.insider_title);
-      if (!signed) continue;
-      const filingDate = toIsoDate(row.filing_date) || toIsoDate(row.transaction_date);
-      let stats = byTicker.get(ticker);
-      if (!stats) {
-        stats = { netUsd: 0, buyers: new Set(), lastDate: null };
-        byTicker.set(ticker, stats);
-      }
-      stats.netUsd += signed;
-      stats.lastDate = maxDate(stats.lastDate, filingDate);
-      if (signed > 0) {
-        const name = String(row.insider_name || "").trim().toLowerCase();
-        if (name) stats.buyers.add(`insider:${name}`);
-      }
-    }
-
-    for (const [ticker, stats] of byTicker) {
-      if (!stats.netUsd) continue;
-      const agg = ensureAgg(map, ticker);
-      agg.insiderBuyingUsd = roundUsd(agg.insiderBuyingUsd + stats.netUsd);
-      for (const b of stats.buyers) agg.buyers.add(b);
-      applySourceContribution(
-        agg,
-        stats.netUsd,
-        INSIDER_WEIGHT,
-        stats.buyers.size,
-        0,
-        stats.lastDate,
-        lookbackDays
-      );
-    }
+    const res = await pool.query<InsiderFlowRow>(SELECT_INSIDER_FLOW_IN_WINDOW_SQL, [lookbackDays]);
+    return res.rows;
   } catch {
-    /* optional when table empty */
+    return [];
+  }
+}
+
+function applyInsiderFlow(
+  map: Map<string, TickerAgg>,
+  rows: InsiderFlowRow[],
+  lookbackDays: number
+): void {
+  const cutoff = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+  const byTicker = new Map<
+    string,
+    { netUsd: number; buyers: Set<string>; lastDate: string | null }
+  >();
+
+  for (const row of rows) {
+    const ticker = String(row.ticker || "").trim().toUpperCase();
+    if (!ticker) continue;
+    const filingDate = toIsoDate(row.filing_date) || toIsoDate(row.transaction_date);
+    const when = parseDateMs(filingDate);
+    if (when && when < cutoff) continue;
+    const signed =
+      signedTransactionValue(
+        row.transaction_value,
+        row.transaction_code,
+        row.acquisition_disposition
+      ) * insiderRoleWeight(row.insider_title);
+    if (!signed) continue;
+    let stats = byTicker.get(ticker);
+    if (!stats) {
+      stats = { netUsd: 0, buyers: new Set(), lastDate: null };
+      byTicker.set(ticker, stats);
+    }
+    stats.netUsd += signed;
+    stats.lastDate = maxDate(stats.lastDate, filingDate);
+    if (signed > 0) {
+      const name = String(row.insider_name || "").trim().toLowerCase();
+      if (name) stats.buyers.add(`insider:${name}`);
+    }
+  }
+
+  for (const [ticker, stats] of byTicker) {
+    if (!stats.netUsd) continue;
+    const agg = ensureAgg(map, ticker);
+    agg.insiderBuyingUsd = roundUsd(agg.insiderBuyingUsd + stats.netUsd);
+    for (const b of stats.buyers) agg.buyers.add(b);
+    applySourceContribution(
+      agg,
+      stats.netUsd,
+      INSIDER_WEIGHT,
+      stats.buyers.size,
+      0,
+      stats.lastDate,
+      lookbackDays
+    );
   }
 }
 
@@ -436,27 +437,11 @@ function buildSummary(rows: StocksMostAccumulatedRow[]): StocksMostAccumulatedSu
   };
 }
 
-export async function computeStocksMostAccumulated(
-  period: StocksMostAccumulatedPeriod = "90d",
-  marketCap: MarketCapBucket = "",
-  pool: pg.Pool = getPool()
-): Promise<StocksMostAccumulatedPayload> {
-  const lookbackDays = periodDays(period);
-  const byTicker = new Map<string, TickerAgg>();
-
-  // Only resolve shares outstanding when a market-cap filter needs it.
-  const sharesOutstandingPromise =
-    marketCap !== "" ? loadSharesOutstanding(pool) : Promise.resolve(new Map<string, number>());
-  await accumulateInstitutional(byTicker, period, lookbackDays, pool);
-  await accumulateInsiders(pool, byTicker, lookbackDays);
-  accumulatePoliticians(byTicker, lookbackDays);
-  const sharesOutstanding = await sharesOutstandingPromise;
-
-  const missingNames = [...byTicker.values()]
-    .filter((r) => !r.companyName)
-    .map((r) => r.ticker);
-  const enrichment = await loadStockEnrichment(pool, missingNames);
-
+function finalizeTickerMap(
+  byTicker: Map<string, TickerAgg>,
+  sharesOutstanding: Map<string, number>,
+  enrichment: Map<string, { companyName: string | null }>
+): StocksMostAccumulatedRow[] {
   const rawFinals = [...byTicker.values()].map((r) => r.rawScore);
   const draft: StocksMostAccumulatedRow[] = [];
 
@@ -491,32 +476,83 @@ export async function computeStocksMostAccumulated(
     });
   }
 
-  const candidates = draft
-    .filter((row) => matchesMarketCap(row.marketCapUsd, marketCap))
-    .filter((row) => row.netBoughtValueUsd > 0 || row.buyerCount > 0);
-
-  const filteredRaws = candidates.map((row) => byTicker.get(row.ticker)?.rawScore ?? 0);
-  const filtered = candidates
-    .map((row, i) => ({
-      ...row,
-      accumulationScore: roundScore(convictionScoreFromFinal(filteredRaws[i], filteredRaws)),
-    }))
+  return draft
     .filter((row) => row.netBoughtValueUsd > 0)
+    .map((row) => ({
+      ...row,
+      accumulationScore: roundScore(row.accumulationScore),
+    }))
     .sort(
       (a, b) =>
         b.accumulationScore - a.accumulationScore ||
         b.netBoughtValueUsd - a.netBoughtValueUsd ||
         a.ticker.localeCompare(b.ticker)
     );
+}
 
+function payloadFromCache(
+  cache: StocksMostAccumulatedCachePayload,
+  period: StocksMostAccumulatedPeriod,
+  marketCap: MarketCapBucket
+): StocksMostAccumulatedPayload {
+  const periodCache = cache.periods[period];
+  const stocks = marketCap
+    ? periodCache.stocks.filter((row) => matchesMarketCap(row.marketCapUsd, marketCap))
+    : periodCache.stocks;
   return {
-    computedAt: new Date().toISOString(),
+    computedAt: cache.computedAt,
     period,
-    periodLabel: periodLabel(period),
+    periodLabel: periodCache.periodLabel,
     marketCap,
-    summary: buildSummary(filtered),
-    stocks: filtered,
+    summary: marketCap ? buildSummary(stocks) : periodCache.summary,
+    stocks,
   };
+}
+
+export async function computeStocksMostAccumulatedCache(
+  pool: pg.Pool = getPool()
+): Promise<StocksMostAccumulatedCachePayload> {
+  const lookbackMax = periodDays("year");
+  const [instAll, insiderRows, sharesOutstanding] = await Promise.all([
+    loadMostAccumulated(pool),
+    loadInsiderFlowRows(pool, lookbackMax),
+    loadSharesOutstanding(pool),
+  ]);
+
+  const computedAt = new Date().toISOString();
+  const periods = {} as StocksMostAccumulatedCachePayload["periods"];
+
+  for (const period of ALL_PERIODS) {
+    const lookbackDays = periodDays(period);
+    const byTicker = new Map<string, TickerAgg>();
+    const instPeriod = toInstitutionPeriod(period);
+    const inst = instAll.periods[instPeriod];
+    if (inst) applyInstitutionalPayload(byTicker, inst, lookbackDays);
+    applyInsiderFlow(byTicker, insiderRows, lookbackDays);
+    accumulatePoliticians(byTicker, lookbackDays);
+
+    const missingNames = [...byTicker.values()].filter((r) => !r.companyName).map((r) => r.ticker);
+    const enrichment = await loadStockEnrichment(pool, missingNames);
+    const stocks = finalizeTickerMap(byTicker, sharesOutstanding, enrichment);
+    const periodCache: StocksMostAccumulatedPeriodCache = {
+      period,
+      periodLabel: periodLabel(period),
+      summary: buildSummary(stocks),
+      stocks,
+    };
+    periods[period] = periodCache;
+  }
+
+  return { computedAt, periods };
+}
+
+export async function computeStocksMostAccumulated(
+  period: StocksMostAccumulatedPeriod = "90d",
+  marketCap: MarketCapBucket = "",
+  pool: pg.Pool = getPool()
+): Promise<StocksMostAccumulatedPayload> {
+  const cache = await computeStocksMostAccumulatedCache(pool);
+  return payloadFromCache(cache, period, marketCap);
 }
 
 export async function getStocksMostAccumulated(
@@ -527,12 +563,6 @@ export async function getStocksMostAccumulated(
   const marketCap = parseMarketCapBucket(
     url.searchParams.get("marketCap") || url.searchParams.get("size")
   );
-  const key = `${period}::${marketCap || "all"}`;
-  const now = Date.now();
-  if (memoryCache && memoryCache.key === key && now - memoryCache.loadedAt < MEMORY_CACHE_MS) {
-    return memoryCache.payload;
-  }
-  const payload = await computeStocksMostAccumulated(period, marketCap, pool);
-  memoryCache = { loadedAt: now, key, payload };
-  return payload;
+  const cache = await getOrComputeStocksMostAccumulated(() => computeStocksMostAccumulatedCache(pool));
+  return payloadFromCache(cache, period, marketCap);
 }

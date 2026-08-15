@@ -43,7 +43,7 @@
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="recently-active">Recently active</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="most-accumulated">Most accumulated</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-changes">Ownership changes</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-changes">Ownership movers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="holder-overlap">Holder overlap</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-history">Ownership history</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="compare">Stock Comparison</button></li>
@@ -95,7 +95,6 @@
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="sentiment">Insider Sentiment</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="first-time-buyers">First-Time Buyers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="heavy-selling">Heavy Selling</button></li>
-                    <li><span class="workspace-nav__subsection">Form 4 filings</span></li>
                   </ul>
                 </div>
               </li>
@@ -438,7 +437,7 @@
               </p>
               <ul class="landing-split__list">
                 <li>Holdings, new buys, and fully sold names</li>
-                <li>Ownership changes and holder overlap</li>
+                <li>Ownership movers and holder overlap</li>
                 <li>Fund performance rankings from reported 13Fs</li>
               </ul>
               <button type="button" class="btn btn--ghost" data-landing-enter="institutions" id="landing-enter-institutions">
@@ -805,7 +804,7 @@
               <section class="stock-hub__collections" aria-labelledby="stock-hub-collections-heading">
                 <h3 id="stock-hub-collections-heading" class="institution-hub__section-label">Featured collections</h3>
                 <div class="stock-hub__feature-row" id="stock-hub-feature-row" role="group" aria-label="Stock collections">
-                  <button type="button" class="stock-hub__feature-btn" data-stock-collection="sp500" aria-pressed="false">
+                  <button type="button" class="stock-hub__feature-btn is-active" data-stock-collection="sp500" aria-pressed="true">
                     <span class="stock-hub__feature-label">S&amp;P 500</span>
                     <span class="stock-hub__feature-desc muted small">All current index constituents</span>
                     <span class="stock-hub__feature-count" id="stock-hub-sp500-count">—</span>
@@ -840,7 +839,7 @@
 
               <section class="institution-hub__directory stock-hub__directory" aria-labelledby="stock-hub-directory-heading">
                 <div class="institution-hub__directory-head">
-                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">Browse stocks</h3>
+                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">S&amp;P 500</h3>
                   <div class="institution-hub__toolbar">
                     <div class="institution-hub__toolbar-field">
                       <label class="institution-hub__toolbar-label" for="stock-directory-search">Search</label>
@@ -888,7 +887,7 @@
                 <div>
                   <h2 id="stock-recent-activity-heading" class="institution-hub__title">Recently Active</h2>
                   <p class="institution-hub__subtitle muted small" id="stock-recent-activity-subtitle">
-                    A unified filing feed across institutional 13F, insider Form 4, and politician disclosures.
+                    A unified filing feed of insider Form 4 and politician disclosures.
                   </p>
                 </div>
                 <div class="institution-most-accumulated__controls">
@@ -899,7 +898,6 @@
               <div class="stock-recent-activity__toolbar">
                 <div class="stock-recent-activity__source-row" role="group" aria-label="Activity source">
                   <button type="button" class="politicians-hub__chamber-btn is-active" data-recent-activity-source="all">All Activity</button>
-                  <button type="button" class="politicians-hub__chamber-btn" data-recent-activity-source="institution">Institutions</button>
                   <button type="button" class="politicians-hub__chamber-btn" data-recent-activity-source="insider">Insiders</button>
                   <button type="button" class="politicians-hub__chamber-btn" data-recent-activity-source="politician">Politicians</button>
                 </div>
@@ -1029,9 +1027,9 @@
             >
               <header class="institution-most-accumulated__head">
                 <div>
-                  <h2 id="stock-ownership-changes-heading" class="institution-hub__title">Ownership Changes</h2>
+                  <h2 id="stock-ownership-changes-heading" class="institution-hub__title">Ownership Movers</h2>
                   <p class="institution-hub__subtitle muted small" id="stock-ownership-changes-subtitle">
-                    Largest quarter-over-quarter changes in institutional ownership from 13F filings.
+                    Biggest quarter-over-quarter institutional ownership % movers from tracked 13F holders.
                   </p>
                 </div>
                 <div class="institution-most-accumulated__controls">
@@ -1094,12 +1092,6 @@
                     <option value="large">Large ($10B–$200B)</option>
                     <option value="mid">Mid ($2B–$10B)</option>
                     <option value="small">Small (&lt;$2B)</option>
-                  </select>
-                </div>
-                <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="stock-ownership-changes-exchange">Exchange</label>
-                  <select id="stock-ownership-changes-exchange" class="institution-hub__toolbar-select">
-                    <option value="">All exchanges</option>
                   </select>
                 </div>
                 <span class="institution-hub__count" id="stock-ownership-changes-count" aria-live="polite"></span>
@@ -1953,12 +1945,12 @@
               <table class="trades-table ownership-table">
                 <thead>
                   <tr>
-                    <th>Fund</th>
-                    <th class="num">Shares</th>
-                    <th class="num" title="13F reported market value (USD)">Value</th>
-                    <th class="num">% Outstanding</th>
-                    <th class="num" title="Common-stock share change vs prior quarter (puts/calls excluded)">QoQ change</th>
-                    <th class="num" title="Dollar value of the share-count change at 13F quarter-end price (USD)">Value added</th>
+                    <th><button type="button" class="table-sort-btn" data-ownership-holders-sort="fundName">Fund</button></th>
+                    <th class="num"><button type="button" class="table-sort-btn" data-ownership-holders-sort="shares">Shares</button></th>
+                    <th class="num"><button type="button" class="table-sort-btn" data-ownership-holders-sort="valueUsd" title="13F reported market value (USD)">Value</button></th>
+                    <th class="num"><button type="button" class="table-sort-btn" data-ownership-holders-sort="pctOutstanding">% Outstanding</button></th>
+                    <th class="num"><button type="button" class="table-sort-btn" data-ownership-holders-sort="sharesChangePct" title="Common-stock share change vs prior quarter (puts/calls excluded)">QoQ change</button></th>
+                    <th class="num"><button type="button" class="table-sort-btn" data-ownership-holders-sort="valueChangeUsd" title="Dollar value of the share-count change at 13F quarter-end price (USD)">Value added</button></th>
                   </tr>
                 </thead>
                 <tbody id="ownership-holders-body"></tbody>
@@ -3364,7 +3356,7 @@
                     Performance
                   </button>
                   <button type="button" class="stock-tabs__btn" data-institution-tab="history" role="tab" aria-selected="false">
-                    History
+                    Filings
                   </button>
                 </nav>
               </section>
@@ -3391,9 +3383,9 @@
                         <tr>
                           <th>Ticker</th>
                           <th>Stock</th>
-                          <th class="num">Shares</th>
-                          <th class="num">Value</th>
-                          <th class="num">% Portfolio</th>
+                          <th class="num"><button type="button" class="table-sort-btn" data-institution-holdings-sort="shares">Shares</button></th>
+                          <th class="num"><button type="button" class="table-sort-btn" data-institution-holdings-sort="valueUsd">Value</button></th>
+                          <th class="num"><button type="button" class="table-sort-btn" data-institution-holdings-sort="pctOfPortfolio">% Portfolio</button></th>
                         </tr>
                       </thead>
                       <tbody id="institution-holdings-body"></tbody>
@@ -3426,12 +3418,12 @@
                       <table class="trades-table activity-table" aria-labelledby="institution-adds-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Value added</th>
-                            <th class="num">Shares added</th>
-                            <th class="num">Prior shares</th>
-                            <th class="num">Current shares</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-adds-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-adds-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-adds-sort="valueChangeUsd">Value added</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-adds-sort="sharesChange">Shares added</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-adds-sort="previousShares">Prior shares</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-adds-sort="currentShares">Current shares</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-adds-body"></tbody>
@@ -3451,12 +3443,12 @@
                       <table class="trades-table activity-table" aria-labelledby="institution-trims-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Value reduced</th>
-                            <th class="num">Shares sold</th>
-                            <th class="num">Prior shares</th>
-                            <th class="num">Current shares</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-trims-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-trims-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-trims-sort="valueChangeUsd">Value reduced</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-trims-sort="sharesChange">Shares sold</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-trims-sort="previousShares">Prior shares</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-trims-sort="currentShares">Current shares</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-trims-body"></tbody>
@@ -3476,10 +3468,10 @@
                       <table class="trades-table activity-table" aria-labelledby="institution-exits-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Prior value</th>
-                            <th class="num">Shares exited</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-exits-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-exits-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-exits-sort="previousValueUsd">Prior value</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-exits-sort="previousShares">Shares exited</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-exits-body"></tbody>
@@ -3499,10 +3491,10 @@
                       <table class="trades-table activity-table" aria-labelledby="institution-new-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Value</th>
-                            <th class="num">Shares</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-new-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-new-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-new-sort="newValue">Value</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-new-sort="currentShares">Shares</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-new-body"></tbody>
@@ -3522,12 +3514,12 @@
                       <table class="trades-table activity-table" aria-labelledby="institution-all-activity-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Shares Δ</th>
-                            <th class="num">Current</th>
-                            <th class="num">Prior</th>
-                            <th class="num">Value Δ</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-activity-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-activity-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-activity-sort="sharesChange">Shares Δ</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-activity-sort="currentShares">Current</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-activity-sort="previousShares">Prior</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-activity-sort="valueChangeUsd">Value Δ</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-activity-body"></tbody>
@@ -3591,13 +3583,13 @@
                       <table class="trades-table activity-table options-funds-table" aria-labelledby="institution-options-stocks-heading">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            <th>Stock</th>
-                            <th class="num">Contracts</th>
-                            <th class="num">Common</th>
-                            <th class="num">Calls</th>
-                            <th class="num">Puts</th>
-                            <th class="num">Bias</th>
+                            <th><button type="button" class="table-sort-btn" data-institution-options-sort="ticker">Ticker</button></th>
+                            <th><button type="button" class="table-sort-btn" data-institution-options-sort="issuer">Stock</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-options-sort="totalContracts">Contracts</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-options-sort="commonValueUsd">Common</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-options-sort="callValueUsd">Calls</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-options-sort="putValueUsd">Puts</button></th>
+                            <th class="num"><button type="button" class="table-sort-btn" data-institution-options-sort="biasScore">Bias</button></th>
                           </tr>
                         </thead>
                         <tbody id="institution-options-stocks-body"></tbody>
@@ -3650,7 +3642,7 @@
               <div id="institution-panel-history" class="institution-panel" data-institution-panel="history" hidden>
                 <section class="trades-card" aria-labelledby="institution-history-heading">
                   <div class="panel-head panel-head--row">
-                    <h2 id="institution-history-heading">History</h2>
+                    <h2 id="institution-history-heading">Filings</h2>
                     <span class="muted small" id="institution-history-subtitle">13F filings on record</span>
                   </div>
                   <div class="table-scroll">
@@ -4548,7 +4540,7 @@
                     <tr>
                       <th><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="rank">Rank</button></th>
                       <th><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="politicianName">Politician</button></th>
-                      <th>Chamber</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="chamber">Chamber</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="totalBuyUsd">Total purchases</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="totalSellUsd">Total sales</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-portfolios-sort="netPortfolioUsd">Net portfolio</button></th>
@@ -4681,16 +4673,16 @@
                     <tr>
                       <th>#</th>
                       <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="ticker">Company</button></th>
-                      <th>Politician</th>
-                      <th>Party</th>
-                      <th>State</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="politicianName">Politician</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="party">Party</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="state">State</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-rb-sort="purchaseCount">Purchases</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-rb-sort="purchasesLast12Months">12M</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-rb-sort="purchaseStreak">Streak</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-rb-sort="estimatedTotalInvested">Est. invested</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-rb-sort="latestPurchase">Latest</button></th>
                       <th class="num"><button type="button" class="table-sort-btn is-active" data-politicians-rb-sort="repeatBuyerScore">Score</button></th>
-                      <th>Classification</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-rb-sort="classification">Classification</button></th>
                     </tr>
                   </thead>
                   <tbody id="politicians-repeat-buyers-body">
@@ -4822,13 +4814,13 @@
                 <table class="trades-table institution-most-accumulated__table politicians-first-time-buyers-table" aria-label="Politician first-time buyers">
                   <thead>
                     <tr>
-                      <th><button type="button" class="table-sort-btn is-active" data-politicians-ftb-sort="ticker">Company</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="ticker">Company</button></th>
                       <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="politicianName">Politician</button></th>
-                      <th>Party</th>
-                      <th>State</th>
-                      <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="transactionDate">Transaction date</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="party">Party</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="state">State</button></th>
+                      <th><button type="button" class="table-sort-btn is-active" data-politicians-ftb-sort="transactionDate">Transaction date</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-ftb-sort="estimatedPurchaseValue">Est. purchase</button></th>
-                      <th>Previous buy</th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-ftb-sort="previousBuyDate">Previous buy</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-ftb-sort="yearsSinceLastBuy">Years since last</button></th>
                     </tr>
                   </thead>
@@ -4980,8 +4972,8 @@
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="uniqueSellers">Unique sellers</button></th>
                       <th class="num"><button type="button" class="table-sort-btn is-active" data-politicians-hs-sort="estimatedTotalSold">Est. value sold</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="largestSale">Largest sale</button></th>
-                      <th class="num">Consecutive sales</th>
-                      <th>Multiple sellers</th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="currentConsecutiveSales">Consecutive sales</button></th>
+                      <th><button type="button" class="table-sort-btn" data-politicians-hs-sort="multipleSellers">Multiple sellers</button></th>
                       <th class="num"><button type="button" class="table-sort-btn" data-politicians-hs-sort="latestSale">Latest sale</button></th>
                     </tr>
                   </thead>
@@ -5209,15 +5201,6 @@
                     <button type="button" class="politicians-hub__chamber-btn" data-politicians-chamber="house">House</button>
                     <button type="button" class="politicians-hub__chamber-btn" data-politicians-chamber="senate">Senate</button>
                   </div>
-                  <div class="politicians-hub__sort-field">
-                    <label class="politicians-hub__sort-label" for="politicians-hub-sort">Sort</label>
-                    <select id="politicians-hub-sort" class="politicians-hub__sort-select">
-                    <option value="recent">Most recent</option>
-                    <option value="name">Name (A–Z)</option>
-                    <option value="stock">Stock (A–Z)</option>
-                    <option value="amount">Largest amount</option>
-                    </select>
-                  </div>
                 </div>
                 <p class="politicians-hub__empty-filter muted small" id="politicians-hub-empty-filter" hidden>
                   No trades match the current filter.
@@ -5226,12 +5209,12 @@
                   <table class="trades-table politicians-trades-table" aria-label="Congressional stock trades">
                     <thead>
                       <tr>
-                        <th>Politician</th>
-                        <th>Stock</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th class="num">Amount</th>
-                        <th>Chamber</th>
+                        <th><button type="button" class="table-sort-btn" data-politicians-trades-sort="politicianName">Politician</button></th>
+                        <th><button type="button" class="table-sort-btn" data-politicians-trades-sort="stock">Stock</button></th>
+                        <th><button type="button" class="table-sort-btn" data-politicians-trades-sort="type">Type</button></th>
+                        <th><button type="button" class="table-sort-btn is-active" data-politicians-trades-sort="date">Date</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-politicians-trades-sort="amount">Amount</button></th>
+                        <th><button type="button" class="table-sort-btn" data-politicians-trades-sort="chamber">Chamber</button></th>
                       </tr>
                     </thead>
                     <tbody id="politicians-trades-body"></tbody>
@@ -5254,6 +5237,7 @@
                   <h3 class="politicians-profile__name" id="politicians-profile-name">—</h3>
                   <p class="politicians-profile__meta muted small" id="politicians-profile-meta"></p>
                 </header>
+                <div class="politicians-hub__filings" id="politicians-profile-filings"></div>
                 <section class="politicians-profile-sector" id="politicians-profile-sector" hidden>
                   <h4 class="politician-sector-charts__title">Sector exposure</h4>
                   <div class="institution-most-accumulated__summary politicians-profile-sector__summary" id="politicians-profile-sector-summary"></div>
@@ -5272,7 +5256,6 @@
                     </div>
                   </div>
                 </section>
-                <div class="politicians-hub__filings" id="politicians-profile-filings"></div>
               </div>
             </section>
           </div>
@@ -5384,30 +5367,38 @@
               <header class="institution-hub__header">
                 <h2 id="signals-top-institution-entries-heading" class="institution-hub__title">New entries from top institutions</h2>
                 <p class="institution-hub__subtitle">
-                  New 13F positions opened by the top 10 institutions on rolling 1-year performance.
+                  New 13F positions opened by the top 10 institutions on rolling 1-year performance. Select a fund to see its new buys.
                 </p>
               </header>
+
+              <section class="trades-card top-institution-entries-funds" aria-labelledby="top-institution-entries-funds-heading">
+                <div class="panel-head panel-head--row">
+                  <h3 id="top-institution-entries-funds-heading" class="institution-hub__section-label">Top institutions</h3>
+                  <span class="muted small" id="top-institution-entries-funds-meta">Loading…</span>
+                </div>
+                <div class="top-institution-entries-funds__list" id="top-institution-entries-funds-list" role="listbox" aria-label="Top institutions">
+                  <p class="muted small">Loading funds…</p>
+                </div>
+              </section>
+
               <section class="trades-card" aria-labelledby="top-institution-entries-table-heading">
                 <div class="panel-head panel-head--row">
-                  <h3 id="top-institution-entries-table-heading" class="institution-hub__section-label">Latest filing new buys</h3>
-                  <span class="muted small" id="top-institution-entries-meta">Loading…</span>
+                  <h3 id="top-institution-entries-table-heading" class="institution-hub__section-label">New positions</h3>
+                  <span class="muted small" id="top-institution-entries-meta">Select a fund</span>
                 </div>
                 <div class="table-scroll">
                   <table class="trades-table top-institution-entries-table">
                     <thead>
                       <tr>
-                        <th class="num">Inst. rank</th>
-                        <th>Institution</th>
-                        <th class="num">1Y return</th>
                         <th>Ticker</th>
                         <th>Issuer</th>
-                        <th class="num">Value</th>
-                        <th class="num">Shares</th>
-                        <th>Quarter</th>
+                        <th class="num"><button type="button" class="table-sort-btn is-active" data-top-institution-entries-sort="value">Value</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-top-institution-entries-sort="shares">Shares</button></th>
+                        <th><button type="button" class="table-sort-btn" data-top-institution-entries-sort="quarter">Quarter</button></th>
                       </tr>
                     </thead>
                     <tbody id="top-institution-entries-body">
-                      <tr><td colspan="8" class="trades-table__empty">Loading new entries…</td></tr>
+                      <tr><td colspan="5" class="trades-table__empty">Loading new entries…</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -7547,6 +7538,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=insider-codes-1"></script>
+    <script type="module" src="/app.js?v=ownership-movers-1"></script>
   </body>
 </html>

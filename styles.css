@@ -1473,15 +1473,26 @@ button.workspace-nav__subsection:hover {
 }
 
 .politicians-hub__table td:nth-child(1) {
-  white-space: normal;
-  max-width: 12rem;
+  white-space: nowrap;
 }
 
-.politicians-hub__table .politicians-hub__trade-row.politicians-trade--buy td:nth-child(2) {
+.politicians-hub__table--senate td:nth-child(3) {
+  white-space: normal;
+  max-width: 14rem;
+}
+
+.politicians-hub__table--senate td:nth-child(7),
+.politicians-hub__comment {
+  white-space: normal;
+  max-width: 12rem;
+  color: var(--muted);
+}
+
+.politicians-hub__table .politicians-hub__trade-row.politicians-trade--buy td:nth-child(5) {
   color: #6ee7a0;
 }
 
-.politicians-hub__table .politicians-hub__trade-row.politicians-trade--sell td:nth-child(2) {
+.politicians-hub__table .politicians-hub__trade-row.politicians-trade--sell td:nth-child(5) {
   color: #f87171;
 }
 
@@ -3215,7 +3226,9 @@ button.workspace-nav__subsection:hover {
 }
 
 .politicians-profile-sector {
-  margin-bottom: 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
 }
 
 .politicians-profile-sector__summary {
@@ -5072,6 +5085,81 @@ body.chart-fullscreen-active {
 #signals-institutional-discovery-hub[hidden],
 .signals-hub[hidden] {
   display: none !important;
+}
+
+.top-institution-entries-funds {
+  margin-bottom: 1rem;
+}
+
+.top-institution-entries-funds__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.top-institution-entries-fund {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto auto;
+  gap: 0.65rem 1rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.top-institution-entries-fund:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.top-institution-entries-fund.is-active {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.top-institution-entries-fund__rank {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.top-institution-entries-fund__name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-institution-entries-fund__return {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.top-institution-entries-fund__count {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .top-institution-entries-fund {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .top-institution-entries-fund__return,
+  .top-institution-entries-fund__count {
+    grid-column: 2;
+  }
 }
 
 .double-signal-row {

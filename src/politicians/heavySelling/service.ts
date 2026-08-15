@@ -56,6 +56,8 @@ function parseSortKey(raw: string | null): PoliticianHeavySellingSortKey {
     "largestSale",
     "latestSale",
     "ticker",
+    "currentConsecutiveSales",
+    "multipleSellers",
   ];
   if (raw && (allowed as string[]).includes(raw)) return raw as PoliticianHeavySellingSortKey;
   return "estimatedTotalSold";
@@ -163,6 +165,11 @@ export function sortPoliticianHeavySellingRows(
       const bv = parseDateMs(b.latestSale) || 0;
       return (av - bv) * dir || a.ticker.localeCompare(b.ticker);
     }
+    if (sortKey === "multipleSellers") {
+      const av = a.multipleSellers ? 1 : 0;
+      const bv = b.multipleSellers ? 1 : 0;
+      return (av - bv) * dir || a.ticker.localeCompare(b.ticker);
+    }
     const key =
       sortKey === "estimatedTotalSold"
         ? "estimatedTotalSold"
@@ -170,7 +177,9 @@ export function sortPoliticianHeavySellingRows(
           ? "uniqueSellers"
           : sortKey === "sellTransactions"
             ? "sellTransactions"
-            : "largestSale";
+            : sortKey === "currentConsecutiveSales"
+              ? "currentConsecutiveSales"
+              : "largestSale";
     const ax = Number(a[key]);
     const bx = Number(b[key]);
     const an = Number.isFinite(ax) ? ax : dir < 0 ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;

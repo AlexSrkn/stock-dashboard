@@ -35,3 +35,15 @@ export interface StocksMostAccumulatedPayload {
   summary: StocksMostAccumulatedSummary;
   stocks: StocksMostAccumulatedRow[];
 }
+
+export interface StocksMostAccumulatedPeriodCache {
+  period: StocksMostAccumulatedPeriod;
+  periodLabel: string;
+  summary: StocksMostAccumulatedSummary;
+  stocks: StocksMostAccumulatedRow[];
+}
+
+export interface StocksMostAccumulatedCachePayload {
+  computedAt: string;
+  periods: Record<StocksMostAccumulatedPeriod, StocksMostAccumulatedPeriodCache>;
+}

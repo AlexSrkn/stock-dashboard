@@ -320,8 +320,12 @@ function collectInstantRows(
       if (!Number.isFinite(fy) || !end) continue;
 
       const instantEnd = observationEnd(pick.obs);
+      // Cover-page DEI shares are dated after period end; allow when matched by accession.
+      const isCoverPageShares =
+        def.key === "shares_outstanding" &&
+        pick.gaapTag === "EntityCommonStockSharesOutstanding";
       // Instant facts belong only to the period whose balance-sheet date equals the instant.
-      if (instantEnd !== end) continue;
+      if (instantEnd !== end && !isCoverPageShares) continue;
 
       const fpEnd = `${fp}|${end}`;
       const anchorKey = anchorByFpEnd.get(fpEnd);
@@ -335,7 +339,7 @@ function collectInstantRows(
 
       const targetKey = anchorKey ?? periodKey;
       const [targetFy, targetFp, targetEnd] = targetKey.split("|");
-      if (instantEnd !== targetEnd) continue;
+      if (instantEnd !== targetEnd && !isCoverPageShares) continue;
 
       const row = ensureRow(
         rows,
@@ -724,6 +728,41 @@ function buildStatementBundle(
       };
     }
   }
+
+  // If the latest quarter omitted period-end shares (common), surface the newest
+  // published shares from any balance-sheet period so the panel is not blank.
+  if (statement === "balance" && !latest.shares_outstanding) {
+    const pool = [...quarterlyFiltered, ...annualFiltered]
+      .filter(
+        (r) =>
+          r.metrics.shares_outstanding != null &&
+          Number.isFinite(r.metrics.shares_outstanding) &&
+          r.metricSources.shares_outstanding
+      )
+      .sort((a, b) => String(b.end ?? "").localeCompare(String(a.end ?? "")));
+    const shareRow = pool[0];
+    if (shareRow) {
+      const source = shareRow.metricSources.shares_outstanding!;
+      const detail = shareRow.metricDetails.shares_outstanding;
+      latest.shares_outstanding = {
+        key: "shares_outstanding",
+        label: "Shares outstanding",
+        value: shareRow.metrics.shares_outstanding!,
+        unit: "shares",
+        end: shareRow.end,
+        filed: source.filed,
+        form: source.form,
+        accn: source.accn,
+        fp: shareRow.fp,
+        periodLabel: metricPeriodLabel(shareRow.fp, detail),
+        fy: shareRow.fy,
+        gaapTag: source.gaapTag,
+        namespace: source.namespace,
+        durationBucket: detail?.durationBucket ?? null,
+      };
+    }
+  }
+
   return { latest, annual: annualFiltered, quarterly: quarterlyFiltered };
 }
 

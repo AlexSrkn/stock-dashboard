@@ -41,6 +41,56 @@ function parseSector(url: URL): string | null {
   return value || null;
 }
 
+const SELECT_STOCK_CLASSIFICATION_SQL = `
+SELECT
+  UPPER(BTRIM(ticker)) AS ticker,
+  company_name,
+  sector,
+  industry
+FROM stocks
+WHERE ticker = ANY($1::varchar[])
+`.trim();
+
+async function lookupStockClassifications(
+  tickers: string[]
+): Promise<Map<string, { companyName: string | null; sector: string | null; industry: string | null }>> {
+  const unique = [...new Set(tickers.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean))];
+  const out = new Map<string, { companyName: string | null; sector: string | null; industry: string | null }>();
+  if (!unique.length) return out;
+  try {
+    const res = await getPool().query<{
+      ticker: string;
+      company_name: string | null;
+      sector: string | null;
+      industry: string | null;
+    }>(SELECT_STOCK_CLASSIFICATION_SQL, [unique]);
+    for (const row of res.rows) {
+      out.set(String(row.ticker).toUpperCase(), {
+        companyName: row.company_name ? String(row.company_name) : null,
+        sector: row.sector ? String(row.sector) : null,
+        industry: row.industry ? String(row.industry) : null,
+      });
+    }
+  } catch {
+    /* classification is optional when stocks table is empty */
+  }
+  return out;
+}
+
+function attachClassification<T>(
+  item: T,
+  ticker: string,
+  lookup: Map<string, { companyName: string | null; sector: string | null; industry: string | null }>
+): T & { sector: string | null; industry: string | null; companyName: string | null } {
+  const hit = lookup.get(String(ticker || "").trim().toUpperCase());
+  return {
+    ...item,
+    sector: hit?.sector ?? null,
+    industry: hit?.industry ?? null,
+    companyName: hit?.companyName ?? null,
+  };
+}
+
 function rankingOptions(url: URL, defaultLimit: number) {
   return {
     limit: parseLimit(url, defaultLimit),
@@ -54,7 +104,17 @@ export async function tryHandleStocksHub(
 ): Promise<boolean> {
   if (ROUTE_SP500_RE.test(url.pathname)) {
     try {
-      json(res, 200, loadSp500(), 86_400);
+      const payload = loadSp500();
+      const lookup = await lookupStockClassifications(payload.stocks.map((s) => s.symbol));
+      json(
+        res,
+        200,
+        {
+          ...payload,
+          stocks: payload.stocks.map((s) => attachClassification(s, s.symbol, lookup)),
+        },
+        86_400
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       json(res, 500, { error: "sp500_error", message });
@@ -65,7 +125,11 @@ export async function tryHandleStocksHub(
   if (ROUTE_INST_ACCUM_RE.test(url.pathname)) {
     try {
       const payload = await loadInstitutionalShareAccumulation(getPool(), parseLimit(url));
-      json(res, 200, payload);
+      const lookup = await lookupStockClassifications(payload.stocks.map((s) => s.ticker));
+      json(res, 200, {
+        ...payload,
+        stocks: payload.stocks.map((s) => attachClassification(s, s.ticker, lookup)),
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("DATABASE_URL")) {
@@ -85,7 +149,11 @@ export async function tryHandleStocksHub(
         getPool(),
         parseLimit(url)
       );
-      json(res, 200, payload);
+      const lookup = await lookupStockClassifications(payload.stocks.map((s) => s.ticker));
+      json(res, 200, {
+        ...payload,
+        stocks: payload.stocks.map((s) => attachClassification(s, s.ticker, lookup)),
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("DATABASE_URL")) {

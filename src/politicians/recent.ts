@@ -12,7 +12,7 @@ import { enrichPoliticiansRecent } from "./enrichment/enrichRecent.js";
 import { invalidatePoliticianRepeatBuyersCache } from "./repeatBuyers/service.js";
 import { invalidatePoliticianFirstTimeBuyersCache } from "./firstTimeBuyers/service.js";
 import { invalidatePoliticianHeavySellingCache } from "./heavySelling/service.js";
-import { parseUsDateToIso } from "./normalize.js";
+import { parseUsDateToIso, cleanPoliticianTicker } from "./normalize.js";
 
 export const POLITICIANS_DATA_DIR = join("data", "politicians");
 export const POLITICIANS_RECENT_PATH = join(POLITICIANS_DATA_DIR, "recent.json");
@@ -272,10 +272,32 @@ export function writePoliticiansRecent(
   invalidatePoliticianHeavySellingCache();
 }
 
+function sanitizeTradeTicker(trade: PoliticianTrade): PoliticianTrade {
+  let ticker = cleanPoliticianTicker(trade.ticker);
+  if (!ticker) {
+    ticker = cleanPoliticianTicker(trade.assetName?.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/)?.[1]);
+  }
+  if (ticker === (trade.ticker || null)) return trade;
+  return { ...trade, ticker };
+}
+
+function sanitizePoliticiansPayload(payload: PoliticiansRecentPayload): PoliticiansRecentPayload {
+  const mapBundle = (bundle: PoliticianFilingBundle): PoliticianFilingBundle => ({
+    ...bundle,
+    trades: bundle.trades.map(sanitizeTradeTicker),
+  });
+  return {
+    ...payload,
+    house: payload.house.map(mapBundle),
+    senate: payload.senate.map(mapBundle),
+  };
+}
+
 export function readPoliticiansRecent(outPath = POLITICIANS_RECENT_PATH): PoliticiansRecentPayload | null {
   try {
     const raw = readFileSync(outPath, "utf8");
-    return JSON.parse(raw) as PoliticiansRecentPayload;
+    const payload = JSON.parse(raw) as PoliticiansRecentPayload;
+    return sanitizePoliticiansPayload(payload);
   } catch {
     return null;
   }

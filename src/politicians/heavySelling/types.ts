@@ -6,7 +6,9 @@ export type PoliticianHeavySellingSortKey =
   | "sellTransactions"
   | "largestSale"
   | "latestSale"
-  | "ticker";
+  | "ticker"
+  | "currentConsecutiveSales"
+  | "multipleSellers";
 
 export interface PoliticianHeavySellingSeller {
   politicianKey: string;

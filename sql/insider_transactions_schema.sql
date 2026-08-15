@@ -37,3 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_insider_transaction_cik
 
 CREATE INDEX IF NOT EXISTS idx_insider_transaction_accession
   ON insider_transaction (accession_number);
+
+CREATE INDEX IF NOT EXISTS idx_insider_transaction_tx_date
+  ON insider_transaction (transaction_date DESC NULLS LAST)
+  WHERE ticker IS NOT NULL AND NOT is_derivative;

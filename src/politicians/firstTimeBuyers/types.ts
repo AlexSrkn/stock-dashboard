@@ -5,7 +5,10 @@ export type PoliticianFirstTimeBuyerSortKey =
   | "yearsSinceLastBuy"
   | "estimatedPurchaseValue"
   | "politicianName"
-  | "ticker";
+  | "ticker"
+  | "party"
+  | "state"
+  | "previousBuyDate";
 
 export interface PoliticianFirstTimeBuyerRow {
   ticker: string;

@@ -144,6 +144,12 @@ let activeInstitutionHubView = "directory";
 let institutionProxyPerformance = null;
 let activeInsiderHubView = "trades";
 let activeSignalsHubView = "directory";
+/** @type {object | null} */
+let lastTopInstitutionNewEntries = null;
+let topInstitutionEntriesSelectedId = null;
+let topInstitutionEntriesBound = false;
+let topInstitutionEntriesSortKey = "value";
+let topInstitutionEntriesSortDir = "desc";
 let activeToolsHubView = "directory";
 /** @type {ReturnType<typeof createDcfCalculatorController> | null} */
 let dcfCalculator = null;
@@ -444,7 +450,7 @@ let politiciansRecentData = null;
 let politiciansHubLoading = false;
 let politiciansHubLoaded = false;
 let politiciansHubControlsBound = false;
-let politiciansHubFilters = { chamber: "all", sort: "recent" };
+let politiciansHubFilters = { chamber: "all", sortKey: "date", sortDir: "desc" };
 let activePoliticianHubView = "trades";
 let politicianAccumulatedPeriod = "quarter";
 let politicianAccumulatedChamber = "all";
@@ -603,9 +609,17 @@ const STOCK_HUB_COLLECTIONS = [
   "fcf-leaders",
   "high-margin",
 ];
+const STOCK_HUB_COUNT_IDS = {
+  sp500: "stock-hub-sp500-count",
+  institutional: "stock-hub-institutional-count",
+  "executive-insider": "stock-hub-executive-count",
+  "revenue-growth": "stock-hub-revenue-growth-count",
+  "fcf-leaders": "stock-hub-fcf-count",
+  "high-margin": "stock-hub-high-margin-count",
+};
 const STOCK_HUB_PAGE_SIZE = 24;
 /** @type {null | "sp500" | "institutional" | "executive-insider" | "revenue-growth" | "fcf-leaders" | "high-margin"} */
-let activeStockHubCollection = null;
+let activeStockHubCollection = "sp500";
 const STOCK_HUB_SECTOR_COLLECTIONS = new Set(["revenue-growth", "fcf-leaders", "high-margin"]);
 let stockHubFilters = { query: "", sector: "" };
 let stockHubSectorOptions = [];
@@ -614,6 +628,7 @@ let stockHubControlsBound = false;
 /** @type {Array<{ symbol: string; name: string; meta?: string; sector?: string; industry?: string }>} */
 let stockHubRows = [];
 let stockHubLoading = false;
+let stockHubCountsPrefetched = false;
 /** @type {Record<string, { loadedAt: number; rows: typeof stockHubRows; meta?: string }>} */
 const stockHubCollectionCache = {};
 let stockRecentlyActiveLoading = false;
@@ -638,7 +653,6 @@ let stocksOwnershipChangesDirection = "increases";
 let stocksOwnershipChangesQuarter = "latest";
 let stocksOwnershipChangesMarketCap = "";
 let stocksOwnershipChangesSector = "";
-let stocksOwnershipChangesExchange = "";
 let stocksOwnershipChangesSearch = "";
 let stocksOwnershipChangesSortKey = "changePct";
 let stocksOwnershipChangesSortDir = "desc";
@@ -714,11 +728,25 @@ let lastInstitutionHoldings = [];
 /** @type {Record<string, unknown> | null} */
 let lastInstitutionHoldingsMeta = null;
 let institutionHoldingsExpanded = false;
+let institutionHoldingsSortKey = "valueUsd";
+let institutionHoldingsSortDir = "desc";
 let lastInstitutionOptionsCalls = [];
 let lastInstitutionOptionsPuts = [];
 let lastInstitutionOptionsByStock = [];
 let lastInstitutionCommonExposureUsd = 0;
 let institutionOptionsStocksExpanded = false;
+let institutionOptionsSortKey = "totalExposure";
+let institutionOptionsSortDir = "desc";
+let institutionAddsSortKey = "valueChangeUsd";
+let institutionAddsSortDir = "desc";
+let institutionTrimsSortKey = "valueChangeUsd";
+let institutionTrimsSortDir = "asc";
+let institutionExitsSortKey = "previousValueUsd";
+let institutionExitsSortDir = "desc";
+let institutionNewSortKey = "newValue";
+let institutionNewSortDir = "desc";
+let institutionActivitySortKey = "valueChangeUsd";
+let institutionActivitySortDir = "desc";
 
 const ACTIVITY_INITIAL_COUNT = 5;
 
@@ -771,6 +799,10 @@ let lastOwnershipHolders = [];
 
 const OWNERSHIP_INITIAL_COUNT = 10;
 let ownershipExpanded = false;
+/** @type {"fundName" | "shares" | "valueUsd" | "pctOutstanding" | "sharesChangePct" | "valueChangeUsd"} */
+let ownershipHoldersSortKey = "valueUsd";
+/** @type {"asc" | "desc"} */
+let ownershipHoldersSortDir = "desc";
 let lastOwnershipCurrency = "USD";
 /** @type {number | null} */
 let lastOwnershipStockPrice = null;
@@ -900,8 +932,49 @@ function enrichOwnershipHolders(holders) {
       valueChangeUsd,
     };
   });
-  enriched.sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
   return enriched;
+}
+
+function sortOwnershipHolders(holders) {
+  const key = ownershipHoldersSortKey;
+  const dir = ownershipHoldersSortDir === "asc" ? 1 : -1;
+  return [...holders].sort((a, b) => {
+    if (key === "fundName") {
+      const byName = String(a.fundName || "").localeCompare(String(b.fundName || ""), undefined, {
+        sensitivity: "base",
+      });
+      if (byName !== 0) return byName * dir;
+      return (Number(b.valueUsd) || 0) - (Number(a.valueUsd) || 0);
+    }
+    const ax = Number(a[key]);
+    const bx = Number(b[key]);
+    const aOk = Number.isFinite(ax);
+    const bOk = Number.isFinite(bx);
+    if (!aOk && !bOk) {
+      return String(a.fundName || "").localeCompare(String(b.fundName || ""), undefined, {
+        sensitivity: "base",
+      });
+    }
+    if (!aOk) return 1;
+    if (!bOk) return -1;
+    if (bx !== ax) return (ax - bx) * dir;
+    return String(a.fundName || "").localeCompare(String(b.fundName || ""), undefined, {
+      sensitivity: "base",
+    });
+  });
+}
+
+function updateOwnershipHoldersSortButtons() {
+  document.querySelectorAll("[data-ownership-holders-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-ownership-holders-sort");
+    const active = key === ownershipHoldersSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.dataset.sortDir = active ? ownershipHoldersSortDir : "";
+    btn.textContent = active
+      ? `${label} ${ownershipHoldersSortDir === "asc" ? "▲" : "▼"}`
+      : label;
+  });
 }
 
 function formatShareCount(shares) {
@@ -1025,11 +1098,12 @@ function renderOwnershipTable() {
     return;
   }
 
-  const holders = enrichOwnershipHolders(lastOwnershipHolders);
+  const holders = sortOwnershipHolders(enrichOwnershipHolders(lastOwnershipHolders));
   const visible = ownershipExpanded
     ? holders
     : holders.slice(0, OWNERSHIP_INITIAL_COUNT);
 
+  updateOwnershipHoldersSortButtons();
   renderOwnershipHoldersBody(visible.map(renderOwnershipRow).join(""));
   updateOwnershipMoreControl();
 }
@@ -1441,6 +1515,9 @@ function politicianKey(name) {
   return String(name || "")
     .toLowerCase()
     .replace(/^the honorable\s+/i, "")
+    .replace(/^hon\.?\s+/i, "")
+    .replace(/^rep\.?\s+/i, "")
+    .replace(/^sen\.?\s+/i, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
@@ -1638,6 +1715,14 @@ function closeStocksOverlays() {
 function navigateToStocksHub() {
   previewStock = null;
   activeIndex = -1;
+  const switching = activeStockHubCollection !== "sp500";
+  activeStockHubCollection = "sp500";
+  if (switching) {
+    stockHubRows = [];
+    stockHubShowAll = false;
+    stockHubFilters.sector = "";
+    syncStockHubSectorSelect("");
+  }
   closeStocksOverlays();
   if (window.location.pathname !== "/stocks") {
     history.pushState({ explore: "stocks", stockHub: true }, "", "/stocks");
@@ -1745,6 +1830,73 @@ function updateStockHubFeatureRow() {
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-pressed", String(active));
   });
+  const heading = document.getElementById("stock-hub-directory-heading");
+  if (heading) {
+    heading.textContent = activeStockHubCollection
+      ? stockHubCollectionLabel(activeStockHubCollection)
+      : "Browse stocks";
+  }
+}
+
+function setStockHubCollectionCount(collection, text) {
+  const el = document.getElementById(STOCK_HUB_COUNT_IDS[collection]);
+  if (el) el.textContent = text;
+}
+
+function stockHubPayloadCount(data) {
+  const fromCount = Number(data?.count);
+  if (Number.isFinite(fromCount) && fromCount >= 0) return fromCount;
+  if (Array.isArray(data?.stocks)) return data.stocks.length;
+  return 0;
+}
+
+function formatStockHubCollectionCount(collection, n, extra = {}) {
+  const noun = collection === "sp500" ? "stocks" : "tickers";
+  const base = `${n} ${noun}`;
+  return extra.suffix ? `${base} · ${extra.suffix}` : base;
+}
+
+async function prefetchStockHubCollectionCounts() {
+  const jobs = [
+    apiJson("/api/stocks/sp500").then((data) => {
+      setStockHubCollectionCount("sp500", formatStockHubCollectionCount("sp500", stockHubPayloadCount(data)));
+    }),
+    apiJson("/api/stocks/institutional-accumulation", { limit: 200 }).then((data) => {
+      setStockHubCollectionCount(
+        "institutional",
+        formatStockHubCollectionCount("institutional", stockHubPayloadCount(data), {
+          suffix: data.currentQuarter || "",
+        })
+      );
+    }),
+    apiJson("/api/stocks/executive-insider-accumulation", { limit: 200, window: 90 }).then((data) => {
+      setStockHubCollectionCount(
+        "executive-insider",
+        formatStockHubCollectionCount("executive-insider", stockHubPayloadCount(data), {
+          suffix: data.lookbackDays ? `${data.lookbackDays}d` : "",
+        })
+      );
+    }),
+    apiJson("/api/stocks/revenue-growth-leaders", { limit: 200 }).then((data) => {
+      setStockHubCollectionCount(
+        "revenue-growth",
+        formatStockHubCollectionCount("revenue-growth", stockHubPayloadCount(data))
+      );
+    }),
+    apiJson("/api/stocks/fcf-leaders", { limit: 200 }).then((data) => {
+      setStockHubCollectionCount(
+        "fcf-leaders",
+        formatStockHubCollectionCount("fcf-leaders", stockHubPayloadCount(data))
+      );
+    }),
+    apiJson("/api/stocks/high-margin", { limit: 200 }).then((data) => {
+      setStockHubCollectionCount(
+        "high-margin",
+        formatStockHubCollectionCount("high-margin", stockHubPayloadCount(data))
+      );
+    }),
+  ];
+  await Promise.allSettled(jobs);
 }
 
 function stockHubQueryMatches(row, query) {
@@ -1803,10 +1955,14 @@ async function loadStockHubCollection(collection) {
       const data = await apiJson("/api/stocks/sp500");
       stockHubRows = (Array.isArray(data.stocks) ? data.stocks : []).map((s) => ({
         symbol: String(s.symbol || "").toUpperCase(),
-        name: String(s.name || s.symbol || ""),
+        name: String(s.name || s.companyName || s.symbol || ""),
+        sector: s.sector ? String(s.sector) : "",
+        industry: s.industry ? String(s.industry) : "",
       }));
-      const countEl = document.getElementById("stock-hub-sp500-count");
-      if (countEl) countEl.textContent = `${stockHubRows.length} stocks`;
+      setStockHubCollectionCount(
+        "sp500",
+        formatStockHubCollectionCount("sp500", stockHubRows.length)
+      );
       stockHubCollectionCache[collection] = {
         loadedAt: Date.now(),
         rows: stockHubRows,
@@ -1824,15 +1980,17 @@ async function loadStockHubCollection(collection) {
       }
       stockHubRows = (Array.isArray(data.stocks) ? data.stocks : []).map((s) => ({
         symbol: String(s.ticker || "").toUpperCase(),
-        name: String(s.ticker || ""),
+        name: String(s.companyName || s.ticker || ""),
+        sector: s.sector ? String(s.sector) : "",
+        industry: s.industry ? String(s.industry) : "",
         meta: `+${formatShareCount(s.sharesBought)} shares · ${s.institutionCount} funds`,
       }));
-      const countEl = document.getElementById("stock-hub-institutional-count");
-      if (countEl) {
-        countEl.textContent = data.currentQuarter
-          ? `${stockHubRows.length} tickers · ${data.currentQuarter}`
-          : `${stockHubRows.length} tickers`;
-      }
+      setStockHubCollectionCount(
+        "institutional",
+        formatStockHubCollectionCount("institutional", stockHubRows.length, {
+          suffix: data.currentQuarter || "",
+        })
+      );
       const meta = data.currentQuarter
         ? `Latest quarter ${data.currentQuarter}${data.previousQuarter ? ` vs ${data.previousQuarter}` : ""}`
         : "";
@@ -1848,16 +2006,18 @@ async function loadStockHubCollection(collection) {
         if (s.cfoCount) roles.push(`${s.cfoCount} CFO${s.cfoCount === 1 ? "" : "s"}`);
         return {
           symbol: String(s.ticker || "").toUpperCase(),
-          name: String(s.ticker || ""),
+          name: String(s.companyName || s.ticker || ""),
+          sector: s.sector ? String(s.sector) : "",
+          industry: s.industry ? String(s.industry) : "",
           meta: `${formatHoldingValueUsd(s.totalBuyValue)} bought · ${roles.join(", ") || `${s.buyerCount} executive${s.buyerCount === 1 ? "" : "s"}`}`,
         };
       });
-      const countEl = document.getElementById("stock-hub-executive-count");
-      if (countEl) {
-        countEl.textContent = data.lookbackDays
-          ? `${stockHubRows.length} tickers · ${data.lookbackDays}d`
-          : `${stockHubRows.length} tickers`;
-      }
+      setStockHubCollectionCount(
+        "executive-insider",
+        formatStockHubCollectionCount("executive-insider", stockHubRows.length, {
+          suffix: data.lookbackDays ? `${data.lookbackDays}d` : "",
+        })
+      );
       const meta = data.lookbackDays ? `${data.lookbackDays}-day CEO/CFO open-market buys` : "";
       stockHubCollectionCache[collection] = { loadedAt: Date.now(), rows: stockHubRows, meta };
       return meta;
@@ -1893,13 +2053,10 @@ async function loadStockHubCollection(collection) {
         return mapFundamentalsStockRow(s, meta);
       });
 
-      const countIds = {
-        "revenue-growth": "stock-hub-revenue-growth-count",
-        "fcf-leaders": "stock-hub-fcf-count",
-        "high-margin": "stock-hub-high-margin-count",
-      };
-      const countEl = document.getElementById(countIds[collection]);
-      if (countEl) countEl.textContent = `${stockHubRows.length} tickers`;
+      setStockHubCollectionCount(
+        collection,
+        formatStockHubCollectionCount(collection, stockHubRows.length)
+      );
 
       const metaByCollection = {
         "revenue-growth": "Latest period · revenue > $100M · YoY vs prior year",
@@ -1926,30 +2083,29 @@ async function loadStockHubCollection(collection) {
   return "";
 }
 
-async function selectStockHubCollection(collection) {
+async function activateStockHubCollection(collection, { toggle = false } = {}) {
   if (!STOCK_HUB_COLLECTIONS.includes(collection)) return;
   const wasActive = activeStockHubCollection === collection;
-  activeStockHubCollection = wasActive ? null : collection;
+  if (toggle && wasActive) {
+    activeStockHubCollection = null;
+    stockHubRows = [];
+    stockHubShowAll = false;
+    updateStockHubSectorField();
+    updateStockHubFeatureRow();
+    renderStockHub();
+    return;
+  }
+
+  const switching = activeStockHubCollection !== collection;
+  activeStockHubCollection = collection;
   stockHubShowAll = false;
-  if (!wasActive && activeStockHubCollection) {
+  if (switching) {
+    stockHubRows = [];
     stockHubFilters.sector = "";
     syncStockHubSectorSelect("");
   }
   updateStockHubSectorField();
   updateStockHubFeatureRow();
-
-  const heading = document.getElementById("stock-hub-directory-heading");
-  if (heading) {
-    heading.textContent = activeStockHubCollection
-      ? stockHubCollectionLabel(activeStockHubCollection)
-      : "Browse stocks";
-  }
-
-  if (!activeStockHubCollection) {
-    stockHubRows = [];
-    renderStockHub();
-    return;
-  }
 
   try {
     await loadStockHubCollection(activeStockHubCollection);
@@ -1967,8 +2123,17 @@ async function selectStockHubCollection(collection) {
   }
 }
 
+async function selectStockHubCollection(collection) {
+  return activateStockHubCollection(collection, { toggle: true });
+}
+
 async function renderStockHub() {
   if (!isStockHubVisible()) return;
+
+  if (!stockHubCountsPrefetched) {
+    stockHubCountsPrefetched = true;
+    void prefetchStockHubCollectionCounts();
+  }
 
   const grid = document.getElementById("stock-hub-grid");
   const empty = document.getElementById("stock-hub-empty");
@@ -2130,10 +2295,11 @@ function setupStockHub() {
   }
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
-      activeStockHubCollection = null;
-      clearStockHubFilters();
-      const heading = document.getElementById("stock-hub-directory-heading");
-      if (heading) heading.textContent = "Browse stocks";
+      stockHubFilters = { query: "", sector: "" };
+      stockHubShowAll = false;
+      syncStockHubSearchInputs("");
+      syncStockHubSectorSelect("");
+      void activateStockHubCollection("sp500");
     });
   }
   if (featureRow) {
@@ -2150,18 +2316,15 @@ function setupStockHub() {
       renderStockHub();
     });
   }
-
-  void apiJson("/api/stocks/sp500")
-    .then((data) => {
-      const countEl = document.getElementById("stock-hub-sp500-count");
-      if (countEl && data?.count) countEl.textContent = `${data.count} stocks`;
-    })
-    .catch(() => {});
 }
 
 function buildRecentlyActiveQueryString() {
   const params = new URLSearchParams();
-  if (stockRecentlyActiveSource && stockRecentlyActiveSource !== "all") {
+  if (
+    stockRecentlyActiveSource &&
+    stockRecentlyActiveSource !== "all" &&
+    stockRecentlyActiveSource !== "institution"
+  ) {
     params.set("source", stockRecentlyActiveSource);
   }
   if (stockRecentlyActiveFilters.from) params.set("from", stockRecentlyActiveFilters.from);
@@ -2297,7 +2460,7 @@ function setupRecentlyActiveStocksPage() {
   document.querySelectorAll("[data-recent-activity-source]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const source = btn.getAttribute("data-recent-activity-source") || "all";
-      if (source === stockRecentlyActiveSource) return;
+      if (source === "institution" || source === stockRecentlyActiveSource) return;
       stockRecentlyActiveSource = source;
       void loadRecentlyActiveStocksPage();
     });
@@ -2648,7 +2811,6 @@ function buildStocksOwnershipChangesQueryString() {
   }
   if (stocksOwnershipChangesMarketCap) params.set("marketCap", stocksOwnershipChangesMarketCap);
   if (stocksOwnershipChangesSector) params.set("sector", stocksOwnershipChangesSector);
-  if (stocksOwnershipChangesExchange) params.set("exchange", stocksOwnershipChangesExchange);
   if (stocksOwnershipChangesSearch.trim()) params.set("search", stocksOwnershipChangesSearch.trim());
   if (stocksOwnershipChangesSortKey && stocksOwnershipChangesSortKey !== "rank") {
     params.set("sort", stocksOwnershipChangesSortKey);
@@ -2683,15 +2845,17 @@ function populateOwnershipChangesFilterOptions(payload) {
   const quarterSelect = document.getElementById("stock-ownership-changes-quarter");
   if (quarterSelect && payload?.quarters?.length) {
     const current = stocksOwnershipChangesQuarter;
-    quarterSelect.innerHTML = payload.quarters
-      .map((q, idx) => {
-        const label = idx === 0 ? `${q} (latest)` : q;
-        const value = idx === 0 ? "latest" : q;
-        return `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`;
-      })
-      .join("");
+    const defaultQuarter = payload.defaultQuarter || payload.quarters[0];
+    const options = [
+      `<option value="latest">${escapeHtml(defaultQuarter)} (default)</option>`,
+      ...payload.quarters.map(
+        (q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`
+      ),
+    ];
+    quarterSelect.innerHTML = options.join("");
     if (current === "latest" || !payload.quarters.includes(current)) {
       quarterSelect.value = "latest";
+      stocksOwnershipChangesQuarter = "latest";
     } else {
       quarterSelect.value = current;
     }
@@ -2706,17 +2870,6 @@ function populateOwnershipChangesFilterOptions(payload) {
         .map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`)
         .join("");
     sectorSelect.value = selected;
-  }
-
-  const exchangeSelect = document.getElementById("stock-ownership-changes-exchange");
-  if (exchangeSelect && payload?.exchanges) {
-    const selected = stocksOwnershipChangesExchange;
-    exchangeSelect.innerHTML =
-      `<option value="">All exchanges</option>` +
-      payload.exchanges
-        .map((exchange) => `<option value="${escapeHtml(exchange)}">${escapeHtml(exchange)}</option>`)
-        .join("");
-    exchangeSelect.value = selected;
   }
 }
 
@@ -2803,7 +2956,7 @@ function renderStocksOwnershipChangesPage() {
     const prevLabel = payload?.previousQuarter || "—";
     subtitle.textContent = payload?.error
       ? payload.error
-      : `Comparing ${quarterLabel} vs ${prevLabel} · institutional ownership % of shares outstanding.`;
+      : `Biggest QoQ institutional ownership % movers · comparing ${quarterLabel} vs ${prevLabel}.`;
   }
 
   if (payload?.error && !payload?.stocks?.length) {
@@ -2927,11 +3080,6 @@ function setupStocksOwnershipChangesPage() {
   });
   document.getElementById("stock-ownership-changes-mcap")?.addEventListener("change", (e) => {
     stocksOwnershipChangesMarketCap = e.target?.value || "";
-    stocksOwnershipChangesPage = 1;
-    void loadStocksOwnershipChangesPage();
-  });
-  document.getElementById("stock-ownership-changes-exchange")?.addEventListener("change", (e) => {
-    stocksOwnershipChangesExchange = e.target?.value || "";
     stocksOwnershipChangesPage = 1;
     void loadStocksOwnershipChangesPage();
   });
@@ -5793,19 +5941,6 @@ function getAllPoliticianFilings() {
 
 function sortPoliticianFilings(filings) {
   const rows = [...filings];
-  const sort = politiciansHubFilters.sort;
-  if (sort === "name") {
-    rows.sort((a, b) =>
-      String(a.politicianName || "").localeCompare(String(b.politicianName || ""), undefined, {
-        sensitivity: "base",
-      })
-    );
-    return rows;
-  }
-  if (sort === "amount") {
-    rows.sort((a, b) => (b.tradeCount || 0) - (a.tradeCount || 0));
-    return rows;
-  }
   rows.sort((a, b) => {
     const byDate = parsePoliticianFilingDateMs(b.filingDate) - parsePoliticianFilingDateMs(a.filingDate);
     if (byDate !== 0) return byDate;
@@ -5833,12 +5968,12 @@ function formatPoliticianTradeDate(value) {
 function flattenPoliticianTrades(filings) {
   const rows = [];
   for (const filing of filings) {
-    const key = politicianKey(filing.politicianName);
+    const key = filing.politicianKey || politicianKey(filing.politicianName);
     for (const trade of filing.trades || []) {
       rows.push({
         ...trade,
         politicianName: filing.politicianName,
-        politicianKey: key,
+        politicianKey: trade.politicianKey || key,
         chamber: filing.chamber,
         filingDate: filing.filingDate,
       });
@@ -5854,37 +5989,32 @@ function getFilteredPoliticianTrades() {
     filings = filings.filter((f) => f.chamber === chamber);
   }
   let rows = flattenPoliticianTrades(filings);
-  const sort = politiciansHubFilters.sort;
-  if (sort === "name") {
-    rows.sort((a, b) => {
-      const byName = String(a.politicianName || "").localeCompare(String(b.politicianName || ""), undefined, {
+  const key = politiciansHubFilters.sortKey || "date";
+  const mul = politiciansHubFilters.sortDir === "asc" ? 1 : -1;
+  const stockLabel = (t) => String(t.ticker || t.assetName || "").toUpperCase();
+  const typeLabel = (t) => String(t.transactionCategory || t.transactionType || "").toLowerCase();
+  const amountOf = (t) => t.amountMax ?? t.amountMin ?? 0;
+
+  rows.sort((a, b) => {
+    let cmp = 0;
+    if (key === "politicianName") {
+      cmp = String(a.politicianName || "").localeCompare(String(b.politicianName || ""), undefined, {
         sensitivity: "base",
       });
-      if (byName !== 0) return byName;
-      return parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
-    });
-    return rows;
-  }
-  if (sort === "amount") {
-    rows.sort((a, b) => {
-      const aAmt = a.amountMax ?? a.amountMin ?? 0;
-      const bAmt = b.amountMax ?? b.amountMin ?? 0;
-      if (bAmt !== aAmt) return bAmt - aAmt;
-      return parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
-    });
-    return rows;
-  }
-  if (sort === "stock") {
-    rows.sort((a, b) => {
-      const aSym = String(a.ticker || a.assetName || "").toUpperCase();
-      const bSym = String(b.ticker || b.assetName || "").toUpperCase();
-      const byStock = aSym.localeCompare(bSym, undefined, { sensitivity: "base" });
-      if (byStock !== 0) return byStock;
-      return parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
-    });
-    return rows;
-  }
-  rows.sort((a, b) => {
+    } else if (key === "stock") {
+      cmp = stockLabel(a).localeCompare(stockLabel(b), undefined, { sensitivity: "base" });
+    } else if (key === "type") {
+      cmp = typeLabel(a).localeCompare(typeLabel(b), undefined, { sensitivity: "base" });
+    } else if (key === "amount") {
+      cmp = amountOf(a) - amountOf(b);
+    } else if (key === "chamber") {
+      cmp = String(a.chamber || "").localeCompare(String(b.chamber || ""), undefined, {
+        sensitivity: "base",
+      });
+    } else {
+      cmp = parseTradeDateMs(a.transactionDate) - parseTradeDateMs(b.transactionDate);
+    }
+    if (cmp !== 0) return cmp * mul;
     const byDate = parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
     if (byDate !== 0) return byDate;
     return String(a.politicianName || "").localeCompare(String(b.politicianName || ""), undefined, {
@@ -5894,13 +6024,36 @@ function getFilteredPoliticianTrades() {
   return rows;
 }
 
+function normalizePoliticianKeyMatch(value) {
+  let key = politicianKey(String(value || ""));
+  if (key.startsWith("hon-")) key = key.slice(4);
+  if (key.startsWith("rep-")) key = key.slice(4);
+  if (key.startsWith("sen-")) key = key.slice(4);
+  return key;
+}
+
 function getPoliticianFilingsByKey(key) {
   if (!key) return [];
-  return getAllPoliticianFilings().filter((f) => politicianKey(f.politicianName) === key);
+  const want = normalizePoliticianKeyMatch(key);
+  return getAllPoliticianFilings().filter((f) => {
+    const stored = normalizePoliticianKeyMatch(f.politicianKey || "");
+    if (stored && stored === want) return true;
+    return normalizePoliticianKeyMatch(f.politicianName) === want;
+  });
 }
 
 function politicianStockCell(trade) {
-  const sym = trade.ticker ? String(trade.ticker).trim().toUpperCase() : "";
+  const raw = trade.ticker ? String(trade.ticker).trim().toUpperCase() : "";
+  const placeholder =
+    !raw ||
+    raw === "--" ||
+    raw === "—" ||
+    raw === "–" ||
+    raw === "-" ||
+    raw === "N/A" ||
+    raw === "NA" ||
+    raw === "NONE";
+  const sym = placeholder ? "" : raw;
   if (sym) return institutionStockLinkHtml(sym, sym);
   const name = String(trade.assetName || "").trim();
   if (!name) return "—";
@@ -5916,10 +6069,24 @@ function updatePoliticiansHubToolbar() {
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", String(on));
   });
-  const sortSelect = document.getElementById("politicians-hub-sort");
-  if (sortSelect && sortSelect.value !== politiciansHubFilters.sort) {
-    sortSelect.value = politiciansHubFilters.sort;
-  }
+  document.querySelectorAll("[data-politicians-trades-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-politicians-trades-sort");
+    const active = key === politiciansHubFilters.sortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute(
+      "aria-sort",
+      active ? (politiciansHubFilters.sortDir === "asc" ? "ascending" : "descending") : "none"
+    );
+    btn.textContent = active
+      ? `${label} ${politiciansHubFilters.sortDir === "asc" ? "▲" : "▼"}`
+      : label;
+  });
+}
+
+function politiciansTradesDefaultSortDir(key) {
+  if (key === "politicianName" || key === "stock" || key === "type" || key === "chamber") return "asc";
+  return "desc";
 }
 
 function setupPoliticiansHub() {
@@ -5927,7 +6094,6 @@ function setupPoliticiansHub() {
   politiciansHubControlsBound = true;
 
   const chamberRow = document.getElementById("politicians-hub-chamber-row");
-  const sortSelect = document.getElementById("politicians-hub-sort");
 
   if (chamberRow) {
     chamberRow.addEventListener("click", (e) => {
@@ -5941,13 +6107,22 @@ function setupPoliticiansHub() {
       renderPoliticiansHub();
     });
   }
-  if (sortSelect) {
-    sortSelect.addEventListener("change", () => {
-      politiciansHubFilters.sort = sortSelect.value || "recent";
+
+  document.querySelectorAll("[data-politicians-trades-sort]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-politicians-trades-sort");
+      if (!key) return;
+      if (key === politiciansHubFilters.sortKey) {
+        politiciansHubFilters.sortDir = politiciansHubFilters.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        politiciansHubFilters.sortKey = key;
+        politiciansHubFilters.sortDir = politiciansTradesDefaultSortDir(key);
+      }
       politiciansHubShowAllTrades = false;
+      updatePoliticiansHubToolbar();
       renderPoliticiansHub();
     });
-  }
+  });
 
   document.getElementById("politicians-trades-more-btn")?.addEventListener("click", () => {
     politiciansHubShowAllTrades = !politiciansHubShowAllTrades;
@@ -6010,8 +6185,8 @@ function politicianChamberLabel(chamber) {
 }
 
 function politicianTradeCategoryLabel(category) {
-  if (category === "buy") return "Buy";
-  if (category === "sell") return "Sell";
+  if (category === "buy") return "Purchase";
+  if (category === "sell") return "Sale";
   if (category === "exchange") return "Exchange";
   return "Other";
 }
@@ -6022,28 +6197,61 @@ function politicianTradeCategoryClass(category) {
   return "";
 }
 
+/** Normalize House PTR codes to Senate-style display labels. */
+function politicianTransactionTypeLabel(trade) {
+  const raw = String(trade?.transactionType || "").trim();
+  if (!raw) return politicianTradeCategoryLabel(trade?.transactionCategory);
+  const upper = raw.toUpperCase();
+  if (upper === "P") return "Purchase";
+  if (upper === "S") return "Sale (Full)";
+  if (/^S\s*\(\s*PARTIAL\s*\)$/i.test(raw)) return "Sale (Partial)";
+  if (upper === "E") return "Exchange";
+  return raw;
+}
+
+function politicianAssetTypeLabel(trade) {
+  const raw = String(trade?.assetType || "").trim();
+  if (!raw) return "—";
+  const upper = raw.toUpperCase();
+  const map = {
+    ST: "Stock",
+    OP: "Stock Option",
+    GS: "Government Security",
+    PS: "Preferred Stock",
+    OT: "Other",
+    HN: "Hedge Fund / Non-Public",
+    CS: "Corporate Security",
+    BD: "Corporate Bond",
+  };
+  return map[upper] || raw;
+}
+
 function formatPoliticianLocation(filing) {
   if (filing.chamber === "house") {
     const parts = [filing.state, filing.district ? `D${filing.district}` : null].filter(Boolean);
     return parts.join("-") || "";
   }
+  if (filing.state) return String(filing.state);
   return filing.office || "";
 }
 
 function renderPoliticianTradeRows(trades) {
   if (!trades?.length) {
-    return `<tr><td colspan="5" class="politicians-hub__no-trades">No transactions parsed</td></tr>`;
+    return `<tr><td colspan="7" class="politicians-hub__no-trades">No transactions parsed</td></tr>`;
   }
   return trades
     .map((trade) => {
       const catClass = politicianTradeCategoryClass(trade.transactionCategory);
-      const typeLabel = trade.transactionType || politicianTradeCategoryLabel(trade.transactionCategory);
+      const typeLabel = politicianTransactionTypeLabel(trade);
+      const comment = String(trade.comment || "").trim();
       return `<tr class="politicians-hub__trade-row ${catClass}">
-        <td>${politicianStockCell(trade)}</td>
-        <td>${escapeHtml(typeLabel)}</td>
         <td>${escapeHtml(formatPoliticianTradeDate(trade.transactionDate))}</td>
-        <td class="num">${escapeHtml(trade.amountRange || "—")}</td>
         <td>${escapeHtml(trade.owner || "—")}</td>
+        <td>${politicianStockCell(trade)}</td>
+        <td>${escapeHtml(politicianAssetTypeLabel(trade))}</td>
+        <td>${escapeHtml(typeLabel)}</td>
+        <td class="num">${escapeHtml(trade.amountRange || "—")}</td>
+        <td class="politicians-hub__comment">${comment ? escapeHtml(comment) : "—"}</td>
       </tr>`;
     })
     .join("");
@@ -6052,7 +6260,7 @@ function renderPoliticianTradeRows(trades) {
 function renderPoliticianTradeTableRow(trade) {
   const catClass = politicianTradeCategoryClass(trade.transactionCategory);
   const key = trade.politicianKey || politicianKey(trade.politicianName);
-  const typeLabel = trade.transactionType || politicianTradeCategoryLabel(trade.transactionCategory);
+  const typeLabel = politicianTransactionTypeLabel(trade);
   return `<tr class="politicians-hub__trade-row ${catClass}" data-chamber="${escapeHtml(trade.chamber || "")}">
     <td><a href="${politicianPath(key)}" class="politicians-name-link" data-politician-key="${escapeHtml(key)}">${escapeHtml(trade.politicianName)}</a></td>
     <td>${politicianStockCell(trade)}</td>
@@ -6080,14 +6288,16 @@ function renderPoliticianFilingCard(filing) {
       <a class="politicians-hub__source-link small" href="${escapeHtml(filing.sourceUrl)}" target="_blank" rel="noopener noreferrer">Source</a>
     </header>
     <div class="politicians-hub__table-wrap">
-      <table class="politicians-hub__table">
+      <table class="politicians-hub__table politicians-hub__table--senate">
         <thead>
           <tr>
-            <th>Stock</th>
-            <th>Type</th>
             <th>Date</th>
-            <th class="num">Amount</th>
             <th>Owner</th>
+            <th>Stock</th>
+            <th>Asset type</th>
+            <th>Type</th>
+            <th class="num">Amount</th>
+            <th>Comment</th>
           </tr>
         </thead>
         <tbody>${renderPoliticianTradeRows(filing.trades)}</tbody>
@@ -6177,13 +6387,12 @@ function renderPoliticiansHubList() {
   if (toolbar) toolbar.hidden = !hasData;
   if (meta) {
     meta.hidden = !hasData;
-    if (hasData && politiciansRecentData?.fetchedAt) {
-      const when = new Date(politiciansRecentData.fetchedAt);
+    if (hasData) {
       const chamberLabel =
         politiciansHubFilters.chamber === "all"
           ? "All chambers"
           : politicianChamberLabel(politiciansHubFilters.chamber);
-      meta.textContent = `${trades.length} trade${trades.length === 1 ? "" : "s"} · ${chamberLabel} · updated ${when.toLocaleString()}`;
+      meta.textContent = `${trades.length} trade${trades.length === 1 ? "" : "s"} · ${chamberLabel}`;
     }
   }
 
@@ -6416,6 +6625,7 @@ const POLITICIAN_ACCUMULATED_SORT_LABELS = {
 const POLITICIAN_PORTFOLIOS_SORT_LABELS = {
   rank: "Rank",
   politicianName: "Politician",
+  chamber: "Chamber",
   totalBuyUsd: "Total purchases",
   totalSellUsd: "Total sales",
   netPortfolioUsd: "Net portfolio",
@@ -6471,6 +6681,9 @@ function sortPoliticianRows(rows, key, dir, defaultNumericKey) {
     }
     if (key === "politicianName") {
       return String(a.politicianName || "").localeCompare(String(b.politicianName || "")) * factor;
+    }
+    if (key === "chamber") {
+      return String(a.chamber || "").localeCompare(String(b.chamber || "")) * factor;
     }
     const av = Number(a[key]);
     const bv = Number(b[key]);
@@ -6951,7 +7164,7 @@ function renderPoliticianRepeatBuyersPage() {
   } else {
     const offset = (page - 1) * pageSize;
     if (meta) {
-      meta.textContent = `Page ${page} of ${totalPages} · ≥2 purchases per politician/stock · sorted by ${politicianRepeatBuyersSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages} · ≥2 purchases per politician/stock`;
     }
     body.innerHTML = rows
       .map((row, i) => {
@@ -7047,7 +7260,14 @@ function setupPoliticianRepeatBuyersPage() {
           politicianRepeatBuyersSortDir === "desc" ? "asc" : "desc";
       } else {
         politicianRepeatBuyersSortKey = key;
-        politicianRepeatBuyersSortDir = key === "ticker" ? "asc" : "desc";
+        politicianRepeatBuyersSortDir =
+          key === "ticker" ||
+          key === "politicianName" ||
+          key === "party" ||
+          key === "state" ||
+          key === "classification"
+            ? "asc"
+            : "desc";
       }
       politicianRepeatBuyersPage = 1;
       void loadPoliticianRepeatBuyersPage();
@@ -7297,7 +7517,7 @@ function renderPoliticianFirstTimeBuyersPage() {
     }
   } else {
     if (meta) {
-      meta.textContent = `Page ${page} of ${totalPages} · gap ≥${payload?.minYearsThreshold ?? 3}y · sorted by ${politicianFirstTimeBuyersSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages} · gap ≥${payload?.minYearsThreshold ?? 3}y`;
     }
     body.innerHTML = rows
       .map((row) => {
@@ -7394,7 +7614,12 @@ function setupPoliticianFirstTimeBuyersPage() {
       } else {
         politicianFirstTimeBuyersSortKey = key;
         politicianFirstTimeBuyersSortDir =
-          key === "ticker" || key === "politicianName" ? "asc" : "desc";
+          key === "ticker" ||
+          key === "politicianName" ||
+          key === "party" ||
+          key === "state"
+            ? "asc"
+            : "desc";
       }
       politicianFirstTimeBuyersPage = 1;
       void loadPoliticianFirstTimeBuyersPage();
@@ -7645,7 +7870,7 @@ function renderPoliticianHeavySellingPage() {
   } else {
     if (meta) {
       const windowDays = payload?.multipleSellersWindowDays ?? 30;
-      meta.textContent = `Page ${page} of ${totalPages} · sell disclosures only · multi-seller window ${windowDays}d · sorted by ${politicianHeavySellingSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages} · sell disclosures only · multi-seller window ${windowDays}d`;
     }
     body.innerHTML = rows
       .map((row) => {
@@ -7739,7 +7964,8 @@ function setupPoliticianHeavySellingPage() {
           politicianHeavySellingSortDir === "desc" ? "asc" : "desc";
       } else {
         politicianHeavySellingSortKey = key;
-        politicianHeavySellingSortDir = key === "ticker" ? "asc" : "desc";
+        politicianHeavySellingSortDir =
+          key === "ticker" || key === "multipleSellers" ? "asc" : "desc";
       }
       politicianHeavySellingPage = 1;
       void loadPoliticianHeavySellingPage();
@@ -7855,7 +8081,8 @@ function setupPoliticianAnalyticsPages() {
           politicianPortfoliosSortDir = politicianPortfoliosSortDir === "desc" ? "asc" : "desc";
         } else {
           politicianPortfoliosSortKey = key;
-          politicianPortfoliosSortDir = key === "politicianName" ? "asc" : "desc";
+          politicianPortfoliosSortDir =
+            key === "politicianName" || key === "chamber" ? "asc" : "desc";
         }
         renderPoliticianLargestPortfoliosTable();
       }
@@ -8280,9 +8507,7 @@ function renderPoliticianProfileSector() {
   section.hidden = false;
   const summary = document.getElementById("politicians-profile-sector-summary");
   if (summary) {
-    summary.innerHTML = `<div class="institution-most-accumulated__summary-card"><span class="institution-most-accumulated__summary-label">Purchases</span><span class="institution-most-accumulated__summary-value mono">${formatInteger(payload.buyVsSell.buyCount)}</span></div>
-      <div class="institution-most-accumulated__summary-card"><span class="institution-most-accumulated__summary-label">Sales</span><span class="institution-most-accumulated__summary-value mono">${formatInteger(payload.buyVsSell.sellCount)}</span></div>
-      <div class="institution-most-accumulated__summary-card"><span class="institution-most-accumulated__summary-label">Top sector</span><span class="institution-most-accumulated__summary-value">${escapeHtml(payload.mostTradedSectors[0]?.sector || "—")}</span></div>`;
+    summary.innerHTML = `<div class="institution-most-accumulated__summary-card"><span class="institution-most-accumulated__summary-label">Top sector</span><span class="institution-most-accumulated__summary-value">${escapeHtml(payload.mostTradedSectors[0]?.sector || "—")}</span></div>`;
   }
   renderPoliticianSectorBarChart(
     document.getElementById("politicians-profile-sector-allocation"),
@@ -8651,15 +8876,14 @@ function renderInsidersHub() {
   if (toolbar) toolbar.hidden = !hasData;
   if (meta) {
     meta.hidden = !hasData;
-    if (hasData && insidersRecentData?.fetchedAt) {
-      const when = new Date(insidersRecentData.fetchedAt);
+    if (hasData) {
       const signalLabel =
         insidersHubFilters.signal === "high"
           ? "Open market"
           : insidersHubFilters.signal === "low"
             ? "Administrative"
             : "All signals";
-      meta.textContent = `${trades.length} of ${allRows.length} trades · ${signalLabel} · updated ${when.toLocaleString()}`;
+      meta.textContent = `${trades.length} of ${allRows.length} trades · ${signalLabel}`;
     }
   }
 
@@ -8901,6 +9125,66 @@ function roundPct(n) {
   return Math.round(Number(n) * 10) / 10;
 }
 
+function institutionRowSortValue(row, key) {
+  if (key === "ticker" || key === "issuer") {
+    return String(row[key] || row.ticker || "").trim().toLowerCase();
+  }
+  if (key === "newValue") {
+    const n = Number(row.currentValueUsd ?? row.valueChangeUsd);
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(row[key]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function sortInstitutionTableRows(rows, key, dir) {
+  const mul = dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = institutionRowSortValue(a, key);
+    const bv = institutionRowSortValue(b, key);
+    if (typeof av === "string" || typeof bv === "string") {
+      const cmp = String(av || "").localeCompare(String(bv || ""), undefined, { sensitivity: "base" });
+      if (cmp !== 0) return cmp * mul;
+    } else {
+      if (av == null && bv == null) {
+        /* fall through */
+      } else if (av == null) return 1;
+      else if (bv == null) return -1;
+      else if (av !== bv) return (av - bv) * mul;
+    }
+    return String(a.ticker || a.issuer || "").localeCompare(String(b.ticker || b.issuer || ""), undefined, {
+      sensitivity: "base",
+    });
+  });
+}
+
+function updateInstitutionTableSortButtons(attr, activeKey, activeDir) {
+  document.querySelectorAll(`[${attr}]`).forEach((btn) => {
+    const key = btn.getAttribute(attr);
+    const active = key === activeKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.dataset.sortDir = active ? activeDir : "";
+    btn.textContent = active ? `${label} ${activeDir === "asc" ? "▲" : "▼"}` : label;
+  });
+}
+
+function bindInstitutionTableSort(attr, getKey, getDir, setKey, setDir, defaultDirForKey, rerender) {
+  document.querySelectorAll(`[${attr}]`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute(attr);
+      if (!key) return;
+      if (key === getKey()) {
+        setDir(getDir() === "asc" ? "desc" : "asc");
+      } else {
+        setKey(key);
+        setDir(defaultDirForKey(key));
+      }
+      rerender();
+    });
+  });
+}
+
 function renderInstitutionHoldingsRow(h) {
   const sym = h.ticker ? String(h.ticker).toUpperCase() : "";
   const tickerCell = sym
@@ -8939,14 +9223,24 @@ function renderInstitutionHoldingsTable(holdings, meta) {
   renderInstitutionPortfolioPowerbar(lastInstitutionHoldings, lastInstitutionHoldingsMeta);
   const body = document.getElementById("institution-holdings-body");
   if (!body) return;
+  updateInstitutionTableSortButtons(
+    "data-institution-holdings-sort",
+    institutionHoldingsSortKey,
+    institutionHoldingsSortDir
+  );
   if (!lastInstitutionHoldings.length) {
     body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">No holdings for the latest quarter.</td></tr>`;
     updateInstitutionHoldingsMoreControl();
     return;
   }
+  const sorted = sortInstitutionTableRows(
+    lastInstitutionHoldings,
+    institutionHoldingsSortKey,
+    institutionHoldingsSortDir
+  );
   const visible = institutionHoldingsExpanded
-    ? lastInstitutionHoldings
-    : lastInstitutionHoldings.slice(0, INSTITUTION_HOLDINGS_INITIAL_COUNT);
+    ? sorted
+    : sorted.slice(0, INSTITUTION_HOLDINGS_INITIAL_COUNT);
   body.innerHTML = visible.map(renderInstitutionHoldingsRow).join("");
   updateInstitutionHoldingsMoreControl();
 }
@@ -9051,18 +9345,49 @@ function renderInstitutionActivityPanels({
   lastInstitutionNewPositions = newPositions;
   if (activity.length) lastInstitutionActivityAll = activity;
 
+  const sortedAdds = sortInstitutionTableRows(
+    lastInstitutionAdds,
+    institutionAddsSortKey,
+    institutionAddsSortDir
+  );
+  const sortedTrims = sortInstitutionTableRows(
+    lastInstitutionTrims,
+    institutionTrimsSortKey,
+    institutionTrimsSortDir
+  );
+  const sortedExits = sortInstitutionTableRows(
+    lastInstitutionExits,
+    institutionExitsSortKey,
+    institutionExitsSortDir
+  );
+  const sortedNew = sortInstitutionTableRows(
+    lastInstitutionNewPositions,
+    institutionNewSortKey,
+    institutionNewSortDir
+  );
+
   const visibleAdds = institutionAddsExpanded
-    ? lastInstitutionAdds
-    : lastInstitutionAdds.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+    ? sortedAdds
+    : sortedAdds.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
   const visibleTrims = institutionTrimsExpanded
-    ? lastInstitutionTrims
-    : lastInstitutionTrims.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+    ? sortedTrims
+    : sortedTrims.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
   const visibleExits = institutionExitsExpanded
-    ? lastInstitutionExits
-    : lastInstitutionExits.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+    ? sortedExits
+    : sortedExits.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
   const visibleNew = institutionNewExpanded
-    ? lastInstitutionNewPositions
-    : lastInstitutionNewPositions.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+    ? sortedNew
+    : sortedNew.slice(0, INSTITUTION_ACTIVITY_INITIAL_COUNT);
+
+  updateInstitutionTableSortButtons("data-institution-adds-sort", institutionAddsSortKey, institutionAddsSortDir);
+  updateInstitutionTableSortButtons("data-institution-trims-sort", institutionTrimsSortKey, institutionTrimsSortDir);
+  updateInstitutionTableSortButtons("data-institution-exits-sort", institutionExitsSortKey, institutionExitsSortDir);
+  updateInstitutionTableSortButtons("data-institution-new-sort", institutionNewSortKey, institutionNewSortDir);
+  updateInstitutionTableSortButtons(
+    "data-institution-activity-sort",
+    institutionActivitySortKey,
+    institutionActivitySortDir
+  );
 
   renderInstitutionActivitySection(
     "institution-adds-body",
@@ -9133,7 +9458,8 @@ function renderInstitutionActivityTable(activity) {
     body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No quarter-over-quarter changes (need two consecutive 13F quarters).</td></tr>`;
     return;
   }
-  body.innerHTML = activity
+  const sorted = sortInstitutionTableRows(activity, institutionActivitySortKey, institutionActivitySortDir);
+  body.innerHTML = sorted
     .map((r) => {
       const sc = Number(r.sharesChange);
       const dir = sc >= 0 ? "up" : "down";
@@ -9247,7 +9573,7 @@ function buildInstitutionOptionsByStock(calls, puts) {
     });
   }
 
-  return rows.sort((a, b) => b.totalExposure - a.totalExposure);
+  return rows;
 }
 
 function renderInstitutionOptionsStockRow(row) {
@@ -9291,6 +9617,12 @@ function renderInstitutionOptionsStocksTable() {
   const body = document.getElementById("institution-options-stocks-body");
   if (!body) return;
 
+  updateInstitutionTableSortButtons(
+    "data-institution-options-sort",
+    institutionOptionsSortKey,
+    institutionOptionsSortDir
+  );
+
   if (!lastInstitutionOptionsByStock.length) {
     const quarter = lastInstitutionMeta?.currentQuarter ?? null;
     body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">${escapeHtml(
@@ -9300,9 +9632,14 @@ function renderInstitutionOptionsStocksTable() {
     return;
   }
 
+  const sorted = sortInstitutionTableRows(
+    lastInstitutionOptionsByStock,
+    institutionOptionsSortKey,
+    institutionOptionsSortDir
+  );
   const visible = institutionOptionsStocksExpanded
-    ? lastInstitutionOptionsByStock
-    : lastInstitutionOptionsByStock.slice(0, OPTIONS_INITIAL_COUNT);
+    ? sorted
+    : sorted.slice(0, OPTIONS_INITIAL_COUNT);
   body.innerHTML = visible.map(renderInstitutionOptionsStockRow).join("");
   updateInstitutionOptionsStocksMoreControl();
 }
@@ -9494,7 +9831,13 @@ function renderInstitutionPerformanceSummary(latest) {
 function renderInstitutionPerformanceTable(history) {
   const body = document.getElementById("institution-performance-body");
   if (!body) return;
-  const rows = Array.isArray(history) ? [...history] : [];
+  const rows = (Array.isArray(history) ? [...history] : []).filter(
+    (row) =>
+      row.qoqChangePct != null &&
+      Number.isFinite(Number(row.qoqChangePct)) &&
+      row.portfolioValueUsd != null &&
+      Number.isFinite(Number(row.portfolioValueUsd))
+  );
   if (!rows.length) {
     body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">No reported 13F portfolio value history yet.</td></tr>`;
     return;
@@ -9503,12 +9846,12 @@ function renderInstitutionPerformanceTable(history) {
   body.innerHTML = rows
     .map(
       (row) => `<tr>
-      <td class="mono">${escapeHtml(row.quarter || "N/A")}</td>
+      <td class="mono">${escapeHtml(row.quarter || "—")}</td>
       <td class="mono num">${escapeHtml(formatProxyUsd(row.portfolioValueUsd))}</td>
       <td class="mono num">${escapeHtml(formatProxyUsd(row.qoqChangeUsd))}</td>
       <td class="mono num">${escapeHtml(formatProxyPct(row.qoqChangePct))}</td>
       <td class="mono num">${escapeHtml(formatProxyHoldings(row.holdingsCount))}</td>
-      <td class="mono num">${escapeHtml(row.filingDate ? String(row.filingDate).slice(0, 10) : "N/A")}</td>
+      <td class="mono num">${escapeHtml(row.filingDate ? String(row.filingDate).slice(0, 10) : "—")}</td>
     </tr>`
     )
     .join("");
@@ -11656,7 +11999,6 @@ async function loadCongressActivityPanel(symbol) {
     const meta = res?.meta || {};
     const parts = ["Politician purchases (PTR)"];
     if (meta.count != null) parts.push(`${meta.count} buy${meta.count === 1 ? "" : "s"}`);
-    if (meta.fetchedAt) parts.push(`updated ${formatPoliticianTradeDate(meta.fetchedAt)}`);
     setCongressActivitySubtitle(parts.join(" · "));
     renderCongressActivityTable();
   } catch (err) {
@@ -12969,7 +13311,7 @@ async function fetchFundamentals(_symbol) {
 }
 
 async function fetchFilingsFundamentals(symbol) {
-  return apiJson(`/api/stocks/${encodeURIComponent(symbol)}/filings-fundamentals`);
+  return apiJson(`/api/stocks/${encodeURIComponent(symbol)}/filings-fundamentals?_=${Date.now()}`);
 }
 
 function filingsMetricNumber(metric) {
@@ -13621,7 +13963,7 @@ function renderConvictionBuysHub() {
   } else {
     const offset = (page - 1) * pageSize;
     if (meta) {
-      meta.textContent = `Page ${page} of ${totalPages} · sorted by ${convictionBuysSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages}`;
     }
     body.innerHTML = rows
       .map((row, i) => {
@@ -13896,7 +14238,7 @@ function renderRepeatBuyersHub() {
   } else {
     const offset = (page - 1) * pageSize;
     if (meta) {
-      meta.textContent = `Page ${page} of ${totalPages} · sorted by ${repeatBuyersSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages}`;
     }
     body.innerHTML = rows
       .map((row, i) => {
@@ -14755,7 +15097,7 @@ function renderHeavySellingHub() {
     const offset = (page - 1) * pageSize;
     const windowDays = payload?.clusterWindowDays ?? heavySellingFilters.clusterWindowDays ?? 30;
     if (meta) {
-      meta.textContent = `Page ${page} of ${totalPages} · cluster ${windowDays}d · sorted by ${heavySellingSortKey}`;
+      meta.textContent = `Page ${page} of ${totalPages} · cluster ${windowDays}d`;
     }
     body.innerHTML = rows
       .map((row, i) => {
@@ -14881,44 +15223,179 @@ function setupHeavySellingHub() {
   document.getElementById("heavy-selling-search")?.addEventListener("input", debounceReload);
 }
 
-async function loadTopInstitutionNewEntriesHub() {
+function setupTopInstitutionNewEntriesHub() {
+  if (topInstitutionEntriesBound) return;
+  topInstitutionEntriesBound = true;
+  document.getElementById("top-institution-entries-funds-list")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-top-institution-id]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-top-institution-id");
+    if (!id || id === topInstitutionEntriesSelectedId) return;
+    topInstitutionEntriesSelectedId = id;
+    renderTopInstitutionNewEntriesHub();
+  });
+  document.getElementById("signals-top-institution-entries-hub")?.addEventListener("click", (e) => {
+    const sortBtn = e.target.closest?.("[data-top-institution-entries-sort]");
+    if (!sortBtn) return;
+    const key = sortBtn.getAttribute("data-top-institution-entries-sort");
+    if (!key) return;
+    if (topInstitutionEntriesSortKey === key) {
+      topInstitutionEntriesSortDir = topInstitutionEntriesSortDir === "asc" ? "desc" : "asc";
+    } else {
+      topInstitutionEntriesSortKey = key;
+      topInstitutionEntriesSortDir = "desc";
+    }
+    renderTopInstitutionNewEntriesHub();
+  });
+}
+
+function sortTopInstitutionFundEntries(rows) {
+  const mul = topInstitutionEntriesSortDir === "asc" ? 1 : -1;
+  const key = topInstitutionEntriesSortKey;
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    if (key === "shares") {
+      cmp = (Number(a.currentShares) || 0) - (Number(b.currentShares) || 0);
+    } else if (key === "quarter") {
+      cmp = String(a.quarter || "").localeCompare(String(b.quarter || ""));
+    } else {
+      cmp = (Number(a.currentValueUsd) || 0) - (Number(b.currentValueUsd) || 0);
+    }
+    if (cmp !== 0) return cmp * mul;
+    return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+  });
+}
+
+function updateTopInstitutionEntriesSortButtons() {
+  document.querySelectorAll("[data-top-institution-entries-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-top-institution-entries-sort");
+    const active = key === topInstitutionEntriesSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute(
+      "aria-sort",
+      active ? (topInstitutionEntriesSortDir === "asc" ? "ascending" : "descending") : "none"
+    );
+    btn.textContent = active
+      ? `${label} ${topInstitutionEntriesSortDir === "asc" ? "▲" : "▼"}`
+      : label;
+  });
+}
+
+function renderTopInstitutionNewEntriesHub() {
+  const fundsList = document.getElementById("top-institution-entries-funds-list");
+  const fundsMeta = document.getElementById("top-institution-entries-funds-meta");
   const body = document.getElementById("top-institution-entries-body");
   const meta = document.getElementById("top-institution-entries-meta");
-  if (!body) return;
-  body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading new entries…</td></tr>`;
-  if (meta) meta.textContent = "Loading…";
-  try {
-    const data = await apiJson("/api/signals/top-institution-new-entries");
-    const rows = Array.isArray(data?.entries) ? data.entries : [];
-    const instCount = data?.topInstitutionCount ?? data?.institutions?.length ?? 0;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No new entries from top performers this quarter. Run <code class="inline-code">npm run performance:warm-cache</code> and <code class="inline-code">npm run signals:warm-top-entries</code> if needed.</td></tr>`;
-      if (meta) {
-        meta.textContent = `Top ${instCount} by rolling 1Y · as of ${data?.asOfQuarter || "—"}`;
-      }
-      return;
-    }
-    if (meta) {
-      meta.textContent = `${rows.length} new position${rows.length === 1 ? "" : "s"} · top ${instCount} institutions · rolling 1Y · ${data?.asOfQuarter || "—"}`;
-    }
-    body.innerHTML = rows
-      .map(
-        (row) => `<tr>
-        <td class="mono num">#${row.institutionRank}</td>
-        <td><a href="${institutionPath(bareInstitutionCik(row.institutionId), "activity")}" class="ownership-fund__link" data-institution-cik="${escapeHtml(bareInstitutionCik(row.institutionId))}">${escapeHtml(row.institutionName)}</a></td>
-        <td class="mono num">${escapeHtml(formatInstitutionPerformancePct(row.institutionRolling1yReturn))}</td>
+  const heading = document.getElementById("top-institution-entries-table-heading");
+  if (!body || !fundsList) return;
+
+  updateTopInstitutionEntriesSortButtons();
+
+  const data = lastTopInstitutionNewEntries;
+  if (!data) {
+    fundsList.innerHTML = `<p class="muted small">No data loaded.</p>`;
+    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">No data loaded.</td></tr>`;
+    return;
+  }
+
+  const institutions = Array.isArray(data.institutions) ? data.institutions : [];
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  const instCount = data.topInstitutionCount ?? institutions.length;
+
+  if (!institutions.length) {
+    fundsList.innerHTML = `<p class="muted small">No top institutions available.</p>`;
+    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">No new entries from top performers this quarter. Run <code class="inline-code">npm run performance:warm-cache</code> and <code class="inline-code">npm run signals:warm-top-entries</code> if needed.</td></tr>`;
+    if (fundsMeta) fundsMeta.textContent = `Top ${instCount} by rolling 1Y · ${data.asOfQuarter || "—"}`;
+    if (meta) meta.textContent = "";
+    return;
+  }
+
+  if (
+    !topInstitutionEntriesSelectedId ||
+    !institutions.some((i) => i.institutionId === topInstitutionEntriesSelectedId)
+  ) {
+    topInstitutionEntriesSelectedId = institutions[0].institutionId;
+  }
+
+  const selected =
+    institutions.find((i) => i.institutionId === topInstitutionEntriesSelectedId) || institutions[0];
+
+  if (fundsMeta) {
+    fundsMeta.textContent = `Top ${instCount} by rolling 1Y · ${data.asOfQuarter || "—"}`;
+  }
+
+  fundsList.innerHTML = institutions
+    .map((inst) => {
+      const active = inst.institutionId === selected.institutionId;
+      const count = Number(inst.newEntryCount) || 0;
+      return `<button type="button" class="top-institution-entries-fund${active ? " is-active" : ""}" role="option" aria-selected="${active}" data-top-institution-id="${escapeHtml(inst.institutionId)}">
+        <span class="top-institution-entries-fund__rank mono">#${inst.rank}</span>
+        <span class="top-institution-entries-fund__name">${escapeHtml(inst.name)}</span>
+        <span class="top-institution-entries-fund__return mono">${escapeHtml(formatInstitutionPerformancePct(inst.rolling1yReturn))}</span>
+        <span class="top-institution-entries-fund__count">${count} new</span>
+      </button>`;
+    })
+    .join("");
+
+  const fundEntries = sortTopInstitutionFundEntries(
+    entries.filter((row) => row.institutionId === selected.institutionId)
+  );
+
+  if (heading) heading.textContent = `New positions · ${selected.name}`;
+  if (meta) {
+    meta.textContent = `${fundEntries.length} new position${fundEntries.length === 1 ? "" : "s"} · ${selected.quarter || data.asOfQuarter || "—"}`;
+  }
+
+  if (!fundEntries.length) {
+    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">No new positions with tickers for this fund in the latest filing.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = fundEntries
+    .map(
+      (row) => `<tr>
         <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
         <td>${escapeHtml(row.issuer || "—")}</td>
         <td class="mono num">${escapeHtml(formatHoldingValueUsd(row.currentValueUsd, "USD"))}</td>
         <td class="mono num">${escapeHtml(formatShareCount(row.currentShares))}</td>
         <td class="mono">${escapeHtml(row.quarter || "—")}</td>
       </tr>`
-      )
-      .join("");
+    )
+    .join("");
+}
+
+async function loadTopInstitutionNewEntriesHub() {
+  setupTopInstitutionNewEntriesHub();
+  const body = document.getElementById("top-institution-entries-body");
+  const meta = document.getElementById("top-institution-entries-meta");
+  const fundsList = document.getElementById("top-institution-entries-funds-list");
+  const fundsMeta = document.getElementById("top-institution-entries-funds-meta");
+  if (!body) return;
+
+  if (lastTopInstitutionNewEntries) {
+    renderTopInstitutionNewEntriesHub();
+    return;
+  }
+
+  body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">Loading new entries…</td></tr>`;
+  if (meta) meta.textContent = "Loading…";
+  if (fundsMeta) fundsMeta.textContent = "Loading…";
+  if (fundsList) fundsList.innerHTML = `<p class="muted small">Loading funds…</p>`;
+
+  try {
+    const data = await apiJson("/api/signals/top-institution-new-entries");
+    lastTopInstitutionNewEntries = data;
+    const institutions = Array.isArray(data?.institutions) ? data.institutions : [];
+    topInstitutionEntriesSelectedId = institutions[0]?.institutionId || null;
+    renderTopInstitutionNewEntriesHub();
   } catch (err) {
+    lastTopInstitutionNewEntries = null;
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${msg}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">${msg}</td></tr>`;
     if (meta) meta.textContent = "Failed to load";
+    if (fundsMeta) fundsMeta.textContent = "Failed to load";
+    if (fundsList) fundsList.innerHTML = `<p class="muted small">Failed to load funds.</p>`;
   }
 }
 
@@ -21260,10 +21737,25 @@ async function init() {
 
 function setupOwnershipToggle() {
   const btn = document.getElementById("ownership-more-btn");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    ownershipExpanded = !ownershipExpanded;
-    renderOwnershipTable();
+  if (btn) {
+    btn.addEventListener("click", () => {
+      ownershipExpanded = !ownershipExpanded;
+      renderOwnershipTable();
+    });
+  }
+
+  document.querySelectorAll("[data-ownership-holders-sort]").forEach((sortBtn) => {
+    sortBtn.addEventListener("click", () => {
+      const key = sortBtn.getAttribute("data-ownership-holders-sort") || "valueUsd";
+      if (key === ownershipHoldersSortKey) {
+        ownershipHoldersSortDir = ownershipHoldersSortDir === "asc" ? "desc" : "asc";
+      } else {
+        ownershipHoldersSortKey = key;
+        ownershipHoldersSortDir = key === "fundName" ? "asc" : "desc";
+      }
+      ownershipExpanded = false;
+      renderOwnershipTable();
+    });
   });
 }
 
@@ -21321,56 +21813,42 @@ setupInsiderFilters();
 setupStockTabs();
 setupStockAddWatchlistBtn();
 function setupInstitutionActivityToggles() {
+  const rerenderActivity = () => {
+    renderInstitutionActivityPanels({
+      adds: lastInstitutionAdds,
+      trims: lastInstitutionTrims,
+      completelySold: lastInstitutionExits,
+      newPositions: lastInstitutionNewPositions,
+      activity: lastInstitutionActivityAll,
+    });
+  };
+
   const addsBtn = document.getElementById("institution-adds-more-btn");
   if (addsBtn) {
     addsBtn.addEventListener("click", () => {
       institutionAddsExpanded = !institutionAddsExpanded;
-      renderInstitutionActivityPanels({
-        adds: lastInstitutionAdds,
-        trims: lastInstitutionTrims,
-        completelySold: lastInstitutionExits,
-        newPositions: lastInstitutionNewPositions,
-        activity: lastInstitutionActivityAll,
-      });
+      rerenderActivity();
     });
   }
   const trimsBtn = document.getElementById("institution-trims-more-btn");
   if (trimsBtn) {
     trimsBtn.addEventListener("click", () => {
       institutionTrimsExpanded = !institutionTrimsExpanded;
-      renderInstitutionActivityPanels({
-        adds: lastInstitutionAdds,
-        trims: lastInstitutionTrims,
-        completelySold: lastInstitutionExits,
-        newPositions: lastInstitutionNewPositions,
-        activity: lastInstitutionActivityAll,
-      });
+      rerenderActivity();
     });
   }
   const exitsBtn = document.getElementById("institution-exits-more-btn");
   if (exitsBtn) {
     exitsBtn.addEventListener("click", () => {
       institutionExitsExpanded = !institutionExitsExpanded;
-      renderInstitutionActivityPanels({
-        adds: lastInstitutionAdds,
-        trims: lastInstitutionTrims,
-        completelySold: lastInstitutionExits,
-        newPositions: lastInstitutionNewPositions,
-        activity: lastInstitutionActivityAll,
-      });
+      rerenderActivity();
     });
   }
   const newBtn = document.getElementById("institution-new-more-btn");
   if (newBtn) {
     newBtn.addEventListener("click", () => {
       institutionNewExpanded = !institutionNewExpanded;
-      renderInstitutionActivityPanels({
-        adds: lastInstitutionAdds,
-        trims: lastInstitutionTrims,
-        completelySold: lastInstitutionExits,
-        newPositions: lastInstitutionNewPositions,
-        activity: lastInstitutionActivityAll,
-      });
+      rerenderActivity();
     });
   }
   const holdingsBtn = document.getElementById("institution-holdings-more-btn");
@@ -21387,6 +21865,99 @@ function setupInstitutionActivityToggles() {
       renderInstitutionOptionsStocksTable();
     });
   }
+
+  const textDefault = (key) => (key === "ticker" || key === "issuer" ? "asc" : "desc");
+  bindInstitutionTableSort(
+    "data-institution-holdings-sort",
+    () => institutionHoldingsSortKey,
+    () => institutionHoldingsSortDir,
+    (k) => {
+      institutionHoldingsSortKey = k;
+    },
+    (d) => {
+      institutionHoldingsSortDir = d;
+    },
+    () => "desc",
+    () => renderInstitutionHoldingsTable(lastInstitutionHoldings, lastInstitutionHoldingsMeta)
+  );
+  bindInstitutionTableSort(
+    "data-institution-adds-sort",
+    () => institutionAddsSortKey,
+    () => institutionAddsSortDir,
+    (k) => {
+      institutionAddsSortKey = k;
+    },
+    (d) => {
+      institutionAddsSortDir = d;
+    },
+    textDefault,
+    rerenderActivity
+  );
+  bindInstitutionTableSort(
+    "data-institution-trims-sort",
+    () => institutionTrimsSortKey,
+    () => institutionTrimsSortDir,
+    (k) => {
+      institutionTrimsSortKey = k;
+    },
+    (d) => {
+      institutionTrimsSortDir = d;
+    },
+    (key) => (key === "ticker" || key === "issuer" ? "asc" : key === "valueChangeUsd" || key === "sharesChange" ? "asc" : "desc"),
+    rerenderActivity
+  );
+  bindInstitutionTableSort(
+    "data-institution-exits-sort",
+    () => institutionExitsSortKey,
+    () => institutionExitsSortDir,
+    (k) => {
+      institutionExitsSortKey = k;
+    },
+    (d) => {
+      institutionExitsSortDir = d;
+    },
+    textDefault,
+    rerenderActivity
+  );
+  bindInstitutionTableSort(
+    "data-institution-new-sort",
+    () => institutionNewSortKey,
+    () => institutionNewSortDir,
+    (k) => {
+      institutionNewSortKey = k;
+    },
+    (d) => {
+      institutionNewSortDir = d;
+    },
+    textDefault,
+    rerenderActivity
+  );
+  bindInstitutionTableSort(
+    "data-institution-activity-sort",
+    () => institutionActivitySortKey,
+    () => institutionActivitySortDir,
+    (k) => {
+      institutionActivitySortKey = k;
+    },
+    (d) => {
+      institutionActivitySortDir = d;
+    },
+    textDefault,
+    rerenderActivity
+  );
+  bindInstitutionTableSort(
+    "data-institution-options-sort",
+    () => institutionOptionsSortKey,
+    () => institutionOptionsSortDir,
+    (k) => {
+      institutionOptionsSortKey = k;
+    },
+    (d) => {
+      institutionOptionsSortDir = d;
+    },
+    textDefault,
+    () => renderInstitutionOptionsStocksTable()
+  );
 }
 
 setupInstitutionActivityToggles();

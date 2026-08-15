@@ -59,14 +59,11 @@ SELECT
   acquisition_disposition
 FROM insider_transaction
 WHERE ticker IS NOT NULL
-  AND BTRIM(ticker) <> ''
+  AND ticker <> ''
   AND NOT is_derivative
+  AND transaction_date >= (CURRENT_DATE - $1::int)
   AND (
-    transaction_date >= (CURRENT_DATE - $1::int)
-    OR (transaction_date IS NULL AND filing_date >= (CURRENT_DATE - $1::int))
-  )
-  AND (
-    UPPER(BTRIM(transaction_code)) IN ('P', 'S')
-    OR UPPER(BTRIM(COALESCE(acquisition_disposition, ''))) IN ('A', 'D')
+    UPPER(transaction_code) IN ('P', 'S')
+    OR UPPER(COALESCE(acquisition_disposition, '')) IN ('A', 'D')
   )
 `.trim();

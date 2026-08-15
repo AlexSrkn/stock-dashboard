@@ -270,7 +270,11 @@ export const FINANCIAL_METRIC_DEFINITIONS: FinancialMetricDefinition[] = [
     label: "SG&A expense",
     statement: "income",
     valueType: "duration",
-    tags: ["SellingGeneralAndAdministrativeExpense"],
+    tags: [
+      "SellingGeneralAndAdministrativeExpense",
+      // Biotech / R&D-heavy filers often report G&A separately without an SG&A rollup.
+      "GeneralAndAdministrativeExpense",
+    ],
     unit: "USD",
   },
   {
@@ -278,7 +282,7 @@ export const FINANCIAL_METRIC_DEFINITIONS: FinancialMetricDefinition[] = [
     label: "Interest expense",
     statement: "income",
     valueType: "duration",
-    tags: ["InterestExpense", "InterestExpenseAndDebtExpense"],
+    tags: ["InterestExpense", "InterestExpenseAndDebtExpense", "InterestExpenseDebt"],
     unit: "USD",
   },
   {

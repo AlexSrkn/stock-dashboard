@@ -1,8 +1,7 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import {
-  getCachedOwnershipChanges,
-  setOwnershipChangesMemoryCache,
+  getOrComputeOwnershipChanges,
 } from "./cache.js";
 import {
   buildOwnershipChangesSummary,
@@ -12,6 +11,7 @@ import {
   parseMarketCapBucket,
   parseOwnershipChangeDirection,
   parseOwnershipChangesQuarter,
+  pickDefaultOwnershipQuarter,
 } from "./compute.js";
 import type { OwnershipChangeRow, OwnershipChangesCachePayload, OwnershipChangesPayload } from "./types.js";
 
@@ -20,21 +20,15 @@ let inflight: Promise<OwnershipChangesCachePayload> | null = null;
 export async function loadOwnershipChangesCache(
   pool: pg.Pool = getPool()
 ): Promise<OwnershipChangesCachePayload> {
-  const cached = getCachedOwnershipChanges();
-  if (cached) return cached;
+  return getOrComputeOwnershipChanges(() => computeOwnershipChangesCache(pool));
+}
 
-  if (!inflight) {
-    inflight = computeOwnershipChangesCache(pool)
-      .then((payload) => {
-        setOwnershipChangesMemoryCache(payload);
-        return payload;
-      })
-      .finally(() => {
-        inflight = null;
-      });
+function resolveDefaultQuarter(cache: OwnershipChangesCachePayload): string | null {
+  if (cache.defaultQuarter && cache.quarters.includes(cache.defaultQuarter)) {
+    return cache.defaultQuarter;
   }
-
-  return inflight;
+  // Older disk caches lack defaultQuarter — fall back to calendar completeness.
+  return pickDefaultOwnershipQuarter(cache.quarters);
 }
 
 function parsePage(raw: string | null, fallback = 1): number {
@@ -75,7 +69,12 @@ export async function getOwnershipChanges(
   pool: pg.Pool = getPool()
 ): Promise<OwnershipChangesPayload> {
   const cache = await loadOwnershipChangesCache(pool);
-  const quarter = parseOwnershipChangesQuarter(url.searchParams.get("quarter"), cache.quarters);
+  const defaultQuarter = resolveDefaultQuarter(cache);
+  const quarter = parseOwnershipChangesQuarter(
+    url.searchParams.get("quarter"),
+    cache.quarters,
+    defaultQuarter
+  );
   const direction = parseOwnershipChangeDirection(url.searchParams.get("direction"));
   const search = url.searchParams.get("search") || "";
   const sector = url.searchParams.get("sector") || "";
@@ -109,6 +108,7 @@ export async function getOwnershipChanges(
     computedAt: cache.computedAt,
     quarter: quarter ?? "",
     previousQuarter: previousQuarter ?? "",
+    defaultQuarter: defaultQuarter ?? quarter ?? "",
     direction,
     summary: buildOwnershipChangesSummary(filtered),
     sectors: cache.sectors,

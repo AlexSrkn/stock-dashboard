@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { filterFullyScrapedOwnershipQuarters } from "./compute.js";
 import type { OwnershipChangesCachePayload } from "./types.js";
 
 const CACHE_DIR = path.join(process.cwd(), "data", "cache");
@@ -12,18 +13,53 @@ interface DiskPayload extends OwnershipChangesCachePayload {
 let memoryCache: { loadedAt: number; payload: OwnershipChangesCachePayload } | null = null;
 const MEMORY_CACHE_MS = 15 * 60 * 1000;
 
+function sanitizeLoadedPayload(raw: OwnershipChangesCachePayload): OwnershipChangesCachePayload {
+  const filtered = filterFullyScrapedOwnershipQuarters(raw);
+  const sectors = [
+    ...new Set(
+      Object.values(filtered.byQuarter)
+        .flat()
+        .map((r) => r.sector)
+        .filter((s): s is string => Boolean(s && s.trim()))
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+  const exchanges = [
+    ...new Set(
+      Object.values(filtered.byQuarter)
+        .flat()
+        .map((r) => r.exchange)
+        .filter((s): s is string => Boolean(s && s.trim()))
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+  return {
+    computedAt: raw.computedAt,
+    quarters: filtered.quarters,
+    defaultQuarter: filtered.defaultQuarter,
+    sectors,
+    exchanges,
+    byQuarter: filtered.byQuarter,
+  };
+}
+
 export function loadOwnershipChangesFromDisk(): OwnershipChangesCachePayload | null {
   try {
     if (!fs.existsSync(CACHE_FILE)) return null;
     const raw = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as DiskPayload;
     if (!raw || raw.version !== 1 || !raw.byQuarter) return null;
-    return {
+    const quarters = Array.isArray(raw.quarters) ? raw.quarters : [];
+    const defaultQuarter =
+      typeof raw.defaultQuarter === "string" && quarters.includes(raw.defaultQuarter)
+        ? raw.defaultQuarter
+        : null;
+    return sanitizeLoadedPayload({
       computedAt: raw.computedAt,
-      quarters: Array.isArray(raw.quarters) ? raw.quarters : [],
+      quarters,
+      defaultQuarter,
       sectors: Array.isArray(raw.sectors) ? raw.sectors : [],
       exchanges: Array.isArray(raw.exchanges) ? raw.exchanges : [],
       byQuarter: raw.byQuarter,
-    };
+    });
   } catch {
     return null;
   }
@@ -49,7 +85,10 @@ export function ensureOwnershipChangesCacheOnStartup(): void {
   memoryCache = { loadedAt: Date.now(), payload };
   const latest = payload.quarters[0];
   const count = latest ? (payload.byQuarter[latest]?.length ?? 0) : 0;
-  console.log(`Ownership changes cache loaded (${count} tickers, ${latest ?? "—"}).`);
+  const def = payload.defaultQuarter ?? latest ?? "—";
+  console.log(
+    `Ownership changes cache loaded (default ${def}, ${count} tickers in newest ${latest ?? "—"}).`
+  );
 }
 
 export function getCachedOwnershipChanges(): OwnershipChangesCachePayload | null {
@@ -65,4 +104,29 @@ export function getCachedOwnershipChanges(): OwnershipChangesCachePayload | null
 
 export function setOwnershipChangesMemoryCache(payload: OwnershipChangesCachePayload): void {
   memoryCache = { loadedAt: Date.now(), payload };
+}
+
+let inflight: Promise<OwnershipChangesCachePayload> | null = null;
+
+export async function getOrComputeOwnershipChanges(
+  compute: () => Promise<OwnershipChangesCachePayload>
+): Promise<OwnershipChangesCachePayload> {
+  const hit = getCachedOwnershipChanges();
+  if (hit) return hit;
+  if (inflight) return inflight;
+
+  inflight = compute()
+    .then((payload) => {
+      const rowCount = Object.values(payload.byQuarter).reduce((s, r) => s + r.length, 0);
+      if (rowCount > 0) {
+        setOwnershipChangesMemoryCache(payload);
+        saveOwnershipChangesToDisk(payload);
+      }
+      return payload;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+
+  return inflight;
 }
