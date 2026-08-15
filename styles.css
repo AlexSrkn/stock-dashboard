@@ -411,7 +411,7 @@ button.workspace-nav__subsection:hover {
 
 .logo-chart {
   display: block;
-  height: 1.65rem;
+  height: 2.15rem;
   width: auto;
   object-fit: contain;
   object-position: center;
@@ -434,7 +434,7 @@ button.workspace-nav__subsection:hover {
   }
 
   .logo-chart {
-    height: 1.45rem;
+    height: 1.85rem;
   }
 }
 
