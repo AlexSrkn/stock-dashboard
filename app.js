@@ -18979,8 +18979,10 @@ function updateStockAddWatchlistBtn() {
 
 function setupStockAddWatchlistBtn() {
   const btn = document.getElementById("stock-add-watchlist-btn");
-  if (!btn) return;
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
   btn.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     const stock = getDisplayStock();
     if (stock?.symbol) void addToWatchlist(stock.symbol);
