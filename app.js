@@ -764,6 +764,14 @@ let activityBuyersExpanded = false;
 let activitySellersExpanded = false;
 let activityExitsExpanded = false;
 let activityNewExpanded = false;
+let activityBuyersSortKey = "sharesChange";
+let activityBuyersSortDir = "desc";
+let activitySellersSortKey = "sharesChange";
+let activitySellersSortDir = "asc";
+let activityExitsSortKey = "previousValueUsd";
+let activityExitsSortDir = "desc";
+let activityNewSortKey = "valueUsd";
+let activityNewSortDir = "desc";
 /** @type {{ currentQuarter?: string; previousQuarter?: string | null }} */
 let lastActivityQuarterMeta = {};
 
@@ -9151,8 +9159,8 @@ function roundPct(n) {
 }
 
 function institutionRowSortValue(row, key) {
-  if (key === "ticker" || key === "issuer") {
-    return String(row[key] || row.ticker || "").trim().toLowerCase();
+  if (key === "ticker" || key === "issuer" || key === "fundName") {
+    return String(row[key] || row.fundName || row.ticker || "").trim().toLowerCase();
   }
   if (key === "newValue") {
     const n = Number(row.currentValueUsd ?? row.valueChangeUsd);
@@ -9177,9 +9185,11 @@ function sortInstitutionTableRows(rows, key, dir) {
       else if (bv == null) return -1;
       else if (av !== bv) return (av - bv) * mul;
     }
-    return String(a.ticker || a.issuer || "").localeCompare(String(b.ticker || b.issuer || ""), undefined, {
-      sensitivity: "base",
-    });
+    return String(a.fundName || a.ticker || a.issuer || "").localeCompare(
+      String(b.fundName || b.ticker || b.issuer || ""),
+      undefined,
+      { sensitivity: "base" }
+    );
   });
 }
 
@@ -13084,18 +13094,56 @@ function updateActivityNewMoreControl() {
 }
 
 function renderActivityTables() {
+  const sortedBuyers = sortInstitutionTableRows(
+    lastActivityBuyers,
+    activityBuyersSortKey,
+    activityBuyersSortDir
+  );
+  const sortedSellers = sortInstitutionTableRows(
+    lastActivitySellers,
+    activitySellersSortKey,
+    activitySellersSortDir
+  );
+  const sortedExits = sortInstitutionTableRows(
+    lastActivityExits,
+    activityExitsSortKey,
+    activityExitsSortDir
+  );
+  const sortedNew = sortInstitutionTableRows(
+    lastActivityNewPositions,
+    activityNewSortKey,
+    activityNewSortDir
+  );
+
   const visibleBuyers = activityBuyersExpanded
-    ? lastActivityBuyers
-    : lastActivityBuyers.slice(0, ACTIVITY_INITIAL_COUNT);
+    ? sortedBuyers
+    : sortedBuyers.slice(0, ACTIVITY_INITIAL_COUNT);
   const visibleSellers = activitySellersExpanded
-    ? lastActivitySellers
-    : lastActivitySellers.slice(0, ACTIVITY_INITIAL_COUNT);
+    ? sortedSellers
+    : sortedSellers.slice(0, ACTIVITY_INITIAL_COUNT);
   const visibleExits = activityExitsExpanded
-    ? lastActivityExits
-    : lastActivityExits.slice(0, ACTIVITY_INITIAL_COUNT);
+    ? sortedExits
+    : sortedExits.slice(0, ACTIVITY_INITIAL_COUNT);
   const visibleNew = activityNewExpanded
-    ? lastActivityNewPositions
-    : lastActivityNewPositions.slice(0, ACTIVITY_INITIAL_COUNT);
+    ? sortedNew
+    : sortedNew.slice(0, ACTIVITY_INITIAL_COUNT);
+
+  updateInstitutionTableSortButtons(
+    "data-activity-buyers-sort",
+    activityBuyersSortKey,
+    activityBuyersSortDir
+  );
+  updateInstitutionTableSortButtons(
+    "data-activity-sellers-sort",
+    activitySellersSortKey,
+    activitySellersSortDir
+  );
+  updateInstitutionTableSortButtons(
+    "data-activity-exits-sort",
+    activityExitsSortKey,
+    activityExitsSortDir
+  );
+  updateInstitutionTableSortButtons("data-activity-new-sort", activityNewSortKey, activityNewSortDir);
 
   renderActivityMoversTable(
     "activity-buyers-body",
@@ -22315,6 +22363,75 @@ function setupActivityToggles() {
       renderOptionsFundsTable();
     });
   }
+
+  const textDefault = (key) => (key === "fundName" ? "asc" : "desc");
+  const sellersDefault = (key) =>
+    key === "fundName" ? "asc" : key === "sharesChange" || key === "valueChangeUsd" ? "asc" : "desc";
+
+  bindInstitutionTableSort(
+    "data-activity-buyers-sort",
+    () => activityBuyersSortKey,
+    () => activityBuyersSortDir,
+    (k) => {
+      activityBuyersSortKey = k;
+    },
+    (d) => {
+      activityBuyersSortDir = d;
+    },
+    textDefault,
+    () => {
+      activityBuyersExpanded = false;
+      renderActivityTables();
+    }
+  );
+  bindInstitutionTableSort(
+    "data-activity-sellers-sort",
+    () => activitySellersSortKey,
+    () => activitySellersSortDir,
+    (k) => {
+      activitySellersSortKey = k;
+    },
+    (d) => {
+      activitySellersSortDir = d;
+    },
+    sellersDefault,
+    () => {
+      activitySellersExpanded = false;
+      renderActivityTables();
+    }
+  );
+  bindInstitutionTableSort(
+    "data-activity-exits-sort",
+    () => activityExitsSortKey,
+    () => activityExitsSortDir,
+    (k) => {
+      activityExitsSortKey = k;
+    },
+    (d) => {
+      activityExitsSortDir = d;
+    },
+    textDefault,
+    () => {
+      activityExitsExpanded = false;
+      renderActivityTables();
+    }
+  );
+  bindInstitutionTableSort(
+    "data-activity-new-sort",
+    () => activityNewSortKey,
+    () => activityNewSortDir,
+    (k) => {
+      activityNewSortKey = k;
+    },
+    (d) => {
+      activityNewSortDir = d;
+    },
+    textDefault,
+    () => {
+      activityNewExpanded = false;
+      renderActivityTables();
+    }
+  );
 }
 
 setupOwnershipToggle();

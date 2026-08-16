@@ -2001,11 +2001,11 @@
                   <table class="trades-table activity-table" aria-labelledby="activity-buyers-heading">
                     <thead>
                       <tr>
-                        <th>Fund</th>
-                        <th class="num">Shares added</th>
-                        <th class="num">Prior shares</th>
-                        <th class="num">Current shares</th>
-                        <th class="num">Value change</th>
+                        <th><button type="button" class="table-sort-btn" data-activity-buyers-sort="fundName">Fund</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-buyers-sort="sharesChange">Shares added</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-buyers-sort="previousShares">Prior shares</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-buyers-sort="currentShares">Current shares</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-buyers-sort="valueChangeUsd">Value change</button></th>
                       </tr>
                     </thead>
                     <tbody id="activity-buyers-body"></tbody>
@@ -2030,11 +2030,11 @@
                   <table class="trades-table activity-table" aria-labelledby="activity-sellers-heading">
                     <thead>
                       <tr>
-                        <th>Fund</th>
-                        <th class="num">Shares sold</th>
-                        <th class="num">Prior shares</th>
-                        <th class="num">Current shares</th>
-                        <th class="num">Value change</th>
+                        <th><button type="button" class="table-sort-btn" data-activity-sellers-sort="fundName">Fund</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-sellers-sort="sharesChange">Shares sold</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-sellers-sort="previousShares">Prior shares</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-sellers-sort="currentShares">Current shares</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-sellers-sort="valueChangeUsd">Value change</button></th>
                       </tr>
                     </thead>
                     <tbody id="activity-sellers-body"></tbody>
@@ -2059,9 +2059,9 @@
                   <table class="trades-table activity-table" aria-labelledby="activity-exits-heading">
                     <thead>
                       <tr>
-                        <th>Fund</th>
-                        <th class="num">Prior value</th>
-                        <th class="num">Shares exited</th>
+                        <th><button type="button" class="table-sort-btn" data-activity-exits-sort="fundName">Fund</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-exits-sort="previousValueUsd">Prior value</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-exits-sort="previousShares">Shares exited</button></th>
                       </tr>
                     </thead>
                     <tbody id="activity-exits-body"></tbody>
@@ -2086,9 +2086,9 @@
                   <table class="trades-table activity-table" aria-labelledby="activity-new-heading">
                     <thead>
                       <tr>
-                        <th>Fund</th>
-                        <th class="num">Value</th>
-                        <th class="num">Shares</th>
+                        <th><button type="button" class="table-sort-btn" data-activity-new-sort="fundName">Fund</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-new-sort="valueUsd">Value</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-activity-new-sort="shares">Shares</button></th>
                       </tr>
                     </thead>
                     <tbody id="activity-new-body"></tbody>
