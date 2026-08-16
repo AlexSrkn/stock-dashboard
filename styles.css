@@ -4017,6 +4017,17 @@ button.workspace-nav__subsection {
   letter-spacing: -0.03em;
 }
 
+.chart-card__symbol-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.chart-card__symbol-row .chart-card__symbol {
+  margin: 0;
+}
+
 .chart-card__name-row {
   display: flex;
   align-items: center;
@@ -4059,24 +4070,36 @@ button.workspace-nav__subsection {
 
 .stock-add-watchlist-btn {
   flex-shrink: 0;
-  width: 1.35rem;
-  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  font-size: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 1.15rem;
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
+.stock-add-watchlist-btn[hidden] {
+  display: none !important;
+}
+
 .stock-add-watchlist-btn:hover {
-  color: var(--text);
-  background: var(--surface-2);
-  border-color: var(--muted);
+  color: var(--accent);
+  background: rgba(62, 230, 176, 0.1);
+  border-color: rgba(62, 230, 176, 0.4);
+}
+
+.stock-add-watchlist-btn:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.5);
+  outline-offset: 2px;
 }
 
 .chart-card__price-block {
