@@ -21318,9 +21318,24 @@ function setupMobileTopbarNav() {
   const topbar = document.querySelector(".topbar");
   const menuBtn = document.getElementById("topbar-menu-btn");
   const backdrop = document.getElementById("topbar-nav-backdrop");
+  const nav = document.getElementById("workspace-nav");
+  const start = topbar?.querySelector(".topbar__start");
+  const brand = start?.querySelector(".topbar__brand");
   const openIcon = menuBtn?.querySelector(".topbar__menu-icon--open");
   const closeIcon = menuBtn?.querySelector(".topbar__menu-icon--close");
-  if (!topbar || !menuBtn) return;
+  if (!topbar || !menuBtn || !nav) return;
+
+  const placeNav = () => {
+    const mobile = window.matchMedia("(max-width: 900px)").matches;
+    if (mobile) {
+      // Keep fixed drawer out of the topbar (backdrop-filter creates a fixed containing block).
+      if (nav.parentElement !== topbar.parentElement || nav.previousElementSibling !== topbar) {
+        topbar.insertAdjacentElement("afterend", nav);
+      }
+    } else if (brand && nav.parentElement !== start) {
+      brand.insertAdjacentElement("afterend", nav);
+    }
+  };
 
   const setOpen = (open) => {
     topbar.classList.toggle("is-nav-open", open);
@@ -21333,6 +21348,8 @@ function setupMobileTopbarNav() {
   };
 
   const closeNav = () => setOpen(false);
+
+  placeNav();
 
   menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -21351,8 +21368,7 @@ function setupMobileTopbarNav() {
     closeNav();
   });
 
-  const nav = document.getElementById("workspace-nav");
-  nav?.addEventListener("click", (e) => {
+  nav.addEventListener("click", (e) => {
     const target = e.target.closest?.(
       ".explore-nav__btn, .workspace-nav__subsection, [data-explore], [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
     );
@@ -21360,6 +21376,7 @@ function setupMobileTopbarNav() {
   });
 
   window.addEventListener("resize", () => {
+    placeNav();
     if (window.matchMedia("(min-width: 901px)").matches) closeNav();
   });
 }
