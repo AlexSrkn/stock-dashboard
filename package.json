@@ -71,6 +71,7 @@
     "sec:scrape-13f-info-managers": "tsx scripts/scrape-13f-info-managers.ts",
     "institutions:import-13f-info": "tsx scripts/import-13f-info-institutions.ts",
     "institutions:import-13f-info:loop": "tsx scripts/import-13f-info-institutions-loop.ts",
+    "institutions:sync-from-db": "tsx scripts/sync-tracked-institutions-from-db.ts",
     "institutions:reclassify": "tsx scripts/reclassify-institutions.ts",
     "test:13f-info-managers": "tsx --test src/sec/thirteenFInfo/parseDirectory.test.ts",
     "db:init": "tsx scripts/db-init.ts",

@@ -998,7 +998,7 @@ function renderOwnershipEmpty(msg) {
     `<tr><td colspan="6" class="trades-table__empty">${escapeHtml(msg)}</td></tr>`
   );
   updateOwnershipMoreControl();
-  setOwnershipSubtitle("Tracked institutional filers");
+  setOwnershipSubtitle("Institutional holders from 13F filings");
 }
 
 /** Format raw USD value changes for institutional activity / ownership tables. */
@@ -1094,7 +1094,7 @@ function updateOwnershipMoreControl() {
 function renderOwnershipTable() {
   if (!lastOwnershipHolders.length) {
     renderOwnershipHoldersBody(
-      `<tr><td colspan="6" class="trades-table__empty">No positions from tracked institutional filers for this quarter. Run <code class="inline-code">npm run db:ingest-institutional-13f</code> to load all curated funds (BlackRock, Vanguard, Berkshire, etc.).</td></tr>`
+      `<tr><td colspan="6" class="trades-table__empty">No institutional holders found for this quarter. Confirm 13F data is ingested for this ticker.</td></tr>`
     );
     updateOwnershipMoreControl();
     return;

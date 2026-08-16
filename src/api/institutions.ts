@@ -58,8 +58,11 @@ export async function tryHandleInstitutions(
   res: http.ServerResponse
 ): Promise<boolean> {
   if (ROUTE_LIST_RE.test(url.pathname)) {
+    // Re-read imported-tracked-managers.json so a sync without process restart is visible.
+    const { reloadTrackedInstitutions } = await import("../ownership/trackedInstitutions.js");
+    reloadTrackedInstitutions();
     const funds = listTrackedInstitutions();
-    json(res, 200, { funds, count: funds.length }, 3600);
+    json(res, 200, { funds, count: funds.length }, 60);
     return true;
   }
 

@@ -46,8 +46,10 @@ function pctChange(current: number, previous: number): number | null {
 }
 
 export function resolveInstitutionCik(cik: string): string | null {
-  const padded = formatSecCik(cik);
-  return getTrackedInstitutionByCik(padded) ? padded : null;
+  const digits = String(cik || "").replace(/\D/g, "");
+  if (!digits) return null;
+  // Allow any well-formed CIK; presence of filings is validated by the query layer.
+  return formatSecCik(digits);
 }
 
 export function listTrackedInstitutions(): InstitutionSummary[] {
@@ -68,13 +70,35 @@ export async function loadInstitutionMeta(
   cik: string
 ): Promise<InstitutionProfileMeta | null> {
   const manager = getTrackedInstitutionByCik(cik);
-  if (!manager) return null;
-
   const quarters = await loadFilerQuarters(pool, cik, 2);
   const stats = await pool.query<{
     filings_count: number;
     latest_filing_date: string | null;
   }>(SELECT_FILER_PROFILE_STATS_SQL, [cik]);
+
+  const filingsOnRecord = Number(stats.rows[0]?.filings_count ?? 0);
+  if (!manager && filingsOnRecord <= 0 && quarters.length === 0) {
+    return null;
+  }
+
+  let name = manager?.name ?? null;
+  let type = manager?.type ?? "hedge_fund";
+  if (!name) {
+    const nameRes = await pool.query<{ fund_name: string }>(
+      `SELECT COALESCE(NULLIF(BTRIM(fund_name), ''), filer_cik) AS fund_name
+       FROM sec_filing
+       WHERE filer_cik = $1
+       ORDER BY filing_date DESC NULLS LAST, id DESC
+       LIMIT 1`,
+      [cik]
+    );
+    name = nameRes.rows[0]?.fund_name ? String(nameRes.rows[0].fund_name) : null;
+    if (!name) return null;
+    const { inferInstitutionalManagerType } = await import(
+      "../ownership/classifyInstitutionalManager.js"
+    );
+    type = inferInstitutionalManagerType(name);
+  }
 
   const currentQuarter = quarters[0] ?? null;
   const previousQuarter = quarters[1] ?? null;
@@ -97,15 +121,15 @@ export async function loadInstitutionMeta(
 
   const row = stats.rows[0];
   return {
-    name: manager.name,
+    name,
     cik,
-    type: manager.type,
+    type,
     currentQuarter,
     previousQuarter,
     latestFilingDate: row?.latest_filing_date ?? null,
     positionCount,
     portfolioValueUsd,
-    filingsOnRecord: Number(row?.filings_count ?? 0),
+    filingsOnRecord,
   };
 }
 

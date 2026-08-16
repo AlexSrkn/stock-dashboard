@@ -18,6 +18,7 @@ import {
   type InstitutionRecord,
   type InstitutionType,
 } from "./InstitutionDirectory.js";
+import { INSTITUTIONAL_13F_MANAGERS } from "../../sec/seed/institutional-ciks.js";
 import { normalizeCusip } from "../../sec/thirteenF/normalizeHoldings.js";
 
 const TREND_EPS = 0.005; // ±0.5% change band counts as neutral
@@ -211,7 +212,29 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
   const t0 = Date.now();
   await ensureOwnershipSchema(pool);
 
+  // Name/type lookup from directory; holdings aggregation uses the curated seed CIKs only.
+  // After a bulk sync TRACKED_* can be thousands of filers — loading all of them here OOMs.
   const directory = buildSeedDirectoryMap();
+  const dirRes = await pool.query<{
+    cik: string;
+    name: string;
+    normalized_name: string;
+    type: InstitutionType;
+  }>(`SELECT cik, name, normalized_name, type FROM institution`);
+  for (const r of dirRes.rows) {
+    const cik = formatSecCik(r.cik);
+    if (!directory.has(cik)) continue;
+    directory.set(cik, {
+      cik,
+      name: r.name,
+      normalizedName: r.normalized_name,
+      type: r.type,
+    });
+  }
+
+  const curatedCiks = INSTITUTIONAL_13F_MANAGERS.filter((m) => m.cik).map((m) =>
+    formatSecCik(m.cik as string)
+  );
 
   // Use one dedicated connection with no statement timeout: the raw 13F holdings
   // aggregation is intentionally heavy (hundreds of thousands of rows).
@@ -224,7 +247,7 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
     await client.query("SET statement_timeout = 0");
 
     const clientAsPool = client as unknown as pg.Pool;
-    const holdings = await loadInstitutionHoldings(clientAsPool);
+    const holdings = await loadInstitutionHoldings(clientAsPool, curatedCiks);
     const sharesOutstanding = await loadSharesOutstanding(clientAsPool);
 
     const computed = computeOwnershipRows(holdings, directory, sharesOutstanding);

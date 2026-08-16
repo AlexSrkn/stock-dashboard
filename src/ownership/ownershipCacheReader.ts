@@ -213,14 +213,18 @@ export async function fetchCachedQuarterPairMap(
 export async function fetchFilerSharesByCusipQuarter(
   pool: pg.Pool,
   cusips: string[],
-  quarter: string
+  quarter: string,
+  sharesOutstanding: number | null = null,
+  stockPrice: number | null = null
 ): Promise<Map<string, FundHoldingAggregate>> {
   const out = new Map<string, FundHoldingAggregate>();
   if (!cusips.length || !quarter) return out;
-  const res = await pool.query<{ filer_cik: string; fund_name: string; shares: string | number }>(
-    SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL,
-    [cusips, quarter]
-  );
+  const res = await pool.query<{
+    filer_cik: string;
+    fund_name: string;
+    shares: string | number;
+    value_usd_thousands?: string | number | null;
+  }>(SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL, [cusips, quarter]);
   for (const row of res.rows) {
     const filerCik = formatSecCik(String(row.filer_cik));
     const shares = round2(Number(row.shares));
@@ -229,8 +233,8 @@ export async function fetchFilerSharesByCusipQuarter(
       fundName: String(row.fund_name || filerCik),
       filerCik,
       shares,
-      valueUsd: null,
-      pctOutstanding: null,
+      valueUsd: resolvePositionValueUsd(shares, row.value_usd_thousands, stockPrice),
+      pctOutstanding: pctOfOutstanding(shares, sharesOutstanding),
     });
   }
   return out;

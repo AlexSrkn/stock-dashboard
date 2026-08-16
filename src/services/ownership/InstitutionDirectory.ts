@@ -209,7 +209,7 @@ export async function loadInstitutionDirectoryByCik(
   return map;
 }
 
-/** Idempotently (re)build the institution directory from the seed list. */
+/** Idempotently (re)build the institution directory from the seed list + DB filers. */
 export async function refreshInstitutionDirectory(
   pool: pg.Pool = getPool()
 ): Promise<InstitutionRecord[]> {
@@ -218,7 +218,23 @@ export async function refreshInstitutionDirectory(
   for (const rec of records) {
     await pool.query(UPSERT_SQL, [rec.cik, rec.name, rec.normalizedName, rec.type]);
   }
-  return records;
+  // Expand beyond the curated ~40 using every filer already ingested into sec_filing.
+  const { syncTrackedInstitutionsFromDb } = await import(
+    "../../ownership/syncTrackedFromDb.js"
+  );
+  await syncTrackedInstitutionsFromDb(pool);
+  const res = await pool.query<{
+    cik: string;
+    name: string;
+    normalized_name: string;
+    type: InstitutionType;
+  }>(`SELECT cik, name, normalized_name, type FROM institution`);
+  return res.rows.map((r) => ({
+    cik: formatSecCik(r.cik),
+    name: r.name,
+    normalizedName: r.normalized_name,
+    type: r.type,
+  }));
 }
 
 /** In-memory directory (cik -> record) built from the seed; used by the cache builder. */

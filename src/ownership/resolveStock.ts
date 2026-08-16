@@ -2,11 +2,10 @@ import type pg from "pg";
 import { secFetchJson } from "../sec/http.js";
 import { normalizeCusip } from "../sec/thirteenF/normalizeHoldings.js";
 import {
-  SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
   SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL,
   SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL,
+  SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
 } from "./queries.js";
-import { TRACKED_INSTITUTIONAL_CIK_PADDED } from "./trackedInstitutions.js";
 
 const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
 
@@ -42,7 +41,7 @@ async function resolveCusipsFromIssuerPattern(
 ): Promise<ResolvedStock | null> {
   const res = await pool.query<{ cusip: string; issuer: string }>(
     SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
-    [issuerPattern, [...TRACKED_INSTITUTIONAL_CIK_PADDED]]
+    [issuerPattern]
   );
 
   const cusips = [
@@ -58,7 +57,6 @@ async function resolveCusipsFromIssuerPattern(
   if (cusips.length > 1) {
     const primary = await pool.query<{ cusip: string }>(SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL, [
       cusips,
-      [...TRACKED_INSTITUTIONAL_CIK_PADDED],
     ]);
     const top = primary.rows[0]?.cusip;
     if (top) {
@@ -159,7 +157,7 @@ export async function resolveStockIdentifiers(
 
   const res = await pool.query<{ cusip: string; issuer: string }>(
     SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL,
-    [issuerPattern, [...TRACKED_INSTITUTIONAL_CIK_PADDED]]
+    [issuerPattern]
   );
 
   const cusips = [
@@ -180,7 +178,6 @@ export async function resolveStockIdentifiers(
   if (cusips.length > 1) {
     const primary = await pool.query<{ cusip: string }>(SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL, [
       cusips,
-      [...TRACKED_INSTITUTIONAL_CIK_PADDED],
     ]);
     const top = primary.rows[0]?.cusip;
     if (top) {

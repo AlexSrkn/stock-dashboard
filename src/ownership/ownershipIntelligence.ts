@@ -8,7 +8,6 @@ import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
 import { loadOwnershipMeta } from "./ownershipAnalytics.js";
 import {
-  fetchCachedTopHolders,
   fetchFilerSharesByCusipQuarter,
   loadOwnershipCacheSnapshot,
 } from "./ownershipCacheReader.js";
@@ -16,16 +15,6 @@ import type { FundHoldingAggregate } from "./types.js";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
-}
-
-function holdingsByFiler(
-  map: Map<string, FundHoldingAggregate>
-): Map<string, FundHoldingAggregate> {
-  const out = new Map<string, FundHoldingAggregate>();
-  for (const h of map.values()) {
-    out.set(h.filerCik || h.fundName, h);
-  }
-  return out;
 }
 
 function trendFromOwnershipCache(raw: string | null): ActivityTrend | null {
@@ -221,20 +210,24 @@ export async function getOwnershipIntelligence(
     }
 
     if (ownershipMeta.currentQuarter) {
-      const currentHolders = await fetchCachedTopHolders(
-        pool,
-        ownershipMeta.ticker,
-        ownershipMeta.impliedSharesOutstanding,
-        ownershipMeta.stockPrice,
-        20000
-      );
-      const current = holdingsByFiler(new Map(currentHolders.map((h) => [h.filerCik || h.fundName, h])));
+      const current =
+        ownershipMeta.cusips.length
+          ? await fetchFilerSharesByCusipQuarter(
+              pool,
+              ownershipMeta.cusips,
+              ownershipMeta.currentQuarter,
+              ownershipMeta.impliedSharesOutstanding,
+              ownershipMeta.stockPrice
+            )
+          : new Map();
       const previous =
         ownershipMeta.previousQuarter && ownershipMeta.cusips.length
           ? await fetchFilerSharesByCusipQuarter(
               pool,
               ownershipMeta.cusips,
-              ownershipMeta.previousQuarter
+              ownershipMeta.previousQuarter,
+              ownershipMeta.impliedSharesOutstanding,
+              ownershipMeta.stockPrice
             )
           : new Map();
       const flow = computeShareFlow(current, previous);

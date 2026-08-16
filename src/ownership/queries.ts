@@ -34,17 +34,15 @@ latest_filings AS (
 )
 `.trim();
 
-/** Resolve ticker → CUSIP(s) via issuer name (pg_trgm on issuer; scoped to tracked filers). */
+/** Resolve ticker → CUSIP(s) via issuer name (pg_trgm on issuer; all filers). */
 export const SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL = `
 SELECT cusip, MAX(issuer) AS issuer
 FROM sec_holding
 WHERE issuer ILIKE $1
-  AND filer_cik = ANY($2::bpchar[])
   ${SQL_COMMON_STOCK_ONLY}
 GROUP BY cusip
 LIMIT 32;
 `.trim();
-
 export const SELECT_RECENT_QUARTERS_FOR_CUSIPS_SQL = `
 WITH ${CTE_LATEST_FILINGS}
 SELECT h.quarter
@@ -73,6 +71,7 @@ LIMIT $3;
 
 /**
  * Common-stock only; grouped by filer — puts/calls never included.
+ * $3 optional CIK filter: pass NULL to include every filer holding the CUSIP.
  */
 export const SELECT_TRACKED_AGGREGATES_BY_FILER_SQL = `
 WITH ${CTE_LATEST_FILINGS}
@@ -85,7 +84,7 @@ FROM sec_holding h
 INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
 WHERE h.cusip = ANY($1::bpchar[])
   AND h.quarter = $2
-  AND h.filer_cik = ANY($3::bpchar[])
+  AND ($3::bpchar[] IS NULL OR h.filer_cik = ANY($3::bpchar[]))
   ${sqlCommonStockOnly("h")}
 GROUP BY h.filer_cik
 HAVING SUM(h.shares) > 0
@@ -105,11 +104,10 @@ FROM sec_holding h
 INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
 WHERE h.cusip = ANY($1::bpchar[])
   AND h.quarter = ANY($2::text[])
-  AND h.filer_cik = ANY($3::bpchar[])
+  AND ($3::bpchar[] IS NULL OR h.filer_cik = ANY($3::bpchar[]))
   ${sqlCommonStockOnly("h")}
 GROUP BY h.quarter, h.filer_cik;
 `.trim();
-
 export const SELECT_ALL_AGGREGATES_BY_FUND_FOR_QUARTERS_SQL = `
 SELECT
   quarter,
@@ -199,13 +197,11 @@ export const SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL = `
 SELECT cusip
 FROM sec_holding
 WHERE cusip = ANY($1::bpchar[])
-  AND filer_cik = ANY($2::bpchar[])
   ${SQL_COMMON_STOCK_ONLY}
 GROUP BY cusip
 ORDER BY SUM(shares) DESC
 LIMIT 1;
 `.trim();
-
 export const SELECT_OWNERSHIP_CACHE_BY_TICKER_SQL = `
 SELECT
   ticker,
@@ -234,7 +230,10 @@ ORDER BY shares DESC
 LIMIT $2
 `.trim();
 
-/** Latest common-stock shares by filer for a CUSIP set in one quarter (no full tracked-CIK scan). */
+/**
+ * Latest common-stock holdings by filer for a CUSIP set in one quarter.
+ * Includes every filer in sec_holding (not limited to the curated seed list).
+ */
 export const SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL = `
 WITH filers AS (
   SELECT DISTINCT filer_cik
@@ -255,7 +254,8 @@ latest_filings AS (
 SELECT
   h.filer_cik,
   MAX(h.fund_name) AS fund_name,
-  SUM(h.shares)::float8 AS shares
+  SUM(h.shares)::float8 AS shares,
+  SUM(COALESCE(h.value, h.value_usd_thousands))::float8 AS value_usd_thousands
 FROM sec_holding h
 INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
 WHERE h.cusip = ANY($1::bpchar[])
@@ -263,6 +263,7 @@ WHERE h.cusip = ANY($1::bpchar[])
   ${sqlCommonStockOnly("h")}
 GROUP BY h.filer_cik
 HAVING SUM(h.shares) > 0
+ORDER BY SUM(h.shares) DESC
 `.trim();
 
 /** Resolve primary CUSIP via top cached holders' share counts (fast when sec_holding.ticker is unset). */

@@ -22,13 +22,11 @@ import {
 } from "./queries.js";
 import { resolveStockIdentifiers } from "./resolveStock.js";
 import {
-  fetchCachedQuarterPairMap,
-  fetchCachedTopHolders,
-  fetchPreviousHoldersForCiks,
   loadOwnershipCacheSnapshot,
 } from "./ownershipCacheReader.js";
 import {
   canonicalFundName,
+  reloadTrackedInstitutions,
   TRACKED_INSTITUTIONAL_CIK_PADDED,
   TRACKED_INSTITUTIONAL_MANAGERS,
 } from "./trackedInstitutions.js";
@@ -143,6 +141,7 @@ export async function loadOwnershipMeta(
   pool: pg.Pool,
   ticker: string
 ): Promise<OwnershipQueryMeta> {
+  reloadTrackedInstitutions();
   const stock = await resolveStockIdentifiers(pool, ticker);
   const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, stock.ticker);
   const [quarters, quote] = await Promise.all([
@@ -185,10 +184,11 @@ export async function fetchTrackedAggregatesForQuarter(
   stockPrice: number | null,
   limit = 500
 ): Promise<FundHoldingAggregate[]> {
+  // NULL CIK filter → every filer in sec_holding for this CUSIP (full bulk ingest).
   const res = await pool.query<TrackedFundAggRow>(SELECT_TRACKED_AGGREGATES_BY_FILER_SQL, [
     cusips,
     quarter,
-    [...TRACKED_INSTITUTIONAL_CIK_PADDED],
+    null,
     limit,
   ]);
   return sortByValueDesc(
@@ -203,27 +203,15 @@ export async function fetchQuarterPairMap(
   previousQuarter: string | null,
   sharesOutstanding: number | null,
   stockPrice: number | null,
-  ticker?: string,
-  options: { skipCache?: boolean } = {}
+  _ticker?: string,
+  _options: { skipCache?: boolean } = {}
 ): Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }> {
-  if (ticker && !options.skipCache) {
-    const snapshot = await loadOwnershipCacheSnapshot(pool, ticker);
-    if (snapshot?.currentQuarter === currentQuarter) {
-      return fetchCachedQuarterPairMap(
-        pool,
-        ticker,
-        cusips,
-        snapshot,
-        sharesOutstanding,
-        stockPrice
-      );
-    }
-  }
-
+  // Always query sec_holding for all filers. ownership_holding is curated-only and
+  // understates holders after a bulk 13F ingest.
   const quarters = previousQuarter ? [currentQuarter, previousQuarter] : [currentQuarter];
   const res = await pool.query<TrackedFundAggRow & { quarter: string }>(
     SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL,
-    [cusips, quarters, [...TRACKED_INSTITUTIONAL_CIK_PADDED]]
+    [cusips, quarters, null]
   );
 
   const byQ = new Map<string, TrackedFundAggRow[]>();
@@ -261,53 +249,25 @@ export async function getTopHolders(
   }
   const limit = Math.min(200, Math.max(1, options.limit ?? 100));
 
-  const cacheSnapshot = await loadOwnershipCacheSnapshot(pool, meta.ticker);
-  let holders: FundHoldingAggregate[];
-  if (cacheSnapshot?.currentQuarter === meta.currentQuarter) {
-    holders = sortByValueDesc(
-      await fetchCachedTopHolders(
-        pool,
-        meta.ticker,
-        meta.impliedSharesOutstanding,
-        meta.stockPrice,
-        limit,
-        { cusips: meta.cusips, quarter: meta.currentQuarter }
-      )
-    );
-  } else {
-    holders = await fetchTrackedAggregatesForQuarter(
+  let holders = await fetchTrackedAggregatesForQuarter(
+    pool,
+    meta.cusips,
+    meta.currentQuarter,
+    meta.impliedSharesOutstanding,
+    meta.stockPrice,
+    limit
+  );
+
+  if (meta.previousQuarter) {
+    const { previous } = await fetchQuarterPairMap(
       pool,
       meta.cusips,
       meta.currentQuarter,
+      meta.previousQuarter,
       meta.impliedSharesOutstanding,
       meta.stockPrice,
-      limit
+      meta.ticker
     );
-  }
-
-  if (meta.previousQuarter) {
-    const ciks = holders.map((h) => h.filerCik).filter((c): c is string => Boolean(c));
-    const previous =
-      cacheSnapshot?.currentQuarter === meta.currentQuarter && ciks.length
-        ? await fetchPreviousHoldersForCiks(
-            pool,
-            meta.cusips,
-            meta.previousQuarter,
-            ciks,
-            meta.impliedSharesOutstanding,
-            meta.stockPrice
-          )
-        : (
-            await fetchQuarterPairMap(
-              pool,
-              meta.cusips,
-              meta.currentQuarter,
-              meta.previousQuarter,
-              meta.impliedSharesOutstanding,
-              meta.stockPrice,
-              meta.ticker
-            )
-          ).previous;
     holders = attachQuarterOverQuarterChange(holders, previous);
   }
 
@@ -416,29 +376,16 @@ export async function getSoldOut(
     return { meta, positions: [] };
   }
 
-  // Compare full tracked holders for both quarters by CIK. Do not use
-  // ownership_holding as "current" — that cache is incomplete for some tickers
-  // and would falsely list still-held mega funds as exits.
-  const trackedCiks = [...TRACKED_INSTITUTIONAL_CIK_PADDED];
-  const [current, previous] = await Promise.all([
-    fetchPreviousHoldersForCiks(
-      pool,
-      meta.cusips,
-      meta.currentQuarter,
-      trackedCiks,
-      meta.impliedSharesOutstanding,
-      meta.stockPrice
-    ),
-    fetchPreviousHoldersForCiks(
-      pool,
-      meta.cusips,
-      meta.previousQuarter,
-      trackedCiks,
-      meta.impliedSharesOutstanding,
-      meta.stockPrice
-    ),
-  ]);
-
+  // Compare all filers for both quarters by CIK (full sec_holding universe).
+  const { current, previous } = await fetchQuarterPairMap(
+    pool,
+    meta.cusips,
+    meta.currentQuarter,
+    meta.previousQuarter,
+    meta.impliedSharesOutstanding,
+    meta.stockPrice,
+    meta.ticker
+  );
   const previousCiks = [
     ...new Set(
       [...previous.values()]
