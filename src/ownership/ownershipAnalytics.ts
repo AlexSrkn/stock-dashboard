@@ -95,6 +95,19 @@ function sortByValueDesc(holders: FundHoldingAggregate[]): FundHoldingAggregate[
   return [...holders].sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
 }
 
+const QUARTER_PAIR_TTL_MS = 60_000;
+const quarterPairCache = new Map<
+  string,
+  {
+    expiresAt: number;
+    value: { current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> };
+  }
+>();
+const quarterPairInflight = new Map<
+  string,
+  Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }>
+>();
+
 function holderByCikMap(holders: Iterable<FundHoldingAggregate>): Map<string, FundHoldingAggregate> {
   const out = new Map<string, FundHoldingAggregate>();
   for (const h of holders) {
@@ -203,39 +216,66 @@ export async function fetchQuarterPairMap(
   previousQuarter: string | null,
   sharesOutstanding: number | null,
   stockPrice: number | null,
-  _ticker?: string,
+  ticker?: string,
   _options: { skipCache?: boolean } = {}
 ): Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }> {
-  // Always query sec_holding for all filers. ownership_holding is curated-only and
-  // understates holders after a bulk 13F ingest.
-  const quarters = previousQuarter ? [currentQuarter, previousQuarter] : [currentQuarter];
-  const res = await pool.query<TrackedFundAggRow & { quarter: string }>(
-    SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL,
-    [cusips, quarters, null]
-  );
+  const cacheKey = [
+    ticker || "",
+    cusips.join(","),
+    currentQuarter,
+    previousQuarter || "",
+    sharesOutstanding ?? "",
+    stockPrice ?? "",
+  ].join("|");
+  const hit = quarterPairCache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) return hit.value;
+  if (quarterPairInflight.has(cacheKey)) return quarterPairInflight.get(cacheKey)!;
 
-  const byQ = new Map<string, TrackedFundAggRow[]>();
-  for (const row of res.rows) {
-    const q = String(row.quarter);
-    const list = byQ.get(q) ?? [];
-    list.push(row);
-    byQ.set(q, list);
-  }
+  const run = (async () => {
+    const quarters = previousQuarter ? [currentQuarter, previousQuarter] : [currentQuarter];
+    const res = await pool.query<TrackedFundAggRow & { quarter: string }>(
+      SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL,
+      [cusips, quarters, null]
+    );
 
-  const current = new Map(
-    withHolderMetrics(byQ.get(currentQuarter) ?? [], sharesOutstanding, stockPrice, trackedDisplayName).map(
-      (h) => [h.fundName, h]
-    )
-  );
-  const previous = previousQuarter
-    ? new Map(
-        withHolderMetrics(byQ.get(previousQuarter) ?? [], sharesOutstanding, stockPrice, trackedDisplayName).map(
-          (h) => [h.fundName, h]
+    const byQ = new Map<string, TrackedFundAggRow[]>();
+    for (const row of res.rows) {
+      const q = String(row.quarter);
+      const list = byQ.get(q) ?? [];
+      list.push(row);
+      byQ.set(q, list);
+    }
+
+    const current = new Map(
+      withHolderMetrics(
+        byQ.get(currentQuarter) ?? [],
+        sharesOutstanding,
+        stockPrice,
+        trackedDisplayName
+      ).map((h) => [h.fundName, h])
+    );
+    const previous = previousQuarter
+      ? new Map(
+          withHolderMetrics(
+            byQ.get(previousQuarter) ?? [],
+            sharesOutstanding,
+            stockPrice,
+            trackedDisplayName
+          ).map((h) => [h.fundName, h])
         )
-      )
-    : new Map();
+      : new Map();
 
-  return { current, previous };
+    const value = { current, previous };
+    quarterPairCache.set(cacheKey, { expiresAt: Date.now() + QUARTER_PAIR_TTL_MS, value });
+    return value;
+  })();
+
+  quarterPairInflight.set(cacheKey, run);
+  try {
+    return await run;
+  } finally {
+    quarterPairInflight.delete(cacheKey);
+  }
 }
 
 export async function getTopHolders(
@@ -249,25 +289,18 @@ export async function getTopHolders(
   }
   const limit = Math.min(200, Math.max(1, options.limit ?? 100));
 
-  let holders = await fetchTrackedAggregatesForQuarter(
+  const { current, previous } = await fetchQuarterPairMap(
     pool,
     meta.cusips,
     meta.currentQuarter,
+    meta.previousQuarter,
     meta.impliedSharesOutstanding,
     meta.stockPrice,
-    limit
+    meta.ticker
   );
 
+  let holders = sortByValueDesc([...current.values()]).slice(0, limit);
   if (meta.previousQuarter) {
-    const { previous } = await fetchQuarterPairMap(
-      pool,
-      meta.cusips,
-      meta.currentQuarter,
-      meta.previousQuarter,
-      meta.impliedSharesOutstanding,
-      meta.stockPrice,
-      meta.ticker
-    );
     holders = attachQuarterOverQuarterChange(holders, previous);
   }
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   INSTITUTIONAL_13F_MANAGERS,
@@ -23,6 +23,7 @@ type TrackedManager = Institutional13FManager & { cik: string };
 const trackedManagers: TrackedManager[] = [];
 const trackedCiksPadded: string[] = [];
 const byCik = new Map<string, TrackedManager>();
+let importedFileMtimeMs = -1;
 
 function readImportedTrackedManagers(): TrackedManager[] {
   if (!existsSync(IMPORTED_TRACKED_MANAGERS_PATH)) return [];
@@ -61,8 +62,36 @@ function curatedTrackedManagers(): TrackedManager[] {
   );
 }
 
+function importedFileChanged(): boolean {
+  if (!existsSync(IMPORTED_TRACKED_MANAGERS_PATH)) {
+    const changed = importedFileMtimeMs !== 0;
+    importedFileMtimeMs = 0;
+    return changed;
+  }
+  try {
+    const mtime = statSync(IMPORTED_TRACKED_MANAGERS_PATH).mtimeMs;
+    if (mtime === importedFileMtimeMs) return false;
+    importedFileMtimeMs = mtime;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 /** Rebuild curated + imported tracked managers (idempotent; curated wins on CIK clash). */
-export function reloadTrackedInstitutions(): void {
+export function reloadTrackedInstitutions(force = false): void {
+  if (!force && trackedManagers.length > 0 && !importedFileChanged()) return;
+
+  if (existsSync(IMPORTED_TRACKED_MANAGERS_PATH)) {
+    try {
+      importedFileMtimeMs = statSync(IMPORTED_TRACKED_MANAGERS_PATH).mtimeMs;
+    } catch {
+      importedFileMtimeMs = -1;
+    }
+  } else {
+    importedFileMtimeMs = 0;
+  }
+
   trackedManagers.length = 0;
   trackedCiksPadded.length = 0;
   byCik.clear();
@@ -82,7 +111,7 @@ export function reloadTrackedInstitutions(): void {
   }
 }
 
-reloadTrackedInstitutions();
+reloadTrackedInstitutions(true);
 
 /** Curated 13F filers + imported 13f.info managers (padded lookups via helpers). */
 export const TRACKED_INSTITUTIONAL_MANAGERS: readonly Institutional13FManager[] =

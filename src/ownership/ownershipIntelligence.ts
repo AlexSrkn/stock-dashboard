@@ -6,11 +6,8 @@ import type { PoliticianTrade } from "../politicians/types.js";
 import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
-import { loadOwnershipMeta } from "./ownershipAnalytics.js";
-import {
-  fetchFilerSharesByCusipQuarter,
-  loadOwnershipCacheSnapshot,
-} from "./ownershipCacheReader.js";
+import { loadOwnershipMeta, fetchQuarterPairMap } from "./ownershipAnalytics.js";
+import { loadOwnershipCacheSnapshot } from "./ownershipCacheReader.js";
 import type { FundHoldingAggregate } from "./types.js";
 
 function round2(n: number): number {
@@ -210,26 +207,26 @@ export async function getOwnershipIntelligence(
     }
 
     if (ownershipMeta.currentQuarter) {
-      const current =
+      const { current: currentByName, previous: previousByName } =
         ownershipMeta.cusips.length
-          ? await fetchFilerSharesByCusipQuarter(
+          ? await fetchQuarterPairMap(
               pool,
               ownershipMeta.cusips,
               ownershipMeta.currentQuarter,
-              ownershipMeta.impliedSharesOutstanding,
-              ownershipMeta.stockPrice
-            )
-          : new Map();
-      const previous =
-        ownershipMeta.previousQuarter && ownershipMeta.cusips.length
-          ? await fetchFilerSharesByCusipQuarter(
-              pool,
-              ownershipMeta.cusips,
               ownershipMeta.previousQuarter,
               ownershipMeta.impliedSharesOutstanding,
-              ownershipMeta.stockPrice
+              ownershipMeta.stockPrice,
+              ownershipMeta.ticker
             )
-          : new Map();
+          : { current: new Map(), previous: new Map() };
+      const current = new Map<string, FundHoldingAggregate>();
+      for (const h of currentByName.values()) {
+        current.set(h.filerCik || h.fundName, h);
+      }
+      const previous = new Map<string, FundHoldingAggregate>();
+      for (const h of previousByName.values()) {
+        previous.set(h.filerCik || h.fundName, h);
+      }
       const flow = computeShareFlow(current, previous);
       const currentCount = countHolders(current);
       const previousCount = countHolders(previous);

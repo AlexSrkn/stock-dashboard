@@ -44,10 +44,8 @@ GROUP BY cusip
 LIMIT 32;
 `.trim();
 export const SELECT_RECENT_QUARTERS_FOR_CUSIPS_SQL = `
-WITH ${CTE_LATEST_FILINGS}
 SELECT h.quarter
 FROM sec_holding h
-INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
 WHERE h.cusip = ANY($1::bpchar[])
   ${sqlCommonStockOnly("h")}
 GROUP BY h.quarter
@@ -72,9 +70,26 @@ LIMIT $3;
 /**
  * Common-stock only; grouped by filer — puts/calls never included.
  * $3 optional CIK filter: pass NULL to include every filer holding the CUSIP.
+ * latest_filings is scoped to filers that actually hold these CUSIPs (not the full universe).
  */
 export const SELECT_TRACKED_AGGREGATES_BY_FILER_SQL = `
-WITH ${CTE_LATEST_FILINGS}
+WITH holders AS (
+  SELECT DISTINCT filer_cik
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = $2
+    AND ($3::bpchar[] IS NULL OR filer_cik = ANY($3::bpchar[]))
+    ${sqlCommonStockOnly()}
+),
+latest_filings AS (
+  SELECT DISTINCT ON (s.filer_cik)
+    s.id AS filing_id,
+    s.filer_cik
+  FROM sec_filing s
+  INNER JOIN holders hod ON hod.filer_cik = s.filer_cik
+  WHERE s.quarter = $2
+  ORDER BY s.filer_cik, s.filing_date DESC, s.id DESC
+)
 SELECT
   h.filer_cik,
   MAX(h.fund_name) AS fund_name,
@@ -93,7 +108,23 @@ LIMIT $4;
 `.trim();
 
 export const SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_QUARTERS_SQL = `
-WITH ${CTE_LATEST_FILINGS}
+WITH holders AS (
+  SELECT DISTINCT filer_cik, quarter
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = ANY($2::text[])
+    AND ($3::bpchar[] IS NULL OR filer_cik = ANY($3::bpchar[]))
+    ${sqlCommonStockOnly()}
+),
+latest_filings AS (
+  SELECT DISTINCT ON (s.filer_cik, s.quarter)
+    s.id AS filing_id,
+    s.filer_cik,
+    s.quarter
+  FROM sec_filing s
+  INNER JOIN holders hod ON hod.filer_cik = s.filer_cik AND hod.quarter = s.quarter
+  ORDER BY s.filer_cik, s.quarter, s.filing_date DESC, s.id DESC
+)
 SELECT
   h.quarter,
   h.filer_cik,
