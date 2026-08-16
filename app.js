@@ -18993,6 +18993,21 @@ function closeTopSearch() {
     ul.innerHTML = "";
     ul.hidden = true;
   }
+  collapseMobileTopSearch();
+}
+
+function expandMobileTopSearch() {
+  const wrap = document.querySelector(".topbar-search");
+  const input = document.getElementById("top-search-input");
+  if (!wrap || !window.matchMedia("(max-width: 900px)").matches) return;
+  wrap.classList.add("is-expanded");
+  input?.focus();
+}
+
+function collapseMobileTopSearch() {
+  const wrap = document.querySelector(".topbar-search");
+  if (!wrap?.classList.contains("is-expanded")) return;
+  wrap.classList.remove("is-expanded");
 }
 
 function renderTopSearchResults(results) {
@@ -21321,8 +21336,6 @@ function setupMobileTopbarNav() {
   const nav = document.getElementById("workspace-nav");
   const start = topbar?.querySelector(".topbar__start");
   const brand = start?.querySelector(".topbar__brand");
-  const openIcon = menuBtn?.querySelector(".topbar__menu-icon--open");
-  const closeIcon = menuBtn?.querySelector(".topbar__menu-icon--close");
   if (!topbar || !menuBtn || !nav) return;
 
   const placeNav = () => {
@@ -21343,8 +21356,6 @@ function setupMobileTopbarNav() {
     menuBtn.setAttribute("aria-expanded", String(open));
     menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     if (backdrop) backdrop.hidden = !open;
-    if (openIcon) openIcon.hidden = open;
-    if (closeIcon) closeIcon.hidden = !open;
   };
 
   const closeNav = () => setOpen(false);
@@ -21777,13 +21788,31 @@ function setupEntityLinkDelegation() {
 function setupTopSearch() {
   const input = document.getElementById("top-search-input");
   const ul = document.getElementById("top-search-results");
+  const wrap = document.querySelector(".topbar-search");
+  const field = wrap?.querySelector(".topbar-search__field");
   if (!input) return;
+
+  field?.addEventListener("click", (e) => {
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    if (wrap.classList.contains("is-expanded")) return;
+    e.preventDefault();
+    expandMobileTopSearch();
+  });
+
+  input.addEventListener("focus", () => {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      wrap?.classList.add("is-expanded");
+    }
+  });
 
   input.addEventListener("input", () => {
     const q = input.value.trim();
     clearTimeout(topSearchDebounceTimer);
     if (!q) {
       closeTopSearch();
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        wrap?.classList.add("is-expanded");
+      }
       return;
     }
     const reqId = ++topSearchRequestId;
@@ -21810,8 +21839,10 @@ function setupTopSearch() {
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      input.value = "";
       closeTopSearch();
       input.blur();
+      collapseMobileTopSearch();
     }
     if (e.key === "Enter") {
       const q = input.value.trim();
@@ -21831,8 +21862,15 @@ function setupTopSearch() {
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (!(t instanceof Node)) return;
-    if (input.contains(t) || ul?.contains(t)) return;
+    if (wrap?.contains(t) || ul?.contains(t)) return;
     closeTopSearch();
+    collapseMobileTopSearch();
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.matchMedia("(min-width: 901px)").matches) {
+      wrap?.classList.remove("is-expanded");
+    }
   });
 }
 

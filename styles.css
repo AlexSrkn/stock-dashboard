@@ -6390,28 +6390,39 @@ body.chart-fullscreen-active {
   }
 
   .topbar__start {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     min-width: 0;
-    max-width: none;
+    max-width: min(48%, 11.5rem);
     gap: 0;
     overflow: hidden;
   }
 
   .topbar__brand {
     min-width: 0;
-  }
-
-  /* Keep mark only — full wordmark overlaps the search field on narrow screens */
-  .topbar .logo-wordmark {
-    display: none;
-  }
-
-  .topbar .logo-chart {
-    height: 1.85rem;
+    max-width: 100%;
   }
 
   .topbar .logo-lockup {
-    gap: 0;
+    gap: 0.35rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .topbar .logo-chart {
+    height: 1.55rem;
+  }
+
+  .topbar .logo-wordmark {
+    display: block;
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar.is-nav-open .topbar__menu-btn {
+    border-color: rgba(52, 211, 153, 0.4);
+    background: rgba(52, 211, 153, 0.08);
   }
 
   .workspace-nav {
@@ -6495,25 +6506,69 @@ body.chart-fullscreen-active {
   }
 
   .topbar__actions {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-width: 0;
     justify-content: flex-end;
     gap: 0.45rem;
-    position: relative;
     z-index: 2;
   }
 
   .topbar__actions .watchlist-toggle {
     flex-shrink: 0;
-    padding: 0 0.7rem;
-    font-size: 0.8rem;
+    padding: 0 0.65rem;
+    font-size: 0.78rem;
   }
 
   .topbar-search {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    position: relative;
+    width: var(--topbar-control-height);
+    min-width: var(--topbar-control-height);
+    max-width: var(--topbar-control-height);
+  }
+
+  .topbar-search .topbar-search__field {
+    width: var(--topbar-control-height);
+    height: var(--topbar-control-height);
+    min-width: var(--topbar-control-height);
+    padding: 0;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .topbar-search .search__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .topbar-search.is-expanded {
+    position: absolute;
+    left: 0.65rem;
+    right: 0.65rem;
     width: auto;
     min-width: 0;
     max-width: none;
+    z-index: 6;
+  }
+
+  .topbar-search.is-expanded .topbar-search__field {
+    width: 100%;
+    padding: 0 0.75rem;
+    justify-content: flex-start;
+    cursor: text;
+    background: rgba(12, 16, 23, 0.98);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .topbar-search.is-expanded .search__input {
+    position: static;
+    width: auto;
+    height: auto;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .topbar-nav-backdrop {
@@ -6553,21 +6608,23 @@ body.chart-fullscreen-active {
   }
 
   .topbar__start {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    max-width: min(52%, 10.5rem);
     gap: 0.5rem;
+  }
+
+  .topbar .logo-wordmark {
+    font-size: 0.88rem;
   }
 
   .topbar__actions {
     width: auto;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     flex-wrap: nowrap;
   }
 
   .topbar-search {
-    flex: 1;
-    min-width: 0;
-    max-width: none;
-    width: auto;
+    flex: 0 0 auto;
   }
 
   .chart-card__symbol {
