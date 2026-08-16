@@ -21349,6 +21349,9 @@ function setupMobileTopbarNav() {
 
   const closeNav = () => setOpen(false);
 
+  // Expose for other handlers (subsection clicks use stopPropagation).
+  window.closeMobileTopbarNav = closeNav;
+
   placeNav();
 
   menuBtn.addEventListener("click", (e) => {
@@ -21368,12 +21371,17 @@ function setupMobileTopbarNav() {
     closeNav();
   });
 
-  nav.addEventListener("click", (e) => {
-    const target = e.target.closest?.(
-      ".explore-nav__btn, .workspace-nav__subsection, [data-explore], [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
-    );
-    if (target) closeNav();
-  });
+  // Capture phase so we still close when subsection handlers call stopPropagation.
+  nav.addEventListener(
+    "click",
+    (e) => {
+      const target = e.target.closest?.(
+        ".explore-nav__btn, .workspace-nav__subsection, [data-explore], [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
+      );
+      if (target && target !== menuBtn) closeNav();
+    },
+    true
+  );
 
   window.addEventListener("resize", () => {
     placeNav();

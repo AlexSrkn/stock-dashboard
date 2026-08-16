@@ -6390,9 +6390,28 @@ body.chart-fullscreen-active {
   }
 
   .topbar__start {
-    flex: 1;
+    flex: 0 0 auto;
     min-width: 0;
-    gap: 0.75rem;
+    max-width: none;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .topbar__brand {
+    min-width: 0;
+  }
+
+  /* Keep mark only — full wordmark overlaps the search field on narrow screens */
+  .topbar .logo-wordmark {
+    display: none;
+  }
+
+  .topbar .logo-chart {
+    height: 1.85rem;
+  }
+
+  .topbar .logo-lockup {
+    gap: 0;
   }
 
   .workspace-nav {
@@ -6476,7 +6495,7 @@ body.chart-fullscreen-active {
   }
 
   .topbar__actions {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     min-width: 0;
     justify-content: flex-end;
     gap: 0.45rem;
@@ -6491,10 +6510,10 @@ body.chart-fullscreen-active {
   }
 
   .topbar-search {
-    flex: 1;
+    flex: 1 1 auto;
     width: auto;
     min-width: 0;
-    max-width: 11rem;
+    max-width: none;
   }
 
   .topbar-nav-backdrop {
@@ -6534,12 +6553,13 @@ body.chart-fullscreen-active {
   }
 
   .topbar__start {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     gap: 0.5rem;
   }
 
   .topbar__actions {
     width: auto;
+    flex: 1 1 auto;
     flex-wrap: nowrap;
   }
 
