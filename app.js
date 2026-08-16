@@ -20820,11 +20820,12 @@ function renderTradingViewWidget(symbol, { force = false } = {}) {
   script.type = "text/javascript";
   script.src = TRADINGVIEW_WIDGET_SRC;
   script.async = true;
+  const isMobile = window.matchMedia("(max-width: 720px)").matches;
   script.innerHTML = JSON.stringify({
     allow_symbol_change: false,
     calendar: false,
     details: false,
-    hide_side_toolbar: false,
+    hide_side_toolbar: isMobile,
     hide_top_toolbar: false,
     hide_legend: false,
     hide_volume: false,
@@ -20839,7 +20840,7 @@ function renderTradingViewWidget(symbol, { force = false } = {}) {
     backgroundColor: "#0c1017",
     gridColor: "rgba(255, 255, 255, 0.06)",
     watchlist: [],
-    withdateranges: true,
+    withdateranges: !isMobile,
     compareSymbols: [],
     studies: [],
     autosize: true,

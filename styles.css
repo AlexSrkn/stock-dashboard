@@ -4113,14 +4113,19 @@ button.workspace-nav__subsection {
   max-width: 100%;
   margin: 0 0 0.5rem;
   text-align: left;
+  overflow: visible;
+  min-height: 7rem;
 }
 .tv-symbol-info .tradingview-widget-container,
 .tv-symbol-info .tradingview-widget-container__widget {
   width: 100%;
+  min-height: 7rem;
   background: transparent !important;
+  overflow: visible;
 }
 .tv-symbol-info iframe {
   width: 100% !important;
+  min-height: 126px;
   background: transparent !important;
   color-scheme: normal; /* prevent UA from painting an opaque iframe background */
 }
@@ -4139,8 +4144,40 @@ button.workspace-nav__subsection {
   .chart-card__price-block {
     width: 100%;
   }
+
+  .chart-card.stock-header {
+    overflow: visible;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
   .tv-symbol-info {
     width: 100%;
+    min-height: 8.5rem;
+    margin-bottom: 0.65rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tv-symbol-info .tradingview-widget-container,
+  .tv-symbol-info .tradingview-widget-container__widget {
+    min-height: 8.25rem;
+  }
+
+  .tv-symbol-info iframe {
+    min-height: 148px;
+  }
+
+  /* Copyright row steals vertical space and can push the price out of view. */
+  .tv-symbol-info .tradingview-widget-copyright {
+    display: none;
+  }
+
+  .chart-wrap--tradingview {
+    /* Keep the right price scale inside the card on narrow screens. */
+    width: 100%;
+    max-width: 100%;
   }
 }
 
