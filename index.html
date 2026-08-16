@@ -13,12 +13,28 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=tradepile-chart-1" />
+    <link rel="stylesheet" href="/styles.css?v=mobile-topbar-1" />
     <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
   <body>
     <div class="app">
       <header class="topbar">
+        <button
+          type="button"
+          class="topbar__menu-btn"
+          id="topbar-menu-btn"
+          aria-expanded="false"
+          aria-controls="workspace-nav"
+          aria-label="Open menu"
+        >
+          <svg class="topbar__menu-icon topbar__menu-icon--open" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          </svg>
+          <svg class="topbar__menu-icon topbar__menu-icon--close" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" hidden>
+            <path d="M5 5l10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          </svg>
+        </button>
+
         <div class="topbar__start">
           <div class="topbar__brand">
             <a href="/" class="logo-lockup logo-lockup--link" id="logo-home-link" aria-label="TradeAtlant home">
@@ -27,7 +43,7 @@
             </a>
           </div>
 
-          <nav class="workspace-nav explore-nav" aria-label="Workspace">
+          <nav class="workspace-nav explore-nav" id="workspace-nav" aria-label="Workspace">
             <ul class="workspace-nav__list" id="workspace-selector-track" data-active="stocks">
               <li class="workspace-nav__item">
                 <button
@@ -69,6 +85,7 @@
                 <div class="workspace-nav__dropdown" role="menu" aria-label="Institutions sections">
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="directory">All institutions</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="notable-investors">Notable Investors</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="performance">Performance</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="most-accumulated">Most accumulated</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="new-positions">New positions</button></li>
@@ -206,6 +223,7 @@
           </button>
         </div>
       </header>
+      <div class="topbar-nav-backdrop" id="topbar-nav-backdrop" hidden></div>
 
       <div id="view-landing" class="landing" hidden>
         <section class="landing-hero" aria-labelledby="landing-title">
@@ -2997,6 +3015,45 @@
 
             <section
               class="institution-most-accumulated trades-card"
+              id="institution-notable-investors"
+              aria-labelledby="institution-notable-investors-heading"
+              hidden
+            >
+              <header class="institution-most-accumulated__head">
+                <div>
+                  <h2 id="institution-notable-investors-heading" class="institution-hub__title">Notable Investors</h2>
+                  <p class="institution-hub__subtitle muted small" id="institution-notable-investors-subtitle">
+                    Well-known investors and the 13F filers behind their public equity portfolios.
+                  </p>
+                </div>
+                <div class="institution-most-accumulated__controls">
+                  <button type="button" class="btn btn--ghost" id="institution-notable-investors-back">← Directory</button>
+                </div>
+              </header>
+
+              <div class="institution-hub__toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="institution-notable-investors-search">Search</label>
+                  <input
+                    type="search"
+                    id="institution-notable-investors-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Filter by investor or firm…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <span class="institution-hub__count" id="institution-notable-investors-count" aria-live="polite"></span>
+              </div>
+
+              <div class="notable-investors__grid" id="institution-notable-investors-grid" role="list"></div>
+              <div class="institution-hub__empty" id="institution-notable-investors-empty" hidden>
+                <p class="institution-hub__empty-text">No notable investors match your search.</p>
+              </div>
+            </section>
+
+            <section
+              class="institution-most-accumulated trades-card"
               id="institution-compare"
               aria-labelledby="institution-compare-heading"
               hidden
@@ -3264,6 +3321,9 @@
               <section class="institution-hub__strategy" aria-labelledby="institution-hub-strategy-heading">
                 <div class="institution-hub__strategy-head">
                   <h3 id="institution-hub-strategy-heading" class="institution-hub__section-label">Browse by Strategy</h3>
+                  <button type="button" class="btn btn--ghost institution-hub__performance-link" id="institution-hub-notable-investors-link">
+                    Notable Investors →
+                  </button>
                   <button type="button" class="btn btn--ghost institution-hub__performance-link" id="institution-hub-performance-link">
                     Performance →
                   </button>
@@ -7541,6 +7601,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=ownership-movers-1"></script>
+    <script type="module" src="/app.js?v=mobile-topbar-1"></script>
   </body>
 </html>

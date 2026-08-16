@@ -441,6 +441,8 @@ let institutionCompareSortKey = "valueA";
 let institutionCompareSortDir = "desc";
 let institutionCompareCikA = "";
 let institutionCompareCikB = "";
+let notableInvestorsBound = false;
+let notableInvestorsQuery = "";
 /** @type {string | null} */
 let activeInstitutionCik = null;
 /** @type {Array<{ name: string; cik: string; type: string }>} */
@@ -1303,6 +1305,9 @@ function parseAppRoute(pathname) {
     }
     if (pathname === "/institutions/compare") {
       return { mode: "institutions", hub: true, institutionCompare: true };
+    }
+    if (pathname === "/institutions/notable-investors") {
+      return { mode: "institutions", hub: true, notableInvestors: true };
     }
     return { mode: "institutions", hub: true };
   }
@@ -4529,6 +4534,7 @@ function updateInstitutionsView() {
   const mostAccumulated = document.getElementById("institution-most-accumulated");
   const newPositions = document.getElementById("institution-new-positions");
   const completelySold = document.getElementById("institution-completely-sold");
+  const notableInvestors = document.getElementById("institution-notable-investors");
   const institutionCompare = document.getElementById("institution-compare");
   const profile = document.getElementById("institution-profile");
   const showProfile = Boolean(activeInstitutionCik);
@@ -4540,6 +4546,7 @@ function updateInstitutionsView() {
   const showMostAccumulated = activeInstitutionHubView === "most-accumulated" && !showProfile;
   const showNewPositions = activeInstitutionHubView === "new-positions" && !showProfile;
   const showCompletelySold = activeInstitutionHubView === "completely-sold" && !showProfile;
+  const showNotableInvestors = activeInstitutionHubView === "notable-investors" && !showProfile;
   const showInstitutionCompare = activeInstitutionHubView === "compare" && !showProfile;
   const showDirectory =
     !showProfile &&
@@ -4547,6 +4554,7 @@ function updateInstitutionsView() {
     !showMostAccumulated &&
     !showNewPositions &&
     !showCompletelySold &&
+    !showNotableInvestors &&
     !showInstitutionCompare;
   if (hub) hub.hidden = !showDirectory;
   if (rankings) rankings.hidden = true; // retired Yahoo price-based rankings UI
@@ -4554,6 +4562,7 @@ function updateInstitutionsView() {
   if (mostAccumulated) mostAccumulated.hidden = showProfile || !showMostAccumulated;
   if (newPositions) newPositions.hidden = showProfile || !showNewPositions;
   if (completelySold) completelySold.hidden = showProfile || !showCompletelySold;
+  if (notableInvestors) notableInvestors.hidden = showProfile || !showNotableInvestors;
   if (institutionCompare) institutionCompare.hidden = showProfile || !showInstitutionCompare;
   if (profile) profile.hidden = !showProfile;
   if (showProfile) {
@@ -4566,6 +4575,8 @@ function updateInstitutionsView() {
     void loadNewPositionsPage();
   } else if (showCompletelySold) {
     void loadCompletelySoldPage();
+  } else if (showNotableInvestors) {
+    renderNotableInvestorsPage();
   } else if (showInstitutionCompare) {
     void loadInstitutionComparePage();
   } else {
@@ -4637,6 +4648,20 @@ function navigateToInstitutionCompare({ cikA = "", cikB = "", replace = false } 
     const state = { explore: "institutions", institutionCompare: true };
     if (replace) history.replaceState(state, "", path);
     else history.pushState(state, "", path);
+  }
+  setExploreMode("institutions", { navigate: false });
+  updateInstitutionsView();
+}
+
+function navigateToNotableInvestors() {
+  activeInstitutionCik = null;
+  activeInstitutionHubView = "notable-investors";
+  if (window.location.pathname !== "/institutions/notable-investors") {
+    history.pushState(
+      { explore: "institutions", notableInvestors: true },
+      "",
+      "/institutions/notable-investors"
+    );
   }
   setExploreMode("institutions", { navigate: false });
   updateInstitutionsView();
@@ -11446,6 +11471,362 @@ function bindInstitutionComparePicker(side) {
   });
 }
 
+/** Curated people ↔ 13F filer map for Institutions → Notable Investors. */
+const NOTABLE_INVESTORS = [
+  {
+    name: "Warren Buffett",
+    firm: "Berkshire Hathaway Inc",
+    cik: "1067983",
+    style: "Value",
+    blurb: "Long-horizon compounder focused on durable businesses and capital allocation.",
+  },
+  {
+    name: "Bill Ackman",
+    firm: "Pershing Square Capital Management",
+    cik: "1336528",
+    style: "Activist",
+    blurb: "Concentrated activist stakes with public campaigns and high-conviction bets.",
+  },
+  {
+    name: "Carl Icahn",
+    firm: "Icahn Enterprises",
+    cik: "921669",
+    style: "Activist",
+    blurb: "Classic activist investor pushing for operational and capital-structure changes.",
+  },
+  {
+    name: "Michael Burry",
+    firm: "Scion Asset Management",
+    cik: "1649339",
+    style: "Deep value",
+    blurb: "Contrarian value investor known for concentrated, thesis-driven portfolios.",
+  },
+  {
+    name: "David Tepper",
+    firm: "Appaloosa Management",
+    cik: "1006438",
+    style: "Opportunistic",
+    blurb: "Macro-aware opportunistic investor with flexible equity and credit exposure.",
+  },
+  {
+    name: "Cathie Wood",
+    firm: "ARK Investment Management",
+    cik: "1697748",
+    style: "Disruptive growth",
+    blurb: "High-conviction growth themes across innovation and technology platforms.",
+  },
+  {
+    name: "George Soros",
+    firm: "Soros Fund Management",
+    cik: "1029160",
+    style: "Macro",
+    blurb: "Macro and event-driven capital allocation across global equity markets.",
+  },
+  {
+    name: "Ray Dalio",
+    firm: "Bridgewater Associates",
+    cik: "1350694",
+    style: "Macro / systematic",
+    blurb: "Principles-driven macro and risk-parity style institutional investing.",
+  },
+  {
+    name: "Jim Simons",
+    firm: "Renaissance Technologies",
+    cik: "1037389",
+    style: "Quant",
+    blurb: "Pioneer of quantitative, model-driven equity trading strategies.",
+  },
+  {
+    name: "David Einhorn",
+    firm: "Greenlight Capital",
+    cik: "1079114",
+    style: "Long/short value",
+    blurb: "Value-oriented long/short manager with public research-driven theses.",
+  },
+  {
+    name: "Paul Singer",
+    firm: "Elliott Investment Management",
+    cik: "1791786",
+    style: "Activist",
+    blurb: "Multi-strategy activist and event-driven investor across industries.",
+  },
+  {
+    name: "Dan Loeb",
+    firm: "Third Point",
+    cik: "1040273",
+    style: "Event-driven",
+    blurb: "Event-driven and activist equity investing with concentrated positions.",
+  },
+  {
+    name: "Ken Griffin",
+    firm: "Citadel Advisors",
+    cik: "1423053",
+    style: "Multi-strategy",
+    blurb: "Large multi-strategy platform spanning equities, quant, and market making.",
+  },
+  {
+    name: "Steve Cohen",
+    firm: "Point72 Asset Management",
+    cik: "1603466",
+    style: "Fundamental L/S",
+    blurb: "Fundamental long/short equity manager with broad sector coverage.",
+  },
+  {
+    name: "Chase Coleman",
+    firm: "Tiger Global Management",
+    cik: "1167483",
+    style: "Growth / tech",
+    blurb: "Growth-oriented public and private technology investing.",
+  },
+  {
+    name: "Philippe Laffont",
+    firm: "Coatue Management",
+    cik: "1135730",
+    style: "Tech growth",
+    blurb: "Technology-focused growth investor across public equity markets.",
+  },
+  {
+    name: "Larry Fink",
+    firm: "BlackRock",
+    cik: "2012383",
+    style: "Asset manager",
+    blurb: "World's largest asset manager and a core institutional ownership benchmark.",
+  },
+  {
+    name: "Tim Buckley",
+    firm: "Vanguard Group",
+    cik: "102909",
+    style: "Asset manager",
+    blurb: "Index and low-cost investing giant and a core ownership benchmark for US equities.",
+  },
+  {
+    name: "Ron O'Hanley",
+    firm: "State Street",
+    cik: "93751",
+    style: "Asset manager",
+    blurb: "Major ETF and institutional asset manager, including the SPDR franchise.",
+  },
+  {
+    name: "Abigail Johnson",
+    firm: "FMR LLC (Fidelity)",
+    cik: "315066",
+    style: "Asset manager",
+    blurb: "One of the largest active and retail-oriented asset managers in the US.",
+  },
+  {
+    name: "Robert Sharps",
+    firm: "T. Rowe Price",
+    cik: "80255",
+    style: "Active equity",
+    blurb: "Fundamental active equity manager with broad mutual-fund and institutional reach.",
+  },
+  {
+    name: "Michael O'Grady",
+    firm: "Northern Trust",
+    cik: "73124",
+    style: "Asset manager",
+    blurb: "Large custody and asset-management franchise with significant equity ownership.",
+  },
+  {
+    name: "Jamie Dimon",
+    firm: "JPMorgan Chase",
+    cik: "19617",
+    style: "Asset manager",
+    blurb: "Mega-bank investment platform and a major institutional equity holder.",
+  },
+  {
+    name: "Ted Pick",
+    firm: "Morgan Stanley",
+    cik: "895421",
+    style: "Asset manager",
+    blurb: "Global wealth and investment management franchise with large public equity books.",
+  },
+  {
+    name: "David Solomon",
+    firm: "Goldman Sachs",
+    cik: "886982",
+    style: "Asset manager",
+    blurb: "Investment bank and asset manager with broad institutional equity exposure.",
+  },
+  {
+    name: "Sergio Ermotti",
+    firm: "UBS Asset Management",
+    cik: "861177",
+    style: "Asset manager",
+    blurb: "Global wealth and asset-management platform with significant US equity holdings.",
+  },
+  {
+    name: "Robin Vince",
+    firm: "Bank of New York Mellon",
+    cik: "1390777",
+    style: "Asset manager",
+    blurb: "Custody and investment-management giant and a major institutional equity owner.",
+  },
+  {
+    name: "Walt Bettinger",
+    firm: "Charles Schwab Investment Management",
+    cik: "884546",
+    style: "Asset manager",
+    blurb: "Retail brokerage-led asset manager with large index and equity fund ownership.",
+  },
+  {
+    name: "David Shaw",
+    firm: "D. E. Shaw",
+    cik: "1009207",
+    style: "Quant",
+    blurb: "Quantitative multi-strategy firm spanning systematic and discretionary equities.",
+  },
+  {
+    name: "John Overdeck",
+    firm: "Two Sigma Investments",
+    cik: "1179392",
+    style: "Quant",
+    blurb: "Data-driven quantitative investor across systematic equity strategies.",
+  },
+  {
+    name: "Cliff Asness",
+    firm: "AQR Capital Management",
+    cik: "1167557",
+    style: "Quant / factor",
+    blurb: "Factor-based quantitative investing across value, momentum, and related styles.",
+  },
+  {
+    name: "Izzy Englander",
+    firm: "Millennium Management",
+    cik: "1273087",
+    style: "Multi-strategy",
+    blurb: "Large multi-manager platform known for diversified pod-based equity trading.",
+  },
+  {
+    name: "Dmitry Balyasny",
+    firm: "Balyasny Asset Management",
+    cik: "1218710",
+    style: "Multi-strategy",
+    blurb: "Multi-strategy hedge fund with broad fundamental and trading coverage.",
+  },
+  {
+    name: "Paul Marshall",
+    firm: "Marshall Wace",
+    cik: "1318757",
+    style: "Long/short equity",
+    blurb: "Equity long/short manager known for research-driven and systematic alpha strategies.",
+  },
+  {
+    name: "Daniel Sundheim",
+    firm: "D1 Capital Partners",
+    cik: "1747057",
+    style: "Growth / tech",
+    blurb: "Concentrated growth investor focused on public and private technology names.",
+  },
+  {
+    name: "Brad Gerstner",
+    firm: "Altimeter Capital",
+    cik: "1541617",
+    style: "Tech growth",
+    blurb: "Technology-focused growth investor with high-conviction public equity stakes.",
+  },
+  {
+    name: "Nicholas Maounis",
+    firm: "Verition Fund Management",
+    cik: "1454027",
+    style: "Multi-strategy",
+    blurb: "Multi-strategy hedge fund spanning equity, credit, and relative-value trading.",
+  },
+  {
+    name: "Sander Gerber",
+    firm: "Hudson Bay Capital",
+    cik: "1393825",
+    style: "Multi-strategy",
+    blurb: "Event-driven and multi-strategy investor across equities and special situations.",
+  },
+  {
+    name: "Scott Ferguson",
+    firm: "Sachem Head Capital",
+    cik: "1582090",
+    style: "Activist",
+    blurb: "Concentrated activist investor focused on operational and strategic catalysts.",
+  },
+];
+
+function getFilteredNotableInvestors() {
+  const q = notableInvestorsQuery.trim().toLowerCase();
+  if (!q) return NOTABLE_INVESTORS;
+  return NOTABLE_INVESTORS.filter((row) => {
+    return (
+      row.name.toLowerCase().includes(q) ||
+      row.firm.toLowerCase().includes(q) ||
+      row.style.toLowerCase().includes(q) ||
+      bareInstitutionCik(row.cik).includes(q.replace(/^0+/, ""))
+    );
+  });
+}
+
+function renderNotableInvestorsPage() {
+  const grid = document.getElementById("institution-notable-investors-grid");
+  const empty = document.getElementById("institution-notable-investors-empty");
+  const countEl = document.getElementById("institution-notable-investors-count");
+  if (!grid) return;
+
+  const rows = getFilteredNotableInvestors();
+  if (countEl) {
+    countEl.textContent =
+      rows.length === NOTABLE_INVESTORS.length
+        ? `${rows.length} investors`
+        : `${rows.length} of ${NOTABLE_INVESTORS.length}`;
+  }
+
+  if (!rows.length) {
+    grid.innerHTML = "";
+    grid.hidden = true;
+    if (empty) empty.hidden = false;
+    return;
+  }
+
+  if (empty) empty.hidden = true;
+  grid.hidden = false;
+  grid.innerHTML = rows
+    .map(
+      (row) => `
+    <button
+      type="button"
+      class="notable-investor-card"
+      role="listitem"
+      data-institution-cik="${escapeHtml(bareInstitutionCik(row.cik))}"
+      aria-label="Open ${escapeHtml(row.name)} — ${escapeHtml(row.firm)}"
+    >
+      <span class="notable-investor-card__name">${escapeHtml(row.name)}</span>
+      <span class="notable-investor-card__firm">${escapeHtml(row.firm)}</span>
+      <span class="notable-investor-card__style">${escapeHtml(row.style)}</span>
+      <span class="notable-investor-card__blurb">${escapeHtml(row.blurb)}</span>
+    </button>
+  `
+    )
+    .join("");
+
+  grid.querySelectorAll("[data-institution-cik]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cik = btn.getAttribute("data-institution-cik");
+      if (cik) void openInstitution(cik, "holdings");
+    });
+  });
+}
+
+function setupNotableInvestorsPage() {
+  if (notableInvestorsBound) return;
+  notableInvestorsBound = true;
+
+  document.getElementById("institution-notable-investors-back")?.addEventListener("click", () => {
+    navigateToInstitutionDirectory();
+  });
+  document.getElementById("institution-hub-notable-investors-link")?.addEventListener("click", () => {
+    navigateToNotableInvestors();
+  });
+  document.getElementById("institution-notable-investors-search")?.addEventListener("input", (e) => {
+    notableInvestorsQuery = e.target.value || "";
+    renderNotableInvestorsPage();
+  });
+}
+
 function setupInstitutionComparePage() {
   if (institutionCompareBound) return;
   institutionCompareBound = true;
@@ -11698,6 +12079,12 @@ async function openInstitutionFromRoute(route) {
     const params = new URLSearchParams(window.location.search);
     institutionCompareCikA = bareInstitutionCik(params.get("a") || "");
     institutionCompareCikB = bareInstitutionCik(params.get("b") || "");
+    updateInstitutionsView();
+    return;
+  }
+  if (route.notableInvestors) {
+    activeInstitutionCik = null;
+    activeInstitutionHubView = "notable-investors";
     updateInstitutionsView();
     return;
   }
@@ -20927,6 +21314,56 @@ function setupInstitutionTabs() {
   });
 }
 
+function setupMobileTopbarNav() {
+  const topbar = document.querySelector(".topbar");
+  const menuBtn = document.getElementById("topbar-menu-btn");
+  const backdrop = document.getElementById("topbar-nav-backdrop");
+  const openIcon = menuBtn?.querySelector(".topbar__menu-icon--open");
+  const closeIcon = menuBtn?.querySelector(".topbar__menu-icon--close");
+  if (!topbar || !menuBtn) return;
+
+  const setOpen = (open) => {
+    topbar.classList.toggle("is-nav-open", open);
+    document.body.classList.toggle("topbar-nav-open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    if (backdrop) backdrop.hidden = !open;
+    if (openIcon) openIcon.hidden = open;
+    if (closeIcon) closeIcon.hidden = !open;
+  };
+
+  const closeNav = () => setOpen(false);
+
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setOpen(!topbar.classList.contains("is-nav-open"));
+  });
+
+  backdrop?.addEventListener("click", () => closeNav());
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && topbar.classList.contains("is-nav-open")) {
+      closeNav();
+    }
+  });
+
+  document.getElementById("logo-home-link")?.addEventListener("click", () => {
+    closeNav();
+  });
+
+  const nav = document.getElementById("workspace-nav");
+  nav?.addEventListener("click", (e) => {
+    const target = e.target.closest?.(
+      ".explore-nav__btn, .workspace-nav__subsection, [data-explore], [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
+    );
+    if (target) closeNav();
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.matchMedia("(min-width: 901px)").matches) closeNav();
+  });
+}
+
 function setupExploreNav() {
   document.querySelectorAll(".explore-nav__btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -21029,6 +21466,14 @@ function setupExploreNav() {
           await ensureInstitutionsIndex();
           setExploreMode("institutions", { navigate: false });
           navigateToInstitutionCompare();
+        })();
+        return;
+      }
+      if (view === "notable-investors") {
+        void (async () => {
+          await ensureInstitutionsIndex();
+          setExploreMode("institutions", { navigate: false });
+          navigateToNotableInvestors();
         })();
       }
     });
@@ -21969,12 +22414,14 @@ setupInstitutionPerformanceRankings();
 setupMostAccumulatedPage();
 setupNewPositionsPage();
 setupCompletelySoldPage();
+setupNotableInvestorsPage();
 setupInstitutionComparePage();
 setupPoliticiansHub();
 setupPoliticianAnalyticsPages();
 setupPoliticianSectorExposurePage();
 setupInsidersHub();
 setupExploreNav();
+setupMobileTopbarNav();
 setupLanding();
 setupMarketPulseSidebar();
 setupEntityLinkDelegation();
