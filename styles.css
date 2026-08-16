@@ -6412,12 +6412,13 @@ body.chart-fullscreen-active {
   }
 
   .topbar .logo-chart {
-    height: 1.95rem;
+    height: 2.05rem;
   }
 
   .topbar .logo-wordmark {
     display: block;
-    font-size: 1.12rem;
+    font-size: 1.28rem;
+    font-weight: 700;
     letter-spacing: -0.03em;
     white-space: nowrap;
   }
@@ -6606,19 +6607,23 @@ body.chart-fullscreen-active {
   .topbar {
     margin-left: -0.85rem;
     margin-right: -0.85rem;
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
-    gap: 0.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    gap: 0.4rem;
   }
 
   .topbar__start {
     flex: 0 1 auto;
-    max-width: min(52%, 10.5rem);
-    gap: 0.5rem;
+    max-width: none;
+    gap: 0;
+  }
+
+  .topbar .logo-chart {
+    height: 1.85rem;
   }
 
   .topbar .logo-wordmark {
-    font-size: 0.88rem;
+    font-size: 1.05rem;
   }
 
   .topbar__actions {
