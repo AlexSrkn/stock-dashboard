@@ -767,6 +767,18 @@ button.workspace-nav__subsection {
   color: var(--text);
   font: inherit;
   outline: none;
+  /* Safari/iPad draws its own magnifying glass on type="search" — hide it. */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search__input::-webkit-search-decoration,
+.search__input::-webkit-search-cancel-button,
+.search__input::-webkit-search-results-button,
+.search__input::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .search__input::placeholder {
