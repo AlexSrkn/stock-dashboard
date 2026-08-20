@@ -6,11 +6,13 @@ import { closePool, getPool, loadEnvFile } from "../src/db/pool.js";
 import { saveNewPositionsToDisk } from "../src/institution/newPositions/cache.js";
 import { computeNewInstitutionalPositions } from "../src/institution/newPositions/compute.js";
 import { listTrackedInstitutions } from "../src/institution/institutionAnalytics.js";
+import { reloadTrackedInstitutions } from "../src/ownership/trackedInstitutions.js";
 
 loadEnvFile();
 // Full-universe activity load can exceed the default pool statement_timeout.
 process.env.PG_STATEMENT_TIMEOUT_MS = "0";
 
+reloadTrackedInstitutions(true);
 const pool = getPool();
 console.log(`Warming new positions for ${listTrackedInstitutions().length} tracked institutions…`);
 

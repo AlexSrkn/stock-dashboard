@@ -198,6 +198,13 @@ export async function tryHandleInstitutions(
         json(res, 503, { error: "database_unavailable", message });
         return true;
       }
+      if (
+        message.includes("warm-new-positions") ||
+        message.includes("cache not ready")
+      ) {
+        json(res, 503, { error: "new_positions_cache_unavailable", message });
+        return true;
+      }
       json(res, 500, { error: "new_positions_error", message });
     }
     return true;
@@ -213,6 +220,13 @@ export async function tryHandleInstitutions(
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("DATABASE_URL")) {
         json(res, 503, { error: "database_unavailable", message });
+        return true;
+      }
+      if (
+        message.includes("warm-completely-sold") ||
+        message.includes("cache not ready")
+      ) {
+        json(res, 503, { error: "completely_sold_cache_unavailable", message });
         return true;
       }
       json(res, 500, { error: "completely_sold_error", message });

@@ -1,10 +1,6 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
-import {
-  getCachedNewPositions,
-  setNewPositionsMemoryCache,
-} from "./cache.js";
-import { computeNewInstitutionalPositions } from "./compute.js";
+import { getCachedNewPositions } from "./cache.js";
 import {
   queryNewInstitutionalPositions,
   type NewPositionsQuery,
@@ -20,26 +16,20 @@ export {
   queryNewInstitutionalPositions,
 } from "./query.js";
 
-let inflight: Promise<NewPositionsPayload> | null = null;
-
+/**
+ * Serve new positions from disk/memory cache only.
+ * Live recompute over the full tracked universe OOMs the production Node process —
+ * warm offline instead:
+ *   npm run institutions:warm-new-positions
+ */
 export async function loadNewInstitutionalPositions(
-  pool: pg.Pool = getPool()
+  _pool: pg.Pool = getPool()
 ): Promise<NewPositionsPayload> {
   const cached = getCachedNewPositions();
   if (cached) return cached;
-
-  if (!inflight) {
-    inflight = computeNewInstitutionalPositions(pool)
-      .then((payload) => {
-        setNewPositionsMemoryCache(payload);
-        return payload;
-      })
-      .finally(() => {
-        inflight = null;
-      });
-  }
-
-  return inflight;
+  throw new Error(
+    "Institutional new positions cache not ready. Run: npm run institutions:warm-new-positions"
+  );
 }
 
 export async function getNewInstitutionalPositions(pool: pg.Pool = getPool()) {

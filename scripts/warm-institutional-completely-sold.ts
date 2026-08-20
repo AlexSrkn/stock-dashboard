@@ -6,11 +6,13 @@ import { closePool, getPool, loadEnvFile } from "../src/db/pool.js";
 import { saveCompletelySoldToDisk } from "../src/institution/completelySold/cache.js";
 import { computeCompletelySoldPositions } from "../src/institution/completelySold/compute.js";
 import { listTrackedInstitutions } from "../src/institution/institutionAnalytics.js";
+import { reloadTrackedInstitutions } from "../src/ownership/trackedInstitutions.js";
 
 loadEnvFile();
 // Full-universe activity load can exceed the default pool statement_timeout.
 process.env.PG_STATEMENT_TIMEOUT_MS = "0";
 
+reloadTrackedInstitutions(true);
 const pool = getPool();
 console.log(`Warming completely sold for ${listTrackedInstitutions().length} tracked institutions…`);
 
