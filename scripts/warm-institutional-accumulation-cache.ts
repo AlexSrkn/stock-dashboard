@@ -7,6 +7,7 @@ import { computeInstitutionalShareAccumulation } from "../src/stocks/institution
 import { saveInstitutionalAccumulationToDisk } from "../src/stocks/institutionalAccumulationCache.js";
 
 loadEnvFile();
+process.env.PG_STATEMENT_TIMEOUT_MS = "0";
 
 const payload = await computeInstitutionalShareAccumulation();
 if (!payload.stocks.length) {

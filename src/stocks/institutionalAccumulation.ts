@@ -1,10 +1,6 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
-import {
-  getCachedInstitutionalAccumulation,
-  setInstitutionalAccumulationMemoryCache,
-} from "./institutionalAccumulationCache.js";
-import { computeInstitutionalShareAccumulation } from "./institutionalAccumulationCompute.js";
+import { getCachedInstitutionalAccumulation } from "./institutionalAccumulationCache.js";
 import type { InstitutionalAccumulationPayload } from "./institutionalAccumulationTypes.js";
 
 export type {
@@ -12,30 +8,18 @@ export type {
   InstitutionalAccumulationRow,
 } from "./institutionalAccumulationTypes.js";
 
-let inflight: Promise<InstitutionalAccumulationPayload> | null = null;
-
+/**
+ * Serve institutional accumulation from disk/memory cache only.
+ * Live recompute can OOM the production Node process — warm offline instead:
+ *   npm run stocks:warm-institutional-accumulation
+ */
 export async function loadInstitutionalShareAccumulation(
   _pool: pg.Pool = getPool(),
   limit = 100
 ): Promise<InstitutionalAccumulationPayload> {
   const cached = getCachedInstitutionalAccumulation(limit);
   if (cached) return cached;
-
-  if (!inflight) {
-    inflight = computeInstitutionalShareAccumulation(_pool)
-      .then((payload) => {
-        setInstitutionalAccumulationMemoryCache(payload);
-        return payload;
-      })
-      .finally(() => {
-        inflight = null;
-      });
-  }
-
-  const payload = await inflight;
-  return {
-    ...payload,
-    count: Math.min(limit, payload.stocks.length),
-    stocks: payload.stocks.slice(0, limit),
-  };
+  throw new Error(
+    "Institutional accumulation cache not ready. Run: npm run stocks:warm-institutional-accumulation"
+  );
 }

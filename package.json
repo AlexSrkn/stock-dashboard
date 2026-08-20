@@ -46,7 +46,7 @@
     "test:fcfyield": "tsx --test src/tools/fcfyield/calculate.test.ts",
     "test:similar-stocks": "tsx --test src/tools/similarStocks/score.test.ts",
     "test:portfolio-proxy": "tsx --test src/institution/portfolioPerformanceProxy/compute.test.ts",
-    "stocks:warm-institutional-accumulation": "tsx scripts/warm-institutional-accumulation-cache.ts",
+    "stocks:warm-institutional-accumulation": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-accumulation-cache.ts",
     "stocks:warm-ownership-changes": "tsx scripts/warm-ownership-changes-cache.ts",
     "stocks:warm-ownership-history": "tsx scripts/warm-ownership-history-cache.ts",
     "stocks:warm-most-accumulated": "node --max-old-space-size=3072 --import tsx scripts/warm-stocks-most-accumulated.ts",

@@ -64,7 +64,8 @@ export function getCachedInstitutionalAccumulation(limit = 100): InstitutionalAc
 
 function slicePayload(payload: InstitutionalAccumulationPayload, limit: number): InstitutionalAccumulationPayload {
   const stocks = payload.stocks.slice(0, Math.max(1, limit));
-  return { ...payload, count: stocks.length, stocks };
+  // Keep total universe size in `count` (hub card); `stocks` is the page slice.
+  return { ...payload, count: payload.stocks.length, stocks };
 }
 
 export function setInstitutionalAccumulationMemoryCache(payload: InstitutionalAccumulationPayload): void {

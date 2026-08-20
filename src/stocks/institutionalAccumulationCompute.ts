@@ -2,6 +2,7 @@ import type pg from "pg";
 import { getPool } from "../db/pool.js";
 import { loadInstitutionHoldings } from "../institution/performance/holdingsLoader.js";
 import { sortQuarters } from "../institution/performance/quarters.js";
+import { trackedInstitutionCiks } from "../institution/mostAccumulated/queries.js";
 import type { InstitutionalAccumulationPayload, InstitutionalAccumulationRow } from "./institutionalAccumulationTypes.js";
 
 function roundShares(n: number): number {
@@ -12,7 +13,8 @@ function roundShares(n: number): number {
 export async function computeInstitutionalShareAccumulation(
   pool: pg.Pool = getPool()
 ): Promise<InstitutionalAccumulationPayload> {
-  const holdings = await loadInstitutionHoldings(pool);
+  // Curated seed only — full imported universe OOMs the 4GB VPS during warm.
+  const holdings = await loadInstitutionHoldings(pool, trackedInstitutionCiks(), { maxQuarters: 2 });
   const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter))]);
   const currentQuarter = quarters[quarters.length - 1] ?? "";
   const previousQuarter = quarters.length >= 2 ? quarters[quarters.length - 2] : null;

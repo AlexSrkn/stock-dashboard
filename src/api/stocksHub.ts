@@ -136,6 +136,13 @@ export async function tryHandleStocksHub(
         json(res, 503, { error: "database_unavailable", message });
         return true;
       }
+      if (
+        message.includes("warm-institutional-accumulation") ||
+        message.includes("cache not ready")
+      ) {
+        json(res, 503, { error: "institutional_accumulation_cache_unavailable", message });
+        return true;
+      }
       json(res, 500, { error: "institutional_accumulation_error", message });
     }
     return true;
