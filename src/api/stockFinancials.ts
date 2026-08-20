@@ -49,6 +49,11 @@ export async function tryHandleStockFinancials(
     }
     if (err instanceof SecHttpError) {
       const status = err.statusCode === 404 ? 404 : err.statusCode >= 500 ? 502 : err.statusCode;
+      // Prefer a short message — raw SEC XML bodies are noisy in the UI.
+      const message =
+        err.statusCode === 404 && !err.message.includes("No SEC Company Facts")
+          ? `No SEC Company Facts XBRL available for ${ticker.toUpperCase()}.`
+          : err.message.replace(/\s+/g, " ").trim().slice(0, 280);
       json(res, status, { error: "sec_financials_error", message });
       return true;
     }

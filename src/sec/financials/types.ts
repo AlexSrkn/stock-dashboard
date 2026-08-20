@@ -237,6 +237,11 @@ export interface FilingsFundamentalsResponse {
   cik: string;
   entityName: string;
   source: "sec-company-facts";
+  /**
+   * When this listing has no SEC companyfacts (common for dual-listed siblings),
+   * fundamentals were loaded from this related ticker (e.g. RTNTF → RIO).
+   */
+  fundamentalsSourceTicker?: string | null;
   classification: {
     sector: string | null;
     industry: string | null;

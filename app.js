@@ -20004,6 +20004,9 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
   const parts = ["SEC Company Facts"];
   if (data.entityName) parts.push(data.entityName);
   if (data.cik) parts.push(`CIK ${String(data.cik).replace(/^0+/, "")}`);
+  if (data.fundamentalsSourceTicker && data.fundamentalsSourceTicker !== data.ticker) {
+    parts.push(`financials from ${data.fundamentalsSourceTicker}`);
+  }
   setFilingsFundamentalsSubtitle(parts.join(" · "));
 
   renderFilingsFundamentalsSector(data.classification);
