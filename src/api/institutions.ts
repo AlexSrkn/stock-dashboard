@@ -139,6 +139,10 @@ export async function tryHandleInstitutions(
         json(res, 503, { error: "database_unavailable", message });
         return true;
       }
+      if (message.includes("warm-most-accumulated") || message.includes("cache not ready")) {
+        json(res, 503, { error: "most_accumulated_cache_unavailable", message });
+        return true;
+      }
       json(res, 500, { error: "most_accumulated_error", message });
     }
     return true;

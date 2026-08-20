@@ -3,34 +3,26 @@ import { getPool } from "../../db/pool.js";
 import {
   getCachedMostAccumulated,
   parseMostAccumulatedPeriod,
-  setMostAccumulatedMemoryCache,
 } from "./cache.js";
-import { computeMostAccumulated } from "./compute.js";
 import type { MostAccumulatedPeriod, MostAccumulatedPayload } from "./types.js";
 
 export type { MostAccumulatedPayload, MostAccumulatedPeriod } from "./types.js";
 export { parseMostAccumulatedPeriod } from "./cache.js";
 
-let inflight: Promise<MostAccumulatedPayload> | null = null;
-
+/**
+ * Serve most-accumulated from disk/memory cache only.
+ * Live recompute loads multi-quarter holdings for the tracked universe and can OOM
+ * the production Node process (nginx 502) — warm offline instead:
+ *   npm run institutions:warm-most-accumulated
+ */
 export async function loadMostAccumulated(
   _pool: pg.Pool = getPool()
 ): Promise<MostAccumulatedPayload> {
   const cached = getCachedMostAccumulated();
   if (cached) return cached;
-
-  if (!inflight) {
-    inflight = computeMostAccumulated(_pool)
-      .then((payload) => {
-        setMostAccumulatedMemoryCache(payload);
-        return payload;
-      })
-      .finally(() => {
-        inflight = null;
-      });
-  }
-
-  return inflight;
+  throw new Error(
+    "Most accumulated cache not ready. Run: npm run institutions:warm-most-accumulated"
+  );
 }
 
 export async function getMostAccumulatedPeriod(
