@@ -24,8 +24,19 @@ function filingHref(cik: number | string, accessionNumber: string, primaryDocume
 
 function matchesFormGroup(form: string, group: "10-K" | "10-Q" | "8-K"): boolean {
   const f = String(form || "").toUpperCase();
-  if (group === "10-K") return f === "10-K" || f === "10-K/A";
-  if (group === "10-Q") return f === "10-Q" || f === "10-Q/A";
+  if (group === "10-K") {
+    return (
+      f === "10-K" ||
+      f === "10-K/A" ||
+      f === "20-F" ||
+      f === "20-F/A" ||
+      f === "40-F" ||
+      f === "40-F/A"
+    );
+  }
+  if (group === "10-Q") {
+    return f === "10-Q" || f === "10-Q/A" || f === "6-K" || f === "6-K/A";
+  }
   return f === "8-K" || f === "8-K/A";
 }
 

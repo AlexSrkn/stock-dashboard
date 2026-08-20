@@ -52,8 +52,8 @@ function validatePeriodRow(
   const filed = parseIsoDate(row.filed);
   if (!end || !filed) return "missing period or filed date";
   if (!isValidFilingDate(end, filed)) return "filed date before period end";
-  if (scope === "annual" && !is10KForm(row.form)) return "annual row must be 10-K";
-  if (scope === "quarterly" && !is10QForm(row.form)) return "quarterly row must be 10-Q";
+  if (scope === "annual" && !is10KForm(row.form)) return "annual row must be 10-K/20-F/40-F";
+  if (scope === "quarterly" && !is10QForm(row.form)) return "quarterly row must be 10-Q/6-K";
   if (row.accessionNumber && !knownAccessions.has(row.accessionNumber)) {
     return `unknown accession ${row.accessionNumber}`;
   }

@@ -23,10 +23,25 @@ function findQuarterlyRow(
   return quarterly.find((r) => r.fp === fp && r.end === periodEnd);
 }
 
-test("normalizeFiscalPeriod: 10-K is always FY even when fp is Q1", () => {
+test("normalizeFiscalPeriod: annual forms are always FY even when fp is Q1", () => {
   const obs = { form: "10-K", fp: "Q1", fy: 2024 } as XbrlFactObservation;
   assert.equal(normalizeFiscalPeriod(obs, "annual"), "FY");
   assert.equal(normalizeFiscalPeriod(obs, "quarterly"), null);
+});
+
+test("normalizeFiscalPeriod: 20-F counts as annual FY; 6-K Q2 as interim", () => {
+  assert.equal(
+    normalizeFiscalPeriod({ form: "20-F", fp: "FY", fy: 2024 } as XbrlFactObservation, "annual"),
+    "FY"
+  );
+  assert.equal(
+    normalizeFiscalPeriod({ form: "6-K", fp: "Q2", fy: 2024 } as XbrlFactObservation, "quarterly"),
+    "Q2"
+  );
+  assert.equal(
+    normalizeFiscalPeriod({ form: "6-K", fp: "FY", fy: 2024 } as XbrlFactObservation, "quarterly"),
+    null
+  );
 });
 
 test("normalizeQuarterlyDurationForFy derives Q2 from H1 YTD minus Q1", () => {

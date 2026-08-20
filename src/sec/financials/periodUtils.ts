@@ -10,14 +10,23 @@ export function observationEnd(obs: XbrlFactObservation): string | null {
   return end ? String(end).slice(0, 10) : null;
 }
 
+/** US annual (10-K) plus foreign annual equivalents (20-F / 40-F). */
 export function is10KForm(form: string | null | undefined): boolean {
   const f = String(form ?? "").toUpperCase();
-  return f === "10-K" || f === "10-K/A";
+  return (
+    f === "10-K" ||
+    f === "10-K/A" ||
+    f === "20-F" ||
+    f === "20-F/A" ||
+    f === "40-F" ||
+    f === "40-F/A"
+  );
 }
 
+/** US quarterly (10-Q) plus foreign interim reports (6-K). */
 export function is10QForm(form: string | null | undefined): boolean {
   const f = String(form ?? "").toUpperCase();
-  return f === "10-Q" || f === "10-Q/A";
+  return f === "10-Q" || f === "10-Q/A" || f === "6-K" || f === "6-K/A";
 }
 
 export function is8KForm(form: string | null | undefined): boolean {
@@ -25,7 +34,10 @@ export function is8KForm(form: string | null | undefined): boolean {
   return f === "8-K" || f === "8-K/A";
 }
 
-/** 10-K periods are always FY regardless of SEC fp field (avoids Q1 mislabels). */
+/**
+ * Annual report forms are always FY regardless of SEC fp field (avoids Q1 mislabels).
+ * Interim forms keep Q1/Q2/Q3 when present (covers 10-Q and foreign 6-K half-years).
+ */
 export function normalizeFiscalPeriod(
   obs: XbrlFactObservation,
   scope: "annual" | "quarterly"
