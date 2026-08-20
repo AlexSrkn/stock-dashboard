@@ -1,5 +1,6 @@
 import { formatSecCik } from "../../sec/http.js";
 import { INSTITUTIONAL_13F_MANAGERS } from "../../sec/seed/institutional-ciks.js";
+import { TRACKED_INSTITUTIONAL_CIK_PADDED } from "../../ownership/trackedInstitutions.js";
 
 /** Latest filing per tracked filer in the last 30 calendar days. */
 export const SELECT_RECENT_FILING_QUARTERS_SQL = `
@@ -14,10 +15,15 @@ ORDER BY filer_cik, filing_date DESC, id DESC
 `.trim();
 
 /**
- * Curated seed only — not the full imported 13F universe.
- * Ranking over thousands of filers OOMs the 4GB VPS during warm/compute.
+ * Full curated + imported tracked universe (localhost-scale Institutions Buying counts).
+ * Warmers must batch-load holdings — never pull all filers into Node at once.
  */
 export function trackedInstitutionCiks(): string[] {
+  return [...TRACKED_INSTITUTIONAL_CIK_PADDED].map((c) => formatSecCik(c));
+}
+
+/** Curated seed only — safe for smaller warm jobs (e.g. institutional accumulation). */
+export function curatedInstitutionCiks(): string[] {
   return INSTITUTIONAL_13F_MANAGERS.filter((m) => m.cik)
     .map((m) => formatSecCik(m.cik as string));
 }
