@@ -7,7 +7,6 @@ import type { EarningsReleaseRow, FinancialPeriodRow } from "./types.js";
 export interface PersistFinancialsInput {
   cik: string;
   ticker: string;
-  issuerId?: number | null;
   annual: FinancialPeriodRow[];
   quarterly: FinancialPeriodRow[];
   earningsReleases: EarningsReleaseRow[];
@@ -16,13 +15,12 @@ export interface PersistFinancialsInput {
 
 const UPSERT_PERIOD_SQL = `
 INSERT INTO sec_financial_period (
-  cik, ticker, issuer_id, fiscal_year, fiscal_period, period_end, form_type, filed_date,
-  accession_number, statement_scope, metrics, metric_sources, derived_metrics, data_source
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,$14)
+  cik, ticker, fiscal_year, fiscal_period, period_end, form_type, filed_date,
+  accession_number, statement_scope, metrics, metric_sources, derived_metrics
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)
 ON CONFLICT (cik, fiscal_year, fiscal_period, statement_scope)
 DO UPDATE SET
   ticker = EXCLUDED.ticker,
-  issuer_id = COALESCE(EXCLUDED.issuer_id, sec_financial_period.issuer_id),
   period_end = EXCLUDED.period_end,
   form_type = EXCLUDED.form_type,
   filed_date = EXCLUDED.filed_date,
@@ -30,7 +28,6 @@ DO UPDATE SET
   metrics = EXCLUDED.metrics,
   metric_sources = EXCLUDED.metric_sources,
   derived_metrics = EXCLUDED.derived_metrics,
-  data_source = EXCLUDED.data_source,
   ingested_at = NOW()
 WHERE EXCLUDED.filed_date >= sec_financial_period.filed_date
 `.trim();
@@ -58,9 +55,7 @@ function validatePeriodRow(
   if (scope === "annual" && !is10KForm(row.form)) return "annual row must be 10-K/20-F/40-F";
   if (scope === "quarterly" && !is10QForm(row.form)) return "quarterly row must be 10-Q/6-K";
   if (row.accessionNumber && !knownAccessions.has(row.accessionNumber)) {
-    if (!row.inclusionReason?.includes("6-K exhibit")) {
-      return `unknown accession ${row.accessionNumber}`;
-    }
+    return `unknown accession ${row.accessionNumber}`;
   }
   if (!row.fy || !row.fp) return "missing fiscal year or period";
   return null;
@@ -96,7 +91,6 @@ export class FinancialsRepository {
           await client.query(UPSERT_PERIOD_SQL, [
             input.cik,
             input.ticker,
-            input.issuerId ?? null,
             row.fy,
             row.fp,
             row.end,
@@ -107,7 +101,6 @@ export class FinancialsRepository {
             JSON.stringify(row.metrics),
             JSON.stringify(row.metricSources),
             JSON.stringify(row.derived ?? {}),
-            row.inclusionReason?.includes("6-K exhibit") ? "6k-exhibit" : "companyfacts",
           ]);
           periods++;
         }

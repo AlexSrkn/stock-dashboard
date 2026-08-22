@@ -2,12 +2,6 @@ export interface OwnershipQueryMeta {
   ticker: string;
   cusips: string[];
   issuerHint: string | null;
-  /** Canonical issuer/group for consolidated financials (separate from 13F security identity). */
-  canonicalIssuer?: {
-    id: number;
-    slug: string;
-    name: string;
-  } | null;
   currentQuarter: string;
   previousQuarter: string | null;
   /** Number of curated institutional filers tracked in institutional-ciks.ts */
@@ -23,8 +17,6 @@ export interface FundHoldingAggregate {
   fundName: string;
   /** Padded SEC CIK when the filer is in the curated institutional list. */
   filerCik?: string;
-  /** Specific 13F-reported CUSIP for this position (not merged across listings). */
-  reportedCusip?: string;
   shares: number;
   /** 13F reported market value (USD); live mark only if filing value is missing. */
   valueUsd: number | null;

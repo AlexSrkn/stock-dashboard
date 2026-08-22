@@ -1,8 +1,6 @@
 import type pg from "pg";
 import { secFetchJson } from "../sec/http.js";
 import { normalizeCusip } from "../sec/thirteenF/normalizeHoldings.js";
-import { resolveIssuerSecurityContext } from "../issuers/repository.js";
-import type { CanonicalIssuer } from "../issuers/types.js";
 import {
   SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL,
   SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL,
@@ -66,11 +64,11 @@ async function resolveCusipsFromIssuerPattern(
     }
   }
 
-  return attachCanonicalIssuer(pool, sym, {
+  return {
     ticker: sym,
     cusips: resolvedCusips,
     issuerHint: res.rows[0]?.issuer ?? issuerHint ?? sym,
-  });
+  };
 }
 
 async function resolveFromOwnershipCache(pool: pg.Pool, sym: string): Promise<ResolvedStock | null> {
@@ -87,11 +85,11 @@ async function resolveFromOwnershipCache(pool: pg.Pool, sym: string): Promise<Re
 
   const stored = row.primary_cusip ? normalizeCusip(String(row.primary_cusip).trim()) : "";
   if (stored) {
-    return attachCanonicalIssuer(pool, sym, {
+    return {
       ticker: sym,
       cusips: [stored],
       issuerHint: row.company_name ?? sym,
-    });
+    };
   }
 
   const topHolder = await pool.query<{ cusip: string; issuer: string }>(
@@ -103,11 +101,11 @@ async function resolveFromOwnershipCache(pool: pg.Pool, sym: string): Promise<Re
     const cusip = normalizeCusip(String(matched.cusip).trim());
     if (cusip) {
       void pool.query(`UPDATE ownership_cache SET primary_cusip = $2 WHERE ticker = $1`, [sym, cusip]);
-      return attachCanonicalIssuer(pool, sym, {
+      return {
         ticker: sym,
         cusips: [cusip],
         issuerHint: matched.issuer ?? row.company_name ?? sym,
-      });
+      };
     }
   }
 
@@ -129,24 +127,10 @@ async function resolveFromOwnershipCache(pool: pg.Pool, sym: string): Promise<Re
   return null;
 }
 
-async function attachCanonicalIssuer(
-  pool: pg.Pool,
-  sym: string,
-  base: { ticker: string; cusips: string[]; issuerHint: string | null }
-): Promise<ResolvedStock> {
-  try {
-    const ctx = await resolveIssuerSecurityContext(sym, pool);
-    return { ...base, canonicalIssuer: ctx?.issuer ?? null };
-  } catch {
-    return { ...base, canonicalIssuer: null };
-  }
-}
-
 export interface ResolvedStock {
   ticker: string;
   cusips: string[];
   issuerHint: string | null;
-  canonicalIssuer: CanonicalIssuer | null;
 }
 
 export async function resolveStockIdentifiers(
@@ -202,11 +186,7 @@ export async function resolveStockIdentifiers(
   }
 
   const issuerHint = res.rows[0]?.issuer ?? title;
-  const resolved = await attachCanonicalIssuer(pool, sym, {
-    ticker: sym,
-    cusips: resolvedCusips,
-    issuerHint,
-  });
+  const resolved: ResolvedStock = { ticker: sym, cusips: resolvedCusips, issuerHint };
   resolvedTickerCache.set(sym, resolved);
   return resolved;
 }
