@@ -20007,6 +20007,9 @@ function renderFilingsFundamentalsPanel(data, errMsg) {
   if (data.fundamentalsSourceTicker && data.fundamentalsSourceTicker !== data.ticker) {
     parts.push(`financials from ${data.fundamentalsSourceTicker}`);
   }
+  if (data.canonicalIssuer?.name && data.canonicalIssuer.name !== data.entityName) {
+    parts.push(data.canonicalIssuer.name);
+  }
   setFilingsFundamentalsSubtitle(parts.join(" · "));
 
   renderFilingsFundamentalsSector(data.classification);

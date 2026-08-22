@@ -1,5 +1,6 @@
 import { formatSecCik, SecHttpError, secThrottle } from "../http.js";
 import { downloadSecSubmissionsByTicker, lookupCikFromTicker } from "../submissions.js";
+import { resolveIssuerSecurityContext } from "../../issuers/repository.js";
 import { mapSicToSectorIndustry } from "../../stocks/sicMapping.js";
 import { getStocksRepository } from "../../stocks/stocksRepository.js";
 import { fetchCompanyFacts } from "./companyFacts.js";
@@ -8,6 +9,7 @@ import { pickDerivedLatest } from "./derivedMetrics.js";
 import { extractFinancialsFromCompanyFacts } from "./extractFacts.js";
 import { tryPersistFinancials } from "./financialsRepository.js";
 import { parse8kEarningsReleases } from "./parse8kEarnings.js";
+import { supplementQuarterlyFromSixKExhibits } from "./sixK/extractSixKFinancials.js";
 import type { FilingsFundamentalsResponse } from "./types.js";
 
 export interface GetFilingsFundamentalsOptions {
@@ -17,15 +19,6 @@ export interface GetFilingsFundamentalsOptions {
   annualPeriodLimit?: number;
   quarterlyPeriodLimit?: number;
 }
-
-/**
- * Dual-listed / OTC siblings that appear in SEC company_tickers but have no
- * companyfacts XBRL of their own. Fundamentals live on the related listing.
- */
-const FUNDAMENTALS_FACTS_TICKER_ALIASES: Record<string, string> = {
-  // Rio Tinto Ltd (ASX/OTC) → Rio Tinto PLC (NYSE ADR) 20-F companyfacts
-  RTNTF: "RIO",
-};
 
 function buildKnownAccessions(
   filings: FilingsFundamentalsResponse["filings"]
@@ -46,43 +39,33 @@ function companyFactsMissingMessage(ticker: string, cik: string): string {
   );
 }
 
-async function loadCompanyFactsWithAlias(
+async function loadCompanyFactsForFilingCik(
   requestedTicker: string,
-  ownCik: number
+  ownCik: number,
+  filingTicker: string
 ): Promise<{ facts: Awaited<ReturnType<typeof fetchCompanyFacts>>; sourceTicker: string | null; factsCik: number }> {
+  const filingCik = await lookupCikFromTicker(filingTicker);
   try {
-    const facts = await fetchCompanyFacts(ownCik);
-    return { facts, sourceTicker: null, factsCik: ownCik };
+    const facts = await fetchCompanyFacts(filingCik);
+    const sourceTicker = filingTicker !== requestedTicker ? filingTicker : null;
+    return { facts, sourceTicker, factsCik: filingCik };
   } catch (err) {
     const isMissing =
       err instanceof SecHttpError &&
       (err.statusCode === 404 || /NoSuchKey/i.test(err.message));
     if (!isMissing) throw err;
-
-    const alias = FUNDAMENTALS_FACTS_TICKER_ALIASES[requestedTicker];
-    if (!alias || alias === requestedTicker) {
+    if (filingTicker === requestedTicker) {
       throw new SecHttpError(
         companyFactsMissingMessage(requestedTicker, formatSecCik(ownCik)),
         404,
         err instanceof SecHttpError ? err.url : ""
       );
     }
-
-    await secThrottle();
-    const factsCik = await lookupCikFromTicker(alias);
-    try {
-      const facts = await fetchCompanyFacts(factsCik);
-      return { facts, sourceTicker: alias, factsCik };
-    } catch (aliasErr) {
-      if (aliasErr instanceof SecHttpError && aliasErr.statusCode === 404) {
-        throw new SecHttpError(
-          companyFactsMissingMessage(requestedTicker, formatSecCik(ownCik)),
-          404,
-          aliasErr.url
-        );
-      }
-      throw aliasErr;
-    }
+    throw new SecHttpError(
+      companyFactsMissingMessage(requestedTicker, formatSecCik(ownCik)),
+      404,
+      err instanceof SecHttpError ? err.url : ""
+    );
   }
 }
 
@@ -99,28 +82,39 @@ export async function getFilingsFundamentals(
   const submissions = await downloadSecSubmissionsByTicker({ ticker: sym });
   await secThrottle();
 
-  const { facts: companyFacts, sourceTicker, factsCik } = await loadCompanyFactsWithAlias(
+  const issuerCtx = await resolveIssuerSecurityContext(sym);
+  const filingTicker = issuerCtx?.filingTicker ?? sym;
+
+  const { facts: companyFacts, sourceTicker, factsCik } = await loadCompanyFactsForFilingCik(
     sym,
-    ownCik
+    ownCik,
+    filingTicker
   );
 
-  // Use the facts issuer's submissions for filing lists when we aliased
-  // (Ltd may have little/no 20-F history).
   const filingsSubmissions =
-    sourceTicker != null
-      ? await downloadSecSubmissionsByTicker({ ticker: sourceTicker })
+    filingTicker !== sym
+      ? await downloadSecSubmissionsByTicker({ ticker: filingTicker })
       : submissions;
-  const filingsCik = sourceTicker != null ? factsCik : ownCik;
 
   const extracted = extractFinancialsFromCompanyFacts(companyFacts);
-  const filings = discoverFinancialFilings(filingsSubmissions, filingsCik, {
+  const filings = discoverFinancialFilings(filingsSubmissions, factsCik, {
     annualLimit: options.annualFilingLimit,
     quarterlyLimit: options.quarterlyFilingLimit,
     currentLimit: options.currentFilingLimit,
   });
 
+  let quarterly = extracted.quarterly;
+  if (filings["10-Q"].length) {
+    quarterly = await supplementQuarterlyFromSixKExhibits(
+      factsCik,
+      filings["10-Q"],
+      extracted.quarterly,
+      6
+    );
+  }
+
   const annual = extracted.annual.slice(0, options.annualPeriodLimit ?? 5);
-  const quarterly = extracted.quarterly.slice(0, options.quarterlyPeriodLimit ?? 8);
+  quarterly = quarterly.slice(0, options.quarterlyPeriodLimit ?? 8);
   const earningsReleases = parse8kEarningsReleases(companyFacts, filings["8-K"]);
 
   const sic = submissions.sic ? String(submissions.sic).trim() : null;
@@ -129,7 +123,7 @@ export async function getFilingsFundamentals(
     : null;
   const { sector, industry } = mapSicToSectorIndustry(sic, sicDescription);
   const companyName = submissions.name ? String(submissions.name).trim() : null;
-  // Keep the requested listing's own CIK on the stocks row (identity), not the alias.
+
   await getStocksRepository().upsert({
     ticker: sym,
     companyName,
@@ -149,6 +143,21 @@ export async function getFilingsFundamentals(
     entityName: submissions.name || companyFacts.entityName || "",
     source: "sec-company-facts",
     fundamentalsSourceTicker: sourceTicker,
+    canonicalIssuer: issuerCtx
+      ? {
+          id: issuerCtx.issuer.id,
+          slug: issuerCtx.issuer.slug,
+          name: issuerCtx.issuer.name,
+          primaryTicker: issuerCtx.issuer.primaryTicker,
+        }
+      : null,
+    securityListing: issuerCtx
+      ? {
+          ticker: issuerCtx.listing.ticker,
+          listingKind: issuerCtx.listing.listingKind,
+          isPrimaryFiling: issuerCtx.listing.isPrimaryFiling,
+        }
+      : null,
     classification: stored
       ? {
           sector: stored.sector,
@@ -194,13 +203,19 @@ export async function getFilingsFundamentals(
     filings,
   };
 
+  const knownAccessions = buildKnownAccessions(filings);
+  for (const row of quarterly) {
+    if (row.accessionNumber) knownAccessions.add(row.accessionNumber);
+  }
+
   await tryPersistFinancials({
     cik: response.cik,
-    ticker: sourceTicker ?? sym,
+    ticker: sym,
+    issuerId: issuerCtx?.issuer.id ?? null,
     annual,
     quarterly,
     earningsReleases,
-    knownAccessions: buildKnownAccessions(filings),
+    knownAccessions,
   });
 
   return response;

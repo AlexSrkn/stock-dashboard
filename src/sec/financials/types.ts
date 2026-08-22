@@ -237,11 +237,21 @@ export interface FilingsFundamentalsResponse {
   cik: string;
   entityName: string;
   source: "sec-company-facts";
-  /**
-   * When this listing has no SEC companyfacts (common for dual-listed siblings),
-   * fundamentals were loaded from this related ticker (e.g. RTNTF → RIO).
-   */
+  /** When fundamentals are loaded from a sibling listing (e.g. RTNTF → RIO). */
   fundamentalsSourceTicker?: string | null;
+  /** Canonical issuer/group — consolidated financials anchor. */
+  canonicalIssuer?: {
+    id: number;
+    slug: string;
+    name: string;
+    primaryTicker: string | null;
+  } | null;
+  /** User-requested listing metadata (ADR, OTC, etc.). */
+  securityListing?: {
+    ticker: string;
+    listingKind: string;
+    isPrimaryFiling: boolean;
+  } | null;
   classification: {
     sector: string | null;
     industry: string | null;

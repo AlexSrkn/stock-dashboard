@@ -53,6 +53,7 @@
     "institutions:warm-most-accumulated": "node --max-old-space-size=3072 --import tsx scripts/warm-most-accumulated-cache.ts",
     "institutions:warm-new-positions": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-new-positions.ts",
     "institutions:warm-completely-sold": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-completely-sold.ts",
+    "issuers:sync-securities": "tsx scripts/sync-issuer-securities.ts",
     "ownership:build-cache": "tsx scripts/ownership-build-cache.ts",
     "ownership:backfill-primary-cusip": "tsx scripts/backfill-ownership-primary-cusip.ts",
     "stocks:warm-fundamentals": "tsx scripts/warm-fundamentals-db.ts",

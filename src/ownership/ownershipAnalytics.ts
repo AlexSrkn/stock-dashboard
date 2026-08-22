@@ -168,6 +168,13 @@ export async function loadOwnershipMeta(
     ticker: stock.ticker,
     cusips: stock.cusips,
     issuerHint: stock.issuerHint,
+    canonicalIssuer: stock.canonicalIssuer
+      ? {
+          id: stock.canonicalIssuer.id,
+          slug: stock.canonicalIssuer.slug,
+          name: stock.canonicalIssuer.name,
+        }
+      : null,
     currentQuarter: cacheSnapshot?.currentQuarter ?? quarters[0] ?? "",
     previousQuarter: cacheSnapshot?.previousQuarter ?? quarters[1] ?? null,
     trackedFundCount: TRACKED_INSTITUTIONAL_MANAGERS.length,
@@ -302,6 +309,10 @@ export async function getTopHolders(
   let holders = sortByValueDesc([...current.values()]).slice(0, limit);
   if (meta.previousQuarter) {
     holders = attachQuarterOverQuarterChange(holders, previous);
+  }
+  const reportedCusip = meta.cusips[0];
+  if (reportedCusip) {
+    holders = holders.map((h) => ({ ...h, reportedCusip }));
   }
 
   return { meta, holders };
