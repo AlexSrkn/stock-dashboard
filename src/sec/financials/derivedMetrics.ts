@@ -438,6 +438,12 @@ export function enrichPeriodRows(
   return withGrowth;
 }
 
+/** Debt totals from interim rows that only have short-term borrowings. */
+const DEBT_KEYS_NEEDING_LONG_TERM = new Set<DerivedMetricKey>([
+  "total_debt",
+  "debt_to_equity",
+]);
+
 export function pickDerivedLatest(
   annual: FinancialPeriodRow[],
   quarterly: FinancialPeriodRow[]
@@ -447,12 +453,29 @@ export function pickDerivedLatest(
 } {
   const latestQuarter = quarterly[0];
   const latestAnnual = annual[0];
-  const baseRow = latestQuarter ?? latestAnnual;
-  const values = { ...(baseRow?.derived ?? {}) };
+  // Prefer the latest interim for flow metrics, but fill gaps from the latest
+  // annual — foreign 6-K / H1 rows often lack balance-sheet facts.
+  const values: Partial<Record<DerivedMetricKey, number>> = {
+    ...(latestAnnual?.derived ?? {}),
+  };
+  const quarterHasLongTermDebt =
+    latestQuarter?.metrics.long_term_debt != null &&
+    Number.isFinite(latestQuarter.metrics.long_term_debt);
+  for (const [key, value] of Object.entries(latestQuarter?.derived ?? {}) as Array<
+    [DerivedMetricKey, number | undefined]
+  >) {
+    if (value == null || !Number.isFinite(value)) continue;
+    // Don't let short-term-only interim debt overwrite a full annual total.
+    if (DEBT_KEYS_NEEDING_LONG_TERM.has(key) && !quarterHasLongTermDebt) continue;
+    values[key] = value;
+  }
+
   const periodLabels: Partial<Record<"roe" | "roa" | "asset_turnover", string>> = {};
-  const prov = baseRow?.returnMetricsProvenance;
-  if (prov?.roe?.periodLabel) periodLabels.roe = prov.roe.periodLabel;
-  if (prov?.roa?.periodLabel) periodLabels.roa = prov.roa.periodLabel;
-  if (prov?.asset_turnover?.periodLabel) periodLabels.asset_turnover = prov.asset_turnover.periodLabel;
+  const quarterProv = latestQuarter?.returnMetricsProvenance;
+  const annualProv = latestAnnual?.returnMetricsProvenance;
+  for (const key of ["roe", "roa", "asset_turnover"] as const) {
+    const label = quarterProv?.[key]?.periodLabel ?? annualProv?.[key]?.periodLabel;
+    if (label) periodLabels[key] = label;
+  }
   return { values, periodLabels };
 }

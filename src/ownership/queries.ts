@@ -36,11 +36,15 @@ latest_filings AS (
 
 /** Resolve ticker → CUSIP(s) via issuer name (pg_trgm on issuer; all filers). */
 export const SELECT_DISTINCT_CUSIPS_BY_ISSUER_SQL = `
-SELECT cusip, MAX(issuer) AS issuer
+SELECT cusip, MAX(issuer) AS issuer, SUM(shares)::float8 AS matched_shares
 FROM sec_holding
 WHERE issuer ILIKE $1
+  AND cusip !~ '^0+$'
+  AND cusip !~ '^0+[A-Z]'
   ${SQL_COMMON_STOCK_ONLY}
 GROUP BY cusip
+HAVING SUM(shares) > 0
+ORDER BY SUM(shares) DESC
 LIMIT 32;
 `.trim();
 export const SELECT_RECENT_QUARTERS_FOR_CUSIPS_SQL = `
@@ -137,7 +141,8 @@ WHERE h.cusip = ANY($1::bpchar[])
   AND h.quarter = ANY($2::text[])
   AND ($3::bpchar[] IS NULL OR h.filer_cik = ANY($3::bpchar[]))
   ${sqlCommonStockOnly("h")}
-GROUP BY h.quarter, h.filer_cik;
+GROUP BY h.quarter, h.filer_cik
+HAVING SUM(h.shares) > 0;
 `.trim();
 export const SELECT_ALL_AGGREGATES_BY_FUND_FOR_QUARTERS_SQL = `
 SELECT
@@ -228,6 +233,9 @@ export const SELECT_PRIMARY_CUSIP_BY_HOLDINGS_SQL = `
 SELECT cusip
 FROM sec_holding
 WHERE cusip = ANY($1::bpchar[])
+  AND issuer ILIKE $2
+  AND cusip !~ '^0+$'
+  AND cusip !~ '^0+[A-Z]'
   ${SQL_COMMON_STOCK_ONLY}
 GROUP BY cusip
 ORDER BY SUM(shares) DESC

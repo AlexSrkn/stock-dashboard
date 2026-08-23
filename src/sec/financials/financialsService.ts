@@ -8,6 +8,11 @@ import { pickDerivedLatest } from "./derivedMetrics.js";
 import { extractFinancialsFromCompanyFacts } from "./extractFacts.js";
 import { tryPersistFinancials } from "./financialsRepository.js";
 import { parse8kEarningsReleases } from "./parse8kEarnings.js";
+import {
+  rankFinancialSixKFilings,
+  shouldSupplementFromSixK,
+} from "./foreignFiler.js";
+import { supplementQuarterlyFromLatestSixK } from "./sixK/extractSixKFinancials.js";
 import type { FilingsFundamentalsResponse } from "./types.js";
 
 export interface GetFilingsFundamentalsOptions {
@@ -119,8 +124,21 @@ export async function getFilingsFundamentals(
     currentLimit: options.currentFilingLimit,
   });
 
+  let quarterlyRows = extracted.quarterly;
+  const sixKFilings = filings["10-Q"].filter((row) =>
+    String(row.form || "").toUpperCase().includes("6-K")
+  );
+  if (shouldSupplementFromSixK(filingsSubmissions, companyFacts, quarterlyRows, sixKFilings)) {
+    quarterlyRows = await supplementQuarterlyFromLatestSixK(
+      filingsCik,
+      rankFinancialSixKFilings(sixKFilings),
+      quarterlyRows,
+      { maxFilings: 3, annualRows: extracted.annual }
+    );
+  }
+
   const annual = extracted.annual.slice(0, options.annualPeriodLimit ?? 5);
-  const quarterly = extracted.quarterly.slice(0, options.quarterlyPeriodLimit ?? 8);
+  const quarterly = quarterlyRows.slice(0, options.quarterlyPeriodLimit ?? 8);
   const earningsReleases = parse8kEarningsReleases(companyFacts, filings["8-K"]);
 
   const sic = submissions.sic ? String(submissions.sic).trim() : null;

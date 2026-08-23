@@ -150,6 +150,25 @@ function trackedDisplayName(row: TrackedFundAggRow): string {
   return canonicalFundName(String(row.filer_cik), String(row.fund_name));
 }
 
+/** Fallback when ownership_cache has no SO (common for foreign ADRs like RIO). */
+async function loadSharesOutstandingFromFinancials(
+  pool: pg.Pool,
+  ticker: string
+): Promise<number | null> {
+  const { rows } = await pool.query<{ so: string | null }>(
+    `SELECT (metrics->>'shares_outstanding')::float8 AS so
+     FROM sec_financial_period
+     WHERE UPPER(BTRIM(ticker)) = UPPER(BTRIM($1))
+       AND metrics ? 'shares_outstanding'
+       AND (metrics->>'shares_outstanding')::float8 > 0
+     ORDER BY period_end DESC, filed_date DESC
+     LIMIT 1`,
+    [ticker.trim().toUpperCase()]
+  );
+  const n = rows[0]?.so != null ? Number(rows[0].so) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function loadOwnershipMeta(
   pool: pg.Pool,
   ticker: string
@@ -163,7 +182,10 @@ export async function loadOwnershipMeta(
       : loadRecentQuarters(pool, stock.cusips, 2),
     fetchStockPrice(stock.ticker),
   ]);
-  const sharesOutstanding = cacheSnapshot?.sharesOutstanding ?? null;
+  let sharesOutstanding = cacheSnapshot?.sharesOutstanding ?? null;
+  if (!(sharesOutstanding != null && Number.isFinite(sharesOutstanding) && sharesOutstanding > 0)) {
+    sharesOutstanding = await loadSharesOutstandingFromFinancials(pool, stock.ticker);
+  }
   return {
     ticker: stock.ticker,
     cusips: stock.cusips,
@@ -299,7 +321,9 @@ export async function getTopHolders(
     meta.ticker
   );
 
-  let holders = sortByValueDesc([...current.values()]).slice(0, limit);
+  let holders = sortByValueDesc(
+    [...current.values()].filter((h) => Number(h.shares) > 0)
+  ).slice(0, limit);
   if (meta.previousQuarter) {
     holders = attachQuarterOverQuarterChange(holders, previous);
   }

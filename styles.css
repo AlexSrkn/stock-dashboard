@@ -3042,11 +3042,23 @@ button.workspace-nav__subsection {
   display: none !important;
 }
 
-.politicians-hub__links {
+.politicians-hub__links,
+.stock-hub__links,
+.insiders-hub__links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
   margin-top: 0.65rem;
+}
+
+.stock-hub .institution-hub__strategy {
+  margin-bottom: 1.25rem;
+}
+
+.stock-hub__links,
+.insiders-hub__links {
+  margin-top: 0;
+  justify-content: flex-start;
 }
 
 #view-politicians .politicians-page {

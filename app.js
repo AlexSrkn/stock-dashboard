@@ -2329,6 +2329,28 @@ function setupStockHub() {
       renderStockHub();
     });
   }
+
+  document.getElementById("stock-hub-recently-active-link")?.addEventListener("click", () => {
+    navigateToStocksRecentlyActive();
+  });
+  document.getElementById("stock-hub-most-accumulated-link")?.addEventListener("click", () => {
+    navigateToStocksMostAccumulated();
+  });
+  document.getElementById("stock-hub-ownership-changes-link")?.addEventListener("click", () => {
+    navigateToStocksOwnershipChanges();
+  });
+  document.getElementById("stock-hub-holder-overlap-link")?.addEventListener("click", () => {
+    navigateToStocksHolderOverlap();
+  });
+  document.getElementById("stock-hub-ownership-history-link")?.addEventListener("click", () => {
+    navigateToStocksOwnershipHistory();
+  });
+  document.getElementById("stock-hub-compare-link")?.addEventListener("click", () => {
+    navigateToStocksCompare();
+  });
+  document.getElementById("stock-hub-screener-link")?.addEventListener("click", () => {
+    navigateToStocksScreener();
+  });
 }
 
 function buildRecentlyActiveQueryString() {
@@ -8765,6 +8787,25 @@ function setupInsidersHub() {
   });
   document.getElementById("insiders-back-btn")?.addEventListener("click", () => {
     closeInsiderProfile();
+  });
+
+  document.getElementById("insiders-hub-clusters-link")?.addEventListener("click", () => {
+    navigateToInsiderClusters();
+  });
+  document.getElementById("insiders-hub-conviction-buys-link")?.addEventListener("click", () => {
+    navigateToConvictionBuys();
+  });
+  document.getElementById("insiders-hub-repeat-buyers-link")?.addEventListener("click", () => {
+    navigateToRepeatBuyers();
+  });
+  document.getElementById("insiders-hub-sentiment-link")?.addEventListener("click", () => {
+    navigateToInsiderSentiment();
+  });
+  document.getElementById("insiders-hub-first-time-buyers-link")?.addEventListener("click", () => {
+    navigateToFirstTimeBuyers();
+  });
+  document.getElementById("insiders-hub-heavy-selling-link")?.addEventListener("click", () => {
+    navigateToHeavySelling();
   });
 }
 
