@@ -1,10 +1,16 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import { loadInstitutionHoldings } from "../../institution/performance/holdingsLoader.js";
+import { SELECT_INSTITUTION_QUARTERS_BATCH_SQL } from "../../institution/performance/queries.js";
 import { formatSecCik } from "../../sec/http.js";
 import { sortQuarters } from "../../institution/performance/quarters.js";
+import { trackedInstitutionCiks } from "../../institution/mostAccumulated/queries.js";
+import { reloadTrackedInstitutions } from "../../ownership/trackedInstitutions.js";
 import { SELECT_SHARES_OUTSTANDING_SQL, SELECT_STOCK_ENRICHMENT_SQL } from "./queries.js";
 import type { OwnershipChangeRow, OwnershipChangesCachePayload } from "./types.js";
+
+/** Keep peak Node heap low on the 4GB VPS while covering the full tracked universe. */
+const CIK_BATCH_SIZE = 120;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -12,6 +18,14 @@ function round2(n: number): number {
 
 function roundShares(n: number): number {
   return Math.round(n);
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
 }
 
 export function normalizeExchange(raw: string | null | undefined): string | null {
@@ -55,35 +69,47 @@ interface TickerQuarterAgg {
   institutionCount: number;
 }
 
-function aggregateQuarter(
-  holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>,
-  quarter: string
-): Map<string, TickerQuarterAgg> {
-  const byTicker = new Map<string, TickerQuarterAgg>();
-  const seen = new Map<string, Set<string>>();
+/** Per-quarter ticker aggregates + institution sets (for unique holder counts). */
+type QuarterAggState = {
+  byTicker: Map<string, TickerQuarterAgg>;
+  seen: Map<string, Set<string>>;
+  institutions: Set<string>;
+};
 
+function ensureQuarterState(map: Map<string, QuarterAggState>, quarter: string): QuarterAggState {
+  let state = map.get(quarter);
+  if (!state) {
+    state = { byTicker: new Map(), seen: new Map(), institutions: new Set() };
+    map.set(quarter, state);
+  }
+  return state;
+}
+
+function mergeHoldingsIntoQuarterAggs(
+  quarterAggs: Map<string, QuarterAggState>,
+  holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>
+): void {
   for (const h of holdings) {
-    if (h.quarter !== quarter || !h.ticker || h.shares == null || !Number.isFinite(h.shares) || h.shares <= 0) {
-      continue;
-    }
+    if (!h.ticker || h.shares == null || !Number.isFinite(h.shares) || h.shares <= 0) continue;
     const ticker = String(h.ticker).trim().toUpperCase();
-    let agg = byTicker.get(ticker);
+    const state = ensureQuarterState(quarterAggs, h.quarter);
+    const instKey = formatSecCik(h.institutionId);
+    state.institutions.add(instKey);
+
+    let agg = state.byTicker.get(ticker);
     if (!agg) {
       agg = { shares: 0, valueUsd: 0, institutionCount: 0 };
-      byTicker.set(ticker, agg);
-      seen.set(ticker, new Set());
+      state.byTicker.set(ticker, agg);
+      state.seen.set(ticker, new Set());
     }
     agg.shares += h.shares;
     agg.valueUsd += Number.isFinite(h.marketValue) ? h.marketValue : 0;
-    const instKey = formatSecCik(h.institutionId);
-    const instSet = seen.get(ticker)!;
+    const instSet = state.seen.get(ticker)!;
     if (!instSet.has(instKey)) {
       instSet.add(instKey);
       agg.institutionCount += 1;
     }
   }
-
-  return byTicker;
 }
 
 function buildPairRows(
@@ -154,35 +180,62 @@ async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>
 async function loadStockMeta(pool: pg.Pool, tickers: string[]): Promise<Map<string, StockMeta>> {
   const out = new Map<string, StockMeta>();
   if (!tickers.length) return out;
-  const res = await pool.query<{
-    ticker: string;
-    company_name: string | null;
-    sector: string | null;
-    cik: string | null;
-  }>(SELECT_STOCK_ENRICHMENT_SQL, [tickers]);
-  for (const row of res.rows) {
-    out.set(String(row.ticker).toUpperCase(), {
-      companyName: row.company_name ? String(row.company_name) : null,
-      sector: row.sector ? String(row.sector) : null,
-      exchange: inferExchangeFromTicker(String(row.ticker).toUpperCase()),
-    });
+  for (const batch of chunkArray(tickers, 2000)) {
+    const res = await pool.query<{
+      ticker: string;
+      company_name: string | null;
+      sector: string | null;
+      cik: string | null;
+    }>(SELECT_STOCK_ENRICHMENT_SQL, [batch]);
+    for (const row of res.rows) {
+      out.set(String(row.ticker).toUpperCase(), {
+        companyName: row.company_name ? String(row.company_name) : null,
+        sector: row.sector ? String(row.sector) : null,
+        exchange: inferExchangeFromTicker(String(row.ticker).toUpperCase()),
+      });
+    }
   }
   return out;
 }
 
+async function loadTrackedQuarters(pool: pg.Pool, ciks: string[], maxQuarters: number): Promise<string[]> {
+  const quarters = new Set<string>();
+  for (const batch of chunkArray(ciks, CIK_BATCH_SIZE)) {
+    const res = await pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [batch]);
+    for (const row of res.rows) quarters.add(String(row.quarter));
+  }
+  return sortQuarters([...quarters]).slice(-maxQuarters);
+}
+
+/**
+ * Full-universe ownership movers. Loads holdings in CIK batches and aggregates
+ * per quarter so the job fits on a 4GB VPS (unlike a single all-CIK query).
+ */
 export async function computeOwnershipChangesCache(
   pool: pg.Pool = getPool()
 ): Promise<OwnershipChangesCachePayload> {
-  const holdings = await loadInstitutionHoldings(pool, undefined, { maxQuarters: 8 });
-  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter))]);
-  const sharesOutstanding = await loadSharesOutstanding(pool);
+  reloadTrackedInstitutions(true);
+  const ciks = trackedInstitutionCiks();
+  if (ciks.length < 100) {
+    throw new Error(
+      `Tracked institution universe too small (${ciks.length}). Ensure data/13f-info/imported-tracked-managers.json is present, then retry.`
+    );
+  }
 
+  const quarters = await loadTrackedQuarters(pool, ciks, 8);
+  if (quarters.length < 2) {
+    throw new Error("Need at least two 13F quarters to compute ownership changes.");
+  }
+
+  const quarterAggs = new Map<string, QuarterAggState>();
+  for (const batch of chunkArray(ciks, CIK_BATCH_SIZE)) {
+    const holdings = await loadInstitutionHoldings(pool, batch, { quarters });
+    mergeHoldingsIntoQuarterAggs(quarterAggs, holdings);
+  }
+
+  const sharesOutstanding = await loadSharesOutstanding(pool);
   const allTickers = [
-    ...new Set(
-      holdings
-        .map((h) => (h.ticker ? String(h.ticker).trim().toUpperCase() : ""))
-        .filter(Boolean)
-    ),
+    ...new Set([...quarterAggs.values()].flatMap((s) => [...s.byTicker.keys()])),
   ];
   const stockMeta = await loadStockMeta(pool, allTickers);
 
@@ -191,8 +244,8 @@ export async function computeOwnershipChangesCache(
     const currentQuarter = quarters[i];
     const previousQuarterLabel = quarters[i - 1];
     if (!currentQuarter || !previousQuarterLabel) continue;
-    const current = aggregateQuarter(holdings, currentQuarter);
-    const previous = aggregateQuarter(holdings, previousQuarterLabel);
+    const current = quarterAggs.get(currentQuarter)?.byTicker ?? new Map();
+    const previous = quarterAggs.get(previousQuarterLabel)?.byTicker ?? new Map();
     byQuarterRaw[currentQuarter] = buildPairRows(
       currentQuarter,
       previousQuarterLabel,
@@ -203,7 +256,11 @@ export async function computeOwnershipChangesCache(
     );
   }
 
-  const institutionCounts = countInstitutionsByQuarter(holdings);
+  const institutionCounts = new Map<string, number>();
+  for (const [q, state] of quarterAggs) {
+    institutionCounts.set(q, state.institutions.size);
+  }
+
   const filtered = filterFullyScrapedOwnershipQuarters({
     quarters: quarters.slice().reverse(),
     byQuarter: byQuarterRaw,

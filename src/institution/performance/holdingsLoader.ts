@@ -13,6 +13,8 @@ import type { InstitutionHolding } from "./types.js";
 export interface LoadInstitutionHoldingsOptions {
   /** Keep only the latest N distinct 13F quarters (reduces memory for bulk signal jobs). */
   maxQuarters?: number;
+  /** Explicit quarter list (takes precedence over maxQuarters). */
+  quarters?: string[];
 }
 
 interface HoldingRow {
@@ -52,7 +54,10 @@ export async function loadInstitutionHoldings(
   );
 
   let quarters: string[] | null = null;
-  if (options.maxQuarters != null && options.maxQuarters > 0) {
+  if (options.quarters?.length) {
+    quarters = sortQuarters([...new Set(options.quarters.map(String))]);
+    if (!quarters.length) return [];
+  } else if (options.maxQuarters != null && options.maxQuarters > 0) {
     const qRes = await pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [ciks]);
     quarters = sortQuarters(qRes.rows.map((r) => String(r.quarter))).slice(-options.maxQuarters);
     if (!quarters.length) return [];

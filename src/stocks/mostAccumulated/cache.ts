@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { loadMostAccumulatedFromDisk } from "../../institution/mostAccumulated/cache.js";
 import type { StocksMostAccumulatedCachePayload } from "./types.js";
 
 const CACHE_DIR = path.join(process.cwd(), "data", "cache");
@@ -56,7 +57,23 @@ export function ensureStocksMostAccumulatedCacheOnStartup(): void {
   }
   memoryCache = { loadedAt: Date.now(), payload };
   const count = payload.periods["90d"]?.stocks?.length ?? 0;
-  console.log(`Stocks most-accumulated cache loaded (${count} tickers, 90d).`);
+  const avgBuyers90 = averageBuyerCount(payload.periods["90d"]?.stocks);
+  console.log(
+    `Stocks most-accumulated cache loaded (${count} tickers, 90d, avg buyers=${avgBuyers90.toFixed(1)}).`
+  );
+  const inst = loadMostAccumulatedFromDisk();
+  if (inst?.computedAt && payload.computedAt && inst.computedAt > payload.computedAt) {
+    console.warn(
+      `Stocks most-accumulated cache is older than the institutions cache (${payload.computedAt} vs ${inst.computedAt}). Run: npm run stocks:warm-most-accumulated`
+    );
+  }
+}
+
+function averageBuyerCount(
+  stocks: StocksMostAccumulatedCachePayload["periods"]["90d"]["stocks"] | undefined
+): number {
+  if (!stocks?.length) return 0;
+  return stocks.reduce((s, r) => s + (r.buyerCount ?? 0), 0) / stocks.length;
 }
 
 export function getCachedStocksMostAccumulated(): StocksMostAccumulatedCachePayload | null {
