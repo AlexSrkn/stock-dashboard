@@ -39,7 +39,12 @@ const latest = payload.quarters[0];
 const def = payload.defaultQuarter ?? latest;
 const count = def ? (payload.byQuarter[def]?.length ?? 0) : 0;
 if (!count) {
-  console.error("No ownership change rows computed. Existing cache was not overwritten.");
+  const quarterKeys = Object.keys(payload.byQuarter || {});
+  console.error(
+    "No ownership change rows computed. Existing cache was not overwritten. " +
+      `quarters=${payload.quarters.join(",") || "(none)"} default=${def ?? "(none)"} ` +
+      `byQuarterKeys=${quarterKeys.join(",") || "(none)"}`
+  );
   process.exit(1);
 }
 

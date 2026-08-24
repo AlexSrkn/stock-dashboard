@@ -48,11 +48,21 @@ latest_filings AS (
  */
 export const SELECT_OWNERSHIP_TICKER_AGG_BATCH_SQL = `
 WITH ${CTE_LATEST_FILINGS_CIK_QUARTERS},
+cusip_map AS (
+  SELECT DISTINCT ON (primary_cusip)
+    primary_cusip,
+    UPPER(BTRIM(ticker)) AS ticker
+  FROM ownership_cache
+  WHERE primary_cusip IS NOT NULL
+    AND ticker IS NOT NULL
+    AND BTRIM(ticker) <> ''
+  ORDER BY primary_cusip, institution_count DESC NULLS LAST, ticker
+),
 per_filer AS (
   SELECT
     h.filer_cik,
     h.quarter,
-    UPPER(BTRIM(h.ticker)) AS ticker,
+    COALESCE(NULLIF(UPPER(BTRIM(h.ticker)), ''), cm.ticker) AS ticker,
     SUM(h.shares)::float8 AS shares,
     SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS market_value
   FROM sec_holding h
@@ -60,12 +70,12 @@ per_filer AS (
     ON h.filing_id = lf.filing_id
     AND h.filer_cik = lf.filer_cik
     AND h.quarter = lf.quarter
+  LEFT JOIN cusip_map cm ON cm.primary_cusip = h.cusip
   WHERE h.filer_cik = ANY($1::char(10)[])
     AND h.quarter = ANY($2::text[])
-    AND h.ticker IS NOT NULL
-    AND BTRIM(h.ticker) <> ''
+    AND COALESCE(NULLIF(UPPER(BTRIM(h.ticker)), ''), cm.ticker) IS NOT NULL
     ${sqlCommonStockOnly("h")}
-  GROUP BY h.filer_cik, h.quarter, UPPER(BTRIM(h.ticker))
+  GROUP BY h.filer_cik, h.quarter, COALESCE(NULLIF(UPPER(BTRIM(h.ticker)), ''), cm.ticker)
   HAVING SUM(h.shares) > 0
 )
 SELECT

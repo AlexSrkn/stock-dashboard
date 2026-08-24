@@ -148,6 +148,24 @@ async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>
   } catch {
     /* optional */
   }
+  // Fill gaps from ownership_cache (often populated when financial periods are thin).
+  try {
+    const res = await pool.query<{ ticker: string; shares_outstanding: number | null }>(
+      `SELECT UPPER(BTRIM(ticker)) AS ticker, shares_outstanding::float8 AS shares_outstanding
+       FROM ownership_cache
+       WHERE shares_outstanding IS NOT NULL AND shares_outstanding > 0`
+    );
+    for (const row of res.rows) {
+      const ticker = String(row.ticker || "")
+        .trim()
+        .toUpperCase();
+      if (!ticker || out.has(ticker)) continue;
+      const so = Number(row.shares_outstanding);
+      if (Number.isFinite(so) && so > 0) out.set(ticker, so);
+    }
+  } catch {
+    /* optional */
+  }
   return out;
 }
 
@@ -275,11 +293,23 @@ export async function computeOwnershipChangesCache(
     );
   }
 
+  const rawSummary = Object.entries(byQuarterRaw)
+    .map(([q, rows]) => `${q}:${rows.length}`)
+    .join(", ");
+  console.log(
+    `  ownership-movers raw pairs: ${rawSummary || "(none)"} | SO tickers=${sharesOutstanding.size} | quarters=${quarters.join(",")}`
+  );
+
   const filtered = filterFullyScrapedOwnershipQuarters({
     quarters: quarters.slice().reverse(),
     byQuarter: byQuarterRaw,
     defaultQuarter: pickDefaultOwnershipQuarter(quarters.slice().reverse(), institutionCounts),
   });
+
+  const keptSummary = Object.entries(filtered.byQuarter)
+    .map(([q, rows]) => `${q}:${rows.length}`)
+    .join(", ");
+  console.log(`  ownership-movers kept after filter: ${keptSummary || "(none)"}`);
 
   const sectors = [
     ...new Set(
@@ -416,10 +446,13 @@ export function ownershipPctSeriesLooksComplete(values: number[]): boolean {
   return med >= MIN_MEDIAN_OWNERSHIP_PCT;
 }
 
+/** Min QoQ ticker rows when ownership-% cannot be scored (missing SO). */
+const MIN_SHARE_DELTA_ROWS = 100;
+
 /**
- * Keep a QoQ slice only when both the current and previous quarters have
- * fully scraped ownership levels (drops cliff quarters and pairs that
- * compare against a sparse prior).
+ * Keep a QoQ slice when ownership-% looks fully scraped, or when SO is missing
+ * but the share-delta sample is large enough that a thin historical scrape is
+ * unlikely (warmer still guards max institutionCount).
  */
 export function isOwnershipQuarterPairDataComplete(rows: OwnershipChangeRow[]): boolean {
   if (!rows.length) return false;
@@ -433,7 +466,14 @@ export function isOwnershipQuarterPairDataComplete(rows: OwnershipChangeRow[]): 
       previous.push(row.previousOwnershipPct);
     }
   }
-  return ownershipPctSeriesLooksComplete(current) && ownershipPctSeriesLooksComplete(previous);
+  if (ownershipPctSeriesLooksComplete(current) && ownershipPctSeriesLooksComplete(previous)) {
+    return true;
+  }
+  // Ownership-% samples absent/thin (no SO) — do not wipe a full-universe warm.
+  if (current.length < MIN_OWNERSHIP_SAMPLE || previous.length < MIN_OWNERSHIP_SAMPLE) {
+    return rows.length >= MIN_SHARE_DELTA_ROWS;
+  }
+  return false;
 }
 
 /**

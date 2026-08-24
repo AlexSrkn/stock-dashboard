@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   isOwnershipQuarterLikelyComplete,
+  isOwnershipQuarterPairDataComplete,
   ownershipPctSeriesLooksComplete,
   filterFullyScrapedOwnershipQuarters,
   parseOwnershipChangesQuarter,
@@ -30,6 +31,25 @@ test("ownershipPctSeriesLooksComplete rejects near-zero scrape cliffs", () => {
 
   const sparse = Array.from({ length: 100 }, (_, i) => (i < 5 ? 8 : 0.2));
   assert.equal(ownershipPctSeriesLooksComplete(sparse), false);
+});
+
+test("isOwnershipQuarterPairDataComplete keeps large share-delta sets without SO", () => {
+  const rows = Array.from({ length: 120 }, (_, i) => ({
+    ticker: `T${i}`,
+    companyName: null,
+    sector: null,
+    exchange: null,
+    marketCapUsd: null,
+    currentOwnershipPct: null,
+    previousOwnershipPct: null,
+    changePct: 5,
+    institutionCount: 50,
+    totalInstitutionalShares: 1_000_000,
+    currentQuarter: "2026-Q1",
+    previousQuarter: "2025-Q4",
+  }));
+  assert.equal(isOwnershipQuarterPairDataComplete(rows), true);
+  assert.equal(isOwnershipQuarterPairDataComplete(rows.slice(0, 20)), false);
 });
 
 test("filterFullyScrapedOwnershipQuarters drops incomplete and sparse pairs", () => {
