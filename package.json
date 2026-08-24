@@ -48,7 +48,7 @@
     "test:portfolio-proxy": "tsx --test src/institution/portfolioPerformanceProxy/compute.test.ts",
     "stocks:warm-institutional-accumulation": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-accumulation-cache.ts",
     "stocks:warm-ownership-changes": "node --max-old-space-size=1536 --import tsx scripts/warm-ownership-changes-cache.ts",
-    "stocks:warm-ownership-history": "tsx scripts/warm-ownership-history-cache.ts",
+    "stocks:warm-ownership-history": "node --max-old-space-size=1536 --import tsx scripts/warm-ownership-history-cache.ts",
     "stocks:warm-most-accumulated": "node --max-old-space-size=3072 --import tsx scripts/warm-stocks-most-accumulated.ts",
     "institutions:warm-most-accumulated": "node --max-old-space-size=3072 --import tsx scripts/warm-most-accumulated-cache.ts",
     "institutions:warm-new-positions": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-new-positions.ts",

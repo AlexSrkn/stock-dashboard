@@ -25,6 +25,53 @@ import type {
 
 const INSIDER_WINDOW_DAYS = 180;
 
+/** Batch size keeps peak RSS manageable on a 4GB VPS while covering the full tracked universe. */
+const CIK_BATCH_SIZE = 50;
+const MAX_QUARTERS = 6;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function loadTrackedQuarters(
+  pool: pg.Pool,
+  ciks: string[],
+  maxQuarters: number
+): Promise<string[]> {
+  const quarters = new Set<string>();
+  for (const batch of chunkArray(ciks, CIK_BATCH_SIZE)) {
+    const res = await pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [batch]);
+    for (const row of res.rows) quarters.add(String(row.quarter));
+  }
+  return sortQuarters([...quarters]).slice(-maxQuarters);
+}
+
+function mergeQuarterMaps(
+  target: Map<string, Map<string, QuarterTickerState>>,
+  source: Map<string, Map<string, QuarterTickerState>>
+): void {
+  for (const [quarter, srcMap] of source) {
+    let dstMap = target.get(quarter);
+    if (!dstMap) {
+      dstMap = new Map();
+      target.set(quarter, dstMap);
+    }
+    for (const [ticker, srcState] of srcMap) {
+      let dst = dstMap.get(ticker);
+      if (!dst) {
+        dst = { shares: 0, valueUsd: 0, institutions: new Set() };
+        dstMap.set(ticker, dst);
+      }
+      dst.shares += srcState.shares;
+      dst.valueUsd += srcState.valueUsd;
+      for (const cik of srcState.institutions) dst.institutions.add(cik);
+    }
+  }
+}
+
+
 interface QuarterTickerState {
   shares: number;
   valueUsd: number;
@@ -312,22 +359,41 @@ function buildPairRows(
 export async function computeOwnershipHistoryCache(
   pool: pg.Pool = getPool()
 ): Promise<OwnershipHistoryCachePayload> {
-  const [holdings, sharesOutstanding, insiderCounts] = await Promise.all([
-    loadInstitutionHoldings(pool),
+  reloadTrackedInstitutions(true);
+  const ciks = trackedInstitutionCiks();
+  if (ciks.length < 100) {
+    throw new Error(
+      `Tracked institution universe too small (${ciks.length}). Ensure data/13f-info/imported-tracked-managers.json is present, then retry.`
+    );
+  }
+  console.log(`  ownership-history universe: ${ciks.length} tracked institutions`);
+
+  const quarters = await loadTrackedQuarters(pool, ciks, MAX_QUARTERS);
+  if (quarters.length < 2) {
+    throw new Error("Need at least two 13F quarters to compute ownership history.");
+  }
+  console.log(`  ownership-history quarters: ${quarters.join(", ")}`);
+
+  const byQuarterMaps = new Map<string, Map<string, QuarterTickerState>>();
+  const batches = chunkArray(ciks, CIK_BATCH_SIZE);
+  let batchIdx = 0;
+  for (const batch of batches) {
+    batchIdx += 1;
+    if (batchIdx === 1 || batchIdx % 10 === 0 || batchIdx === batches.length) {
+      console.log(`  ownership-history batch ${batchIdx}/${batches.length} (${batch.length} CIKs)...`);
+    }
+    const holdings = await loadInstitutionHoldings(pool, batch, { quarters });
+    mergeQuarterMaps(byQuarterMaps, buildQuarterMaps(holdings, quarters));
+  }
+
+  const [sharesOutstanding, insiderCounts] = await Promise.all([
     loadSharesOutstanding(pool),
     loadInsiderCounts(pool, INSIDER_WINDOW_DAYS),
   ]);
   const politicianBuys = loadPoliticianBuyCounts(INSIDER_WINDOW_DAYS);
 
-  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter).filter(Boolean))]);
-  const byQuarterMaps = buildQuarterMaps(holdings, quarters);
-
   const tickers = [
-    ...new Set(
-      holdings
-        .map((h) => (h.ticker ? String(h.ticker).trim().toUpperCase() : ""))
-        .filter(Boolean)
-    ),
+    ...new Set([...byQuarterMaps.values()].flatMap((m) => [...m.keys()])),
   ];
   const stockMeta = await loadStockMeta(pool, tickers);
 
@@ -337,7 +403,8 @@ export async function computeOwnershipHistoryCache(
   for (let i = 1; i < quarters.length; i++) {
     const prevQ = quarters[i - 1];
     const curQ = quarters[i];
-    const rows = buildPairRows(
+    if (!prevQ || !curQ) continue;
+    byQuarter[curQ] = buildPairRows(
       curQ,
       prevQ,
       i,
@@ -348,7 +415,6 @@ export async function computeOwnershipHistoryCache(
       insiderCounts,
       politicianBuys
     );
-    byQuarter[curQ] = rows;
     pairQuarters.push(curQ);
   }
 
@@ -357,7 +423,7 @@ export async function computeOwnershipHistoryCache(
     currentQuarter && byQuarter[currentQuarter]?.[0]?.previousQuarter
       ? byQuarter[currentQuarter][0].previousQuarter
       : quarters.length >= 2
-        ? quarters[quarters.length - 2]
+        ? quarters[quarters.length - 2] ?? null
         : null;
 
   const sectors = [
@@ -378,4 +444,3 @@ export async function computeOwnershipHistoryCache(
     byQuarter,
   };
 }
-
