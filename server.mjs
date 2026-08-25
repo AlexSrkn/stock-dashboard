@@ -3,7 +3,9 @@ import https from "node:https";
 import dns from "node:dns";
 import fs from "node:fs";
 import path from "node:path";
+import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { getPool } from "./src/db/pool.ts";
 import { tryHandleStockOwnership } from "./src/api/stockOwnership.ts";
 import { tryHandleOwnershipIntelligence } from "./src/api/ownershipIntelligence.ts";
 import { tryHandleStockInsider } from "./src/api/stockInsider.ts";
@@ -131,6 +133,29 @@ function isDefaultSecUserAgent(ua = resolveSecUserAgent()) {
 let tickerCache = null;
 const TICKER_CACHE_MS = 6 * 60 * 60 * 1000;
 
+function secGetViaCurl(host, pathname, userAgent) {
+  const url = `https://${host}${pathname}`;
+  return new Promise((resolve, reject) => {
+    execFile(
+      "curl",
+      ["-4", "-sS", "-L", "--max-time", "30", "-H", `User-Agent: ${userAgent}`, "-H", "Accept: application/json", url],
+      { maxBuffer: 64 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(`SEC curl failed (${host}${pathname}): ${err.message}${stderr ? ` ${String(stderr).slice(0, 120)}` : ""}`));
+          return;
+        }
+        const text = String(stdout || "");
+        if (!text.trim() || text.trimStart().startsWith("<!DOCTYPE") || text.trimStart().startsWith("<html")) {
+          reject(new Error(`SEC curl returned non-JSON (${host}${pathname}): ${text.slice(0, 200)}`));
+          return;
+        }
+        resolve(text);
+      }
+    );
+  });
+}
+
 function secGet(host, pathname) {
   const userAgent = resolveSecUserAgent();
   const url = `https://${host}${pathname}`;
@@ -149,28 +174,71 @@ function secGet(host, pathname) {
           const chunks = [];
           res.on("data", (c) => chunks.push(c));
           res.on("end", () => {
-            const body = Buffer.concat(chunks).toString("utf8");
-            if (res.statusCode !== 200) {
-              const uaHint = isDefaultSecUserAgent(userAgent)
-                ? "default"
-                : `custom:${userAgent.split(/\s+/)[0]}`;
-              let msg = `SEC HTTP ${res.statusCode} (${host}${pathname}, ua=${uaHint}): ${body.slice(0, 200)}`;
-              if (res.statusCode === 403 && isDefaultSecUserAgent(userAgent)) {
-                msg +=
-                  " — running process has no SEC_USER_AGENT; set it in .env next to server.mjs and restart.";
-              } else if (res.statusCode === 403) {
-                msg +=
-                  " — SEC rejected this Node request (curl may still work). Restart the app after git pull.";
+            void (async () => {
+              const body = Buffer.concat(chunks).toString("utf8");
+              if (res.statusCode === 200) {
+                resolve(body);
+                return;
               }
-              reject(new Error(msg));
-              return;
-            }
-            resolve(body);
+              // www.sec.gov often 403s Node's TLS stack on VPS while curl works — fall back.
+              if (res.statusCode === 403) {
+                try {
+                  resolve(await secGetViaCurl(host, pathname, userAgent));
+                  return;
+                } catch (curlErr) {
+                  const uaHint = isDefaultSecUserAgent(userAgent)
+                    ? "default"
+                    : `custom:${userAgent.split(/\s+/)[0]}`;
+                  reject(
+                    new Error(
+                      `SEC HTTP 403 (${host}${pathname}, ua=${uaHint}); curl fallback failed: ${
+                        curlErr instanceof Error ? curlErr.message : String(curlErr)
+                      }`
+                    )
+                  );
+                  return;
+                }
+              }
+              reject(new Error(`SEC HTTP ${res.statusCode} (${host}${pathname}): ${body.slice(0, 200)}`));
+            })();
           });
         }
       )
-      .on("error", reject);
+      .on("error", (err) => {
+        void secGetViaCurl(host, pathname, userAgent).then(resolve, (curlErr) => {
+          reject(
+            new Error(
+              `SEC request failed (${host}${pathname}): ${err.message}; curl fallback: ${
+                curlErr instanceof Error ? curlErr.message : String(curlErr)
+              }`
+            )
+          );
+        });
+      });
   });
+}
+
+/** Prefer local stocks.cik so filings work even when www.sec.gov blocks Node. */
+async function lookupCikFromDb(symbol) {
+  try {
+    const pool = getPool();
+    const res = await pool.query(
+      `SELECT cik
+       FROM stocks
+       WHERE UPPER(BTRIM(ticker)) = $1
+         AND cik IS NOT NULL
+         AND BTRIM(cik) <> ''
+       LIMIT 1`,
+      [symbol]
+    );
+    const raw = res.rows[0]?.cik;
+    if (!raw) return null;
+    const digits = String(raw).replace(/\D/g, "");
+    if (!digits) return null;
+    return Number(digits);
+  } catch {
+    return null;
+  }
 }
 
 async function getTickerToCikMap() {
@@ -244,13 +312,19 @@ async function buildSecFilingsResponse(symbol, limit) {
     err.statusCode = 400;
     throw err;
   }
-  const map = await getTickerToCikMap();
-  const cikNum = map.get(sym);
+
+  let cikNum = await lookupCikFromDb(sym);
+  if (cikNum == null) {
+    const map = await getTickerToCikMap();
+    const aliases = { "BRK.B": "BRK-B", "BF.B": "BF-B" };
+    cikNum = map.get(aliases[sym] || sym) ?? null;
+  }
   if (cikNum == null) {
     const err = new Error(`Unknown ticker for SEC mapping: ${sym}`);
     err.statusCode = 404;
     throw err;
   }
+
   const cik10 = String(cikNum).padStart(10, "0");
   const raw = await secGet("data.sec.gov", `/submissions/CIK${cik10}.json`);
   const sub = JSON.parse(raw);
