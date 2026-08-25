@@ -165,15 +165,62 @@ export function createInstitutionPerformanceProxyController(deps) {
     </tr>`;
   }
 
+  function syncSortControls(sort, sortDir) {
+    const sortSel = document.getElementById("proxy-perf-sort");
+    const dirSel = document.getElementById("proxy-perf-sort-dir");
+    if (sortSel && sort) sortSel.value = sort;
+    if (dirSel && sortDir) dirSel.value = sortDir;
+  }
+
+  function updateSortButtons() {
+    const { sort, sortDir } = readFilters();
+    document.querySelectorAll("[data-proxy-perf-sort]").forEach((btn) => {
+      const key = btn.getAttribute("data-proxy-perf-sort");
+      const active = key === sort;
+      const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+      btn.classList.toggle("is-active", active);
+      btn.dataset.sortDir = active ? sortDir : "";
+      btn.setAttribute("aria-sort", active ? (sortDir === "asc" ? "ascending" : "descending") : "none");
+      btn.textContent = active ? `${label} ${sortDir === "asc" ? "▲" : "▼"}` : label;
+    });
+  }
+
+  function setSort(sortKey, { toggle = true } = {}) {
+    const sortSel = document.getElementById("proxy-perf-sort");
+    const dirSel = document.getElementById("proxy-perf-sort-dir");
+    if (!sortSel || !dirSel || !sortKey) return;
+    const current = sortSel.value || "growth_1y";
+    if (toggle && current === sortKey) {
+      dirSel.value = dirSel.value === "asc" ? "desc" : "asc";
+    } else {
+      sortSel.value = sortKey;
+      dirSel.value = "desc";
+    }
+    updateSortButtons();
+    expanded.clear();
+    void load();
+  }
+
   function render() {
     const body = document.getElementById("institution-proxy-performance-body");
     const count = document.getElementById("institution-proxy-performance-count");
     const subtitle = document.getElementById("institution-proxy-performance-subtitle");
     if (!body) return;
 
+    updateSortButtons();
+
     if (subtitle && payload) {
       const q = payload.asOfQuarter || "—";
-      subtitle.textContent = `As of ${q} · Ranked by change in reported 13F portfolio value`;
+      const sortLabel =
+        {
+          growth_1y: "1Y growth",
+          growth_3y: "3Y growth",
+          growth_qoq: "QoQ growth",
+          portfolio_value: "portfolio value",
+          dollar_growth: "dollar growth",
+          holdings: "holdings",
+        }[payload.sort] || "1Y growth";
+      subtitle.textContent = `As of ${q} · Sorted by ${sortLabel} (${payload.sortDir === "asc" ? "asc" : "desc"})`;
     }
 
     if (count && payload) {
@@ -216,6 +263,7 @@ export function createInstitutionPerformanceProxyController(deps) {
       if (id !== requestId) return;
       payload = data;
       populateQuarters(data.availableQuarters || [], data.asOfQuarter);
+      if (data.sort || data.sortDir) syncSortControls(data.sort, data.sortDir);
       const disclaimer = document.getElementById("institution-proxy-performance-disclaimer");
       if (disclaimer && data.disclaimer) disclaimer.textContent = data.disclaimer;
       render();
@@ -248,6 +296,7 @@ export function createInstitutionPerformanceProxyController(deps) {
 
     ["proxy-perf-quarter", "proxy-perf-sort", "proxy-perf-sort-dir"].forEach((id) => {
       document.getElementById(id)?.addEventListener("change", () => {
+        updateSortButtons();
         expanded.clear();
         void load();
       });
@@ -265,6 +314,15 @@ export function createInstitutionPerformanceProxyController(deps) {
     document.getElementById("institution-proxy-performance")?.addEventListener("click", (e) => {
       const t = e.target;
       if (!(t instanceof Element)) return;
+
+      const sortBtn = t.closest("[data-proxy-perf-sort]");
+      if (sortBtn) {
+        e.preventDefault();
+        const key = sortBtn.getAttribute("data-proxy-perf-sort");
+        if (key) setSort(key);
+        return;
+      }
+
       const openBtn = t.closest("[data-proxy-open]");
       if (openBtn) {
         e.preventDefault();
@@ -287,9 +345,11 @@ export function createInstitutionPerformanceProxyController(deps) {
   return {
     ensure() {
       bind();
+      updateSortButtons();
     },
     async show() {
       bind();
+      updateSortButtons();
       if (!payload && !loading) await load();
       else render();
     },

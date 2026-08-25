@@ -2643,10 +2643,31 @@
                     <tr>
                       <th>Rank</th>
                       <th>Institution</th>
-                      <th class="num">Current Portfolio Value</th>
-                      <th class="num">QoQ %</th>
-                      <th class="num">1Y %</th>
-                      <th class="num">Holdings</th>
+                      <th class="num">
+                        <button type="button" class="table-sort-btn" data-proxy-perf-sort="portfolio_value">
+                          Current Portfolio Value
+                        </button>
+                      </th>
+                      <th class="num">
+                        <button type="button" class="table-sort-btn" data-proxy-perf-sort="growth_qoq">
+                          QoQ %
+                        </button>
+                      </th>
+                      <th class="num">
+                        <button
+                          type="button"
+                          class="table-sort-btn is-active"
+                          data-proxy-perf-sort="growth_1y"
+                          data-sort-dir="desc"
+                        >
+                          1Y % ▼
+                        </button>
+                      </th>
+                      <th class="num">
+                        <button type="button" class="table-sort-btn" data-proxy-perf-sort="holdings">
+                          Holdings
+                        </button>
+                      </th>
                       <th>Latest Filing Date</th>
                       <th class="num"></th>
                     </tr>
@@ -7646,6 +7667,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=aschenbrenner-notable-1"></script>
+    <script type="module" src="/app.js?v=proxy-perf-sort-arrows-1"></script>
   </body>
 </html>
