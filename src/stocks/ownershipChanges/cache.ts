@@ -14,7 +14,26 @@ let memoryCache: { loadedAt: number; payload: OwnershipChangesCachePayload } | n
 const MEMORY_CACHE_MS = 15 * 60 * 1000;
 
 function sanitizeLoadedPayload(raw: OwnershipChangesCachePayload): OwnershipChangesCachePayload {
-  const filtered = filterFullyScrapedOwnershipQuarters(raw);
+  const cleanedByQuarter: Record<string, OwnershipChangesCachePayload["byQuarter"][string]> = {};
+  for (const [quarter, rows] of Object.entries(raw.byQuarter || {})) {
+    if (!Array.isArray(rows)) continue;
+    // Drop legacy share-delta rows (null ownership %) and absurd pp moves from bad SO math.
+    const cleaned = rows.filter(
+      (r) =>
+        r.currentOwnershipPct != null &&
+        r.previousOwnershipPct != null &&
+        Number.isFinite(r.currentOwnershipPct) &&
+        Number.isFinite(r.previousOwnershipPct) &&
+        Number.isFinite(r.changePct) &&
+        Math.abs(r.changePct) <= 250
+    );
+    if (cleaned.length) cleanedByQuarter[quarter] = cleaned;
+  }
+
+  const filtered = filterFullyScrapedOwnershipQuarters({
+    ...raw,
+    byQuarter: cleanedByQuarter,
+  });
   const sectors = [
     ...new Set(
       Object.values(filtered.byQuarter)

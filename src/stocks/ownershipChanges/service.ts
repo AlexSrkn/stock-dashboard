@@ -93,6 +93,13 @@ export async function getOwnershipChanges(
         : "desc";
 
   const allRows = quarter ? (cache.byQuarter[quarter] ?? []) : [];
+  const facetFiltered = filterOwnershipChangeRows(allRows, {
+    direction: "all",
+    search,
+    sector: sector || undefined,
+    exchange: exchange || undefined,
+    marketCap: marketCap || undefined,
+  });
   const filtered = filterOwnershipChangeRows(allRows, {
     direction,
     search,
@@ -110,7 +117,7 @@ export async function getOwnershipChanges(
     previousQuarter: previousQuarter ?? "",
     defaultQuarter: defaultQuarter ?? quarter ?? "",
     direction,
-    summary: buildOwnershipChangesSummary(filtered),
+    summary: buildOwnershipChangesSummary(facetFiltered),
     sectors: cache.sectors,
     exchanges: cache.exchanges,
     quarters: cache.quarters,

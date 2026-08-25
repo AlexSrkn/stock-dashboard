@@ -100,21 +100,26 @@ function buildPairRows(
     const prev = previous.get(ticker);
     if (!prev || prev.shares <= 0 || cur.shares <= 0) continue;
 
+    // Ownership movers are percentage-point changes of institutional ownership.
+    // Without shares outstanding we cannot compute ownership % — do NOT fall back to
+    // share-count growth ((cur-prev)/prev), which produces nonsense like +2e9%.
     const so = sharesOutstanding.get(ticker);
-    const currentOwnershipPct =
-      so && so > 0 ? round2((cur.shares / so) * 100) : null;
-    const previousOwnershipPct =
-      so && so > 0 ? round2((prev.shares / so) * 100) : null;
-    const changePct =
-      currentOwnershipPct != null && previousOwnershipPct != null
-        ? round2(currentOwnershipPct - previousOwnershipPct)
-        : round2(((cur.shares - prev.shares) / prev.shares) * 100);
+    if (!so || !(so > 0)) continue;
+
+    const currentOwnershipPct = round2((cur.shares / so) * 100);
+    const previousOwnershipPct = round2((prev.shares / so) * 100);
+    if (!Number.isFinite(currentOwnershipPct) || !Number.isFinite(previousOwnershipPct)) continue;
+
+    // SO / share-unit mismatches (tiny SO or mis-scaled holdings) blow past 100%.
+    if (currentOwnershipPct > 250 || previousOwnershipPct > 250) continue;
+
+    const changePct = round2(currentOwnershipPct - previousOwnershipPct);
     if (!Number.isFinite(changePct) || changePct === 0) continue;
 
     const meta = stockMeta.get(ticker);
     const impliedPx = cur.shares > 0 ? cur.valueUsd / cur.shares : null;
     const marketCapUsd =
-      so && so > 0 && impliedPx != null && impliedPx > 0 ? round2(so * impliedPx) : null;
+      impliedPx != null && impliedPx > 0 ? round2(so * impliedPx) : null;
 
     rows.push({
       ticker,
@@ -342,7 +347,7 @@ export async function computeOwnershipChangesCache(
 export function filterOwnershipChangeRows(
   rows: OwnershipChangeRow[],
   options: {
-    direction: "increases" | "decreases";
+    direction: "increases" | "decreases" | "all";
     search?: string;
     sector?: string;
     exchange?: string;
@@ -387,15 +392,24 @@ export function buildOwnershipChangesSummary(rows: OwnershipChangeRow[]): {
   if (!rows.length) {
     return { topIncrease: null, topDecrease: null, stockCount: 0, averageChangePct: null };
   }
-  const sorted = [...rows].sort((a, b) => b.changePct - a.changePct);
-  const topIncrease = sorted[0]
-    ? { ticker: sorted[0].ticker, companyName: sorted[0].companyName, changePct: sorted[0].changePct }
-    : null;
-  const topDecrease = sorted[sorted.length - 1]
+  const increases = rows
+    .filter((r) => Number.isFinite(r.changePct) && r.changePct > 0)
+    .sort((a, b) => b.changePct - a.changePct || a.ticker.localeCompare(b.ticker));
+  const decreases = rows
+    .filter((r) => Number.isFinite(r.changePct) && r.changePct < 0)
+    .sort((a, b) => a.changePct - b.changePct || a.ticker.localeCompare(b.ticker));
+  const topIncrease = increases[0]
     ? {
-        ticker: sorted[sorted.length - 1].ticker,
-        companyName: sorted[sorted.length - 1].companyName,
-        changePct: sorted[sorted.length - 1].changePct,
+        ticker: increases[0].ticker,
+        companyName: increases[0].companyName,
+        changePct: increases[0].changePct,
+      }
+    : null;
+  const topDecrease = decreases[0]
+    ? {
+        ticker: decreases[0].ticker,
+        companyName: decreases[0].companyName,
+        changePct: decreases[0].changePct,
       }
     : null;
   const avg = rows.reduce((sum, r) => sum + r.changePct, 0) / rows.length;
@@ -446,13 +460,9 @@ export function ownershipPctSeriesLooksComplete(values: number[]): boolean {
   return med >= MIN_MEDIAN_OWNERSHIP_PCT;
 }
 
-/** Min QoQ ticker rows when ownership-% cannot be scored (missing SO). */
-const MIN_SHARE_DELTA_ROWS = 100;
-
 /**
- * Keep a QoQ slice when ownership-% looks fully scraped, or when SO is missing
- * but the share-delta sample is large enough that a thin historical scrape is
- * unlikely (warmer still guards max institutionCount).
+ * Keep a QoQ slice only when ownership-% looks like full 13F coverage.
+ * Share-count-only deltas (no SO) are not valid for this screen.
  */
 export function isOwnershipQuarterPairDataComplete(rows: OwnershipChangeRow[]): boolean {
   if (!rows.length) return false;
@@ -466,14 +476,9 @@ export function isOwnershipQuarterPairDataComplete(rows: OwnershipChangeRow[]): 
       previous.push(row.previousOwnershipPct);
     }
   }
-  if (ownershipPctSeriesLooksComplete(current) && ownershipPctSeriesLooksComplete(previous)) {
-    return true;
-  }
-  // Ownership-% samples absent/thin (no SO) — do not wipe a full-universe warm.
-  if (current.length < MIN_OWNERSHIP_SAMPLE || previous.length < MIN_OWNERSHIP_SAMPLE) {
-    return rows.length >= MIN_SHARE_DELTA_ROWS;
-  }
-  return false;
+  return (
+    ownershipPctSeriesLooksComplete(current) && ownershipPctSeriesLooksComplete(previous)
+  );
 }
 
 /**

@@ -33,7 +33,7 @@ test("ownershipPctSeriesLooksComplete rejects near-zero scrape cliffs", () => {
   assert.equal(ownershipPctSeriesLooksComplete(sparse), false);
 });
 
-test("isOwnershipQuarterPairDataComplete keeps large share-delta sets without SO", () => {
+test("isOwnershipQuarterPairDataComplete rejects share-delta rows without ownership %", () => {
   const rows = Array.from({ length: 120 }, (_, i) => ({
     ticker: `T${i}`,
     companyName: null,
@@ -48,8 +48,26 @@ test("isOwnershipQuarterPairDataComplete keeps large share-delta sets without SO
     currentQuarter: "2026-Q1",
     previousQuarter: "2025-Q4",
   }));
-  assert.equal(isOwnershipQuarterPairDataComplete(rows), true);
+  assert.equal(isOwnershipQuarterPairDataComplete(rows), false);
   assert.equal(isOwnershipQuarterPairDataComplete(rows.slice(0, 20)), false);
+});
+
+test("isOwnershipQuarterPairDataComplete accepts full ownership-% coverage", () => {
+  const rows = Array.from({ length: 80 }, (_, i) => ({
+    ticker: `T${i}`,
+    companyName: null,
+    sector: null,
+    exchange: null,
+    marketCapUsd: null,
+    currentOwnershipPct: 20 + (i % 30),
+    previousOwnershipPct: 18 + (i % 30),
+    changePct: 2,
+    institutionCount: 50,
+    totalInstitutionalShares: 1_000_000,
+    currentQuarter: "2026-Q1",
+    previousQuarter: "2025-Q4",
+  }));
+  assert.equal(isOwnershipQuarterPairDataComplete(rows), true);
 });
 
 test("filterFullyScrapedOwnershipQuarters drops incomplete and sparse pairs", () => {

@@ -2829,6 +2829,7 @@ function setupStocksMostAccumulatedPage() {
 }
 
 function formatOwnershipPct(n) {
+  if (n == null || n === "") return "—";
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
   const sign = x > 0 ? "+" : x < 0 ? "−" : "";
@@ -2836,6 +2837,8 @@ function formatOwnershipPct(n) {
 }
 
 function formatOwnershipPctPlain(n) {
+  // Number(null) === 0 — treat missing ownership % as em dash, not 0.0%.
+  if (n == null || n === "") return "—";
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
   return `${x.toFixed(1)}%`;
