@@ -1,4 +1,5 @@
 import { previousQuarter, sortQuarters } from "../performance/quarters.js";
+import { normalizePortfolioValueSeriesUnits } from "../../ownership/normalizeThirteenFUsd.js";
 import type {
   PortfolioProxyFilters,
   PortfolioProxyRankingRow,
@@ -77,16 +78,28 @@ export function buildHistoryPoints(snapshots: RawPortfolioSnapshot[]): Portfolio
   const byQuarter = new Map<string, RawPortfolioSnapshot>();
   for (const s of snapshots) byQuarter.set(s.quarter, s);
   const quarters = sortQuarters(byQuarter.keys());
-  return quarters.map((quarter) => {
+  const ordered = quarters.map((quarter) => {
     const cur = byQuarter.get(quarter)!;
-    const prevQ = previousQuarter(quarter);
-    const prev = prevQ ? byQuarter.get(prevQ) : undefined;
     return {
       quarter,
+      portfolioValueUsd: cur.portfolioValueUsd,
+      holdingsCount: cur.holdingsCount,
+      filingDate: cur.filingDate,
+    };
+  });
+  // Fix residual ~1000× cliffs when filing.total_value units flipped mid-history.
+  const normalized = normalizePortfolioValueSeriesUnits(ordered);
+  return normalized.map((cur) => {
+    const prevQ = previousQuarter(cur.quarter);
+    const prev = prevQ ? normalized.find((p) => p.quarter === prevQ) : undefined;
+    return {
+      quarter: cur.quarter,
       portfolioValueUsd: round2(cur.portfolioValueUsd),
       holdingsCount: cur.holdingsCount,
       filingDate: cur.filingDate,
-      qoqChangeUsd: prev ? dollarChange(cur.portfolioValueUsd, prev.portfolioValueUsd) : null,
+      qoqChangeUsd: prev
+        ? dollarChange(cur.portfolioValueUsd, prev.portfolioValueUsd)
+        : null,
       qoqChangePct: prev
         ? proxyPortfolioGrowthPct(cur.portfolioValueUsd, prev.portfolioValueUsd)
         : null,
