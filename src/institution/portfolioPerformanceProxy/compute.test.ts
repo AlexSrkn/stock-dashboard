@@ -10,6 +10,7 @@ import {
   latestQuarterForInstitution,
   metricsAtQuarter,
   pctChange,
+  proxyPortfolioGrowthPct,
   rowHasCompleteProxyMetrics,
   shiftQuartersBack,
 } from "./compute.js";
@@ -57,9 +58,20 @@ describe("portfolio performance proxy math", () => {
 
   it("Berkshire 1Y ≈ +1.70% from raw 13F totals four quarters apart", () => {
     assert.equal(shiftQuartersBack("2026-Q1", 4), "2025-Q1");
-    const y1 = pctChange(BRK.q2026q1, BRK.q2025q1);
+    const y1 = proxyPortfolioGrowthPct(BRK.q2026q1, BRK.q2025q1);
     assert.ok(y1 != null);
     assert.ok(Math.abs(y1 - 1.7) < 0.05);
+  });
+
+  it("suppresses absurd 1Y when prior book was a micro-filer (P/E Global pattern)", () => {
+    const peGlobal2026Q2 = 1_558_508_443;
+    const peGlobal2025Q2 = 480_963;
+    assert.equal(pctChange(peGlobal2026Q2, peGlobal2025Q2), 323939.16);
+    assert.equal(proxyPortfolioGrowthPct(peGlobal2026Q2, peGlobal2025Q2), null);
+  });
+
+  it("suppresses step-up QoQ when prior book is tiny vs current", () => {
+    assert.equal(proxyPortfolioGrowthPct(1_387_619_788, 500_045), null);
   });
 
   it("missing four-quarters-ago value produces N/A (null), not 0%", () => {
@@ -113,8 +125,8 @@ describe("portfolio performance proxy math", () => {
     assert.equal(m.current?.portfolioValueUsd, BRK.q2026q1);
     assert.equal(m.previous?.portfolioValueUsd, BRK.q2025q4);
     assert.equal(m.yearAgo?.portfolioValueUsd, BRK.q2025q1);
-    assert.ok(Math.abs((pctChange(m.current!.portfolioValueUsd, m.previous!.portfolioValueUsd) ?? 0) - -4.04) < 0.01);
-    assert.ok(Math.abs((pctChange(m.current!.portfolioValueUsd, m.yearAgo!.portfolioValueUsd) ?? 0) - 1.7) < 0.05);
+    assert.ok(Math.abs((proxyPortfolioGrowthPct(m.current!.portfolioValueUsd, m.previous!.portfolioValueUsd) ?? 0) - -4.04) < 0.01);
+    assert.ok(Math.abs((proxyPortfolioGrowthPct(m.current!.portfolioValueUsd, m.yearAgo!.portfolioValueUsd) ?? 0) - 1.7) < 0.05);
   });
 
   it("never treats a formatted display string as a calculation input", () => {
@@ -221,14 +233,14 @@ describe("portfolio performance proxy math", () => {
         quarter: "2025-Q1",
         filingDate: null,
         holdingsCount: 10,
-        portfolioValueUsd: 100,
+        portfolioValueUsd: 50_000_000,
       },
       {
         institutionId: "1",
         quarter: "2025-Q2",
         filingDate: null,
         holdingsCount: 12,
-        portfolioValueUsd: 110,
+        portfolioValueUsd: 55_000_000,
       },
     ]);
     const complete = filterCompleteHistoryPoints(history);

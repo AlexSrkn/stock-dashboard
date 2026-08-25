@@ -31,6 +31,34 @@ export function pctChange(current: number | null | undefined, prior: number | nu
   return round2(((current - prior) / prior) * 100);
 }
 
+/** Min prior 13F book (USD) before % growth is shown — avoids micro-filer noise. */
+const MIN_PRIOR_PORTFOLIO_USD = 5_000_000;
+
+/** Prior book must be at least this share of current (catches AUM step-ups / first full filings). */
+const MIN_PRIOR_TO_CURRENT_RATIO = 0.05;
+
+/** Beyond this absolute %, treat growth as not meaningful for rankings (still show $ change). */
+const MAX_PROXY_GROWTH_PCT = 500;
+
+/**
+ * QoQ / 1Y / 3Y % for the portfolio-value proxy. Returns null when the prior quarter
+ * is too small or the step-up is implausible (e.g. $481K → $1.56B is not "return").
+ */
+export function proxyPortfolioGrowthPct(
+  current: number | null | undefined,
+  prior: number | null | undefined
+): number | null {
+  const raw = pctChange(current, prior);
+  if (raw == null) return null;
+  const cur = Number(current);
+  const prv = Number(prior);
+  if (!Number.isFinite(cur) || !Number.isFinite(prv) || prv <= 0 || cur <= 0) return null;
+  if (prv < MIN_PRIOR_PORTFOLIO_USD) return null;
+  if (prv / cur < MIN_PRIOR_TO_CURRENT_RATIO) return null;
+  if (Math.abs(raw) > MAX_PROXY_GROWTH_PCT) return null;
+  return raw;
+}
+
 export interface RawPortfolioSnapshot {
   institutionId: string;
   quarter: string;
@@ -53,7 +81,9 @@ export function buildHistoryPoints(snapshots: RawPortfolioSnapshot[]): Portfolio
       holdingsCount: cur.holdingsCount,
       filingDate: cur.filingDate,
       qoqChangeUsd: prev ? dollarChange(cur.portfolioValueUsd, prev.portfolioValueUsd) : null,
-      qoqChangePct: prev ? pctChange(cur.portfolioValueUsd, prev.portfolioValueUsd) : null,
+      qoqChangePct: prev
+        ? proxyPortfolioGrowthPct(cur.portfolioValueUsd, prev.portfolioValueUsd)
+        : null,
     };
   });
 }

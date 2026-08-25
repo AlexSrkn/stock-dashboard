@@ -15,7 +15,7 @@ import {
   metricsAtQuarter,
   parseSortDir,
   parseSortKey,
-  pctChange,
+  proxyPortfolioGrowthPct,
   rowHasCompleteProxyMetrics,
   type RawPortfolioSnapshot,
 } from "./compute.js";
@@ -108,13 +108,22 @@ function buildRowsForQuarter(
       currentPortfolioValueUsd: m.current.portfolioValueUsd,
       previousPortfolioValueUsd: m.previous?.portfolioValueUsd ?? null,
       qoqChangeUsd: dollarChange(m.current.portfolioValueUsd, m.previous?.portfolioValueUsd),
-      qoqChangePct: pctChange(m.current.portfolioValueUsd, m.previous?.portfolioValueUsd),
+      qoqChangePct: proxyPortfolioGrowthPct(
+        m.current.portfolioValueUsd,
+        m.previous?.portfolioValueUsd
+      ),
       yearAgoPortfolioValueUsd: m.yearAgo?.portfolioValueUsd ?? null,
       change1yUsd: dollarChange(m.current.portfolioValueUsd, m.yearAgo?.portfolioValueUsd),
-      change1yPct: pctChange(m.current.portfolioValueUsd, m.yearAgo?.portfolioValueUsd),
+      change1yPct: proxyPortfolioGrowthPct(
+        m.current.portfolioValueUsd,
+        m.yearAgo?.portfolioValueUsd
+      ),
       threeYearAgoPortfolioValueUsd: m.threeYearAgo?.portfolioValueUsd ?? null,
       change3yUsd: dollarChange(m.current.portfolioValueUsd, m.threeYearAgo?.portfolioValueUsd),
-      change3yPct: pctChange(m.current.portfolioValueUsd, m.threeYearAgo?.portfolioValueUsd),
+      change3yPct: proxyPortfolioGrowthPct(
+        m.current.portfolioValueUsd,
+        m.threeYearAgo?.portfolioValueUsd
+      ),
       holdingsCount: m.current.holdingsCount,
       history: filterCompleteHistoryPoints(history),
     });
