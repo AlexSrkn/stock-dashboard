@@ -6672,8 +6672,15 @@ body.chart-fullscreen-active {
     pointer-events: auto;
   }
 
-  .topbar.is-nav-open ~ .topbar-nav-backdrop,
-  body.topbar-nav-open .topbar-nav-backdrop {
+  /* [hidden] must win — author `display:block` otherwise overrides the UA [hidden] rule
+     and leaves a stuck full-screen grey scrim after navigation. */
+  .topbar-nav-backdrop[hidden] {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .topbar.is-nav-open ~ .topbar-nav-backdrop:not([hidden]),
+  body.topbar-nav-open .topbar-nav-backdrop:not([hidden]) {
     display: block;
   }
 

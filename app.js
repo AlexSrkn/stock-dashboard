@@ -1151,6 +1151,7 @@ function showLandingView(visible) {
   document.body.classList.toggle("is-landing", visible);
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
+    clearMobileOverlays();
     closeTopSearch();
     setDashboardStatus("");
   }
@@ -5323,6 +5324,8 @@ function scrollInstitutionProfileIntoView() {
 
 function setExploreMode(mode, { navigate = true } = {}) {
   if (!EXPLORE_MODES.includes(mode)) mode = "stocks";
+  // Close mobile chrome so the dimmed scrim cannot stick after a section change.
+  clearMobileOverlays();
   showLandingView(false);
   activeExploreMode = mode;
   updateExploreNav();
@@ -21101,12 +21104,34 @@ async function selectStock(index) {
 }
 
 function closeDrawerIfMobile() {
-  const aside = document.getElementById("watchlist-panel");
-  const toggle = document.querySelector(".watchlist-toggle");
-  if (window.matchMedia("(max-width: 960px)").matches) {
-    aside.classList.remove("is-open");
+  clearMobileOverlays({ topbarNav: false });
+}
+
+/** Force-clear mobile menu / watchlist dimmers (classes + [hidden] + inline display). */
+function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
+  if (watchlist) {
+    document.getElementById("watchlist-panel")?.classList.remove("is-open");
     document.body.classList.remove("watchlist-drawer-open");
+    const toggle = document.querySelector(".watchlist-toggle");
     if (toggle) toggle.setAttribute("aria-expanded", "false");
+  }
+  if (topbarNav) {
+    if (typeof window.closeMobileTopbarNav === "function") {
+      window.closeMobileTopbarNav();
+    }
+    document.querySelector(".topbar")?.classList.remove("is-nav-open");
+    document.body.classList.remove("topbar-nav-open");
+    document.body.style.overflow = "";
+    const menuBtn = document.getElementById("topbar-menu-btn");
+    if (menuBtn) {
+      menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.setAttribute("aria-label", "Open menu");
+    }
+    const backdrop = document.getElementById("topbar-nav-backdrop");
+    if (backdrop) {
+      backdrop.hidden = true;
+      backdrop.style.removeProperty("display");
+    }
   }
 }
 
@@ -21452,7 +21477,12 @@ function setupMobileTopbarNav() {
     document.body.classList.toggle("topbar-nav-open", open);
     menuBtn.setAttribute("aria-expanded", String(open));
     menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-    if (backdrop) backdrop.hidden = !open;
+    if (backdrop) {
+      // Prefer [hidden]; CSS forces display:none !important when hidden so the
+      // grey fullscreen scrim cannot stick after navigation.
+      backdrop.hidden = !open;
+      backdrop.style.removeProperty("display");
+    }
   };
 
   const closeNav = () => setOpen(false);
