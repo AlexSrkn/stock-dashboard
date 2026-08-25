@@ -27,6 +27,47 @@ function roundPct(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Prior book must be at least this many shares for % increase to be meaningful. */
+const MIN_PRIOR_SHARES_FOR_PCT = 10_000;
+/** Prior shares must be ≥1% of current (else treat as near-new position book). */
+const MIN_PRIOR_SHARE_OF_CURRENT = 0.01;
+/** Cap extreme ratios even when prior clears the floors. */
+const MAX_ABS_PERCENT_INCREASE = 1_000;
+
+/**
+ * % increase = netSharesAdded / previousTotalShares.
+ * Suppress when the prior base is tiny / near-new (same class of issue as
+ * portfolio-performance micro-bases): e.g. SIND ~185 prior shares → +66M%.
+ */
+export function computePercentIncrease(input: {
+  netSharesAdded: number;
+  previousTotalShares: number;
+  currentTotalShares: number;
+}): number | null {
+  const { netSharesAdded, previousTotalShares, currentTotalShares } = input;
+  if (!Number.isFinite(netSharesAdded) || !Number.isFinite(previousTotalShares)) {
+    return null;
+  }
+  if (previousTotalShares <= 0) {
+    return netSharesAdded === 0 ? 0 : null;
+  }
+  if (previousTotalShares < MIN_PRIOR_SHARES_FOR_PCT) {
+    return null;
+  }
+  if (
+    Number.isFinite(currentTotalShares) &&
+    currentTotalShares > 0 &&
+    previousTotalShares / currentTotalShares < MIN_PRIOR_SHARE_OF_CURRENT
+  ) {
+    return null;
+  }
+
+  const pct = (netSharesAdded / previousTotalShares) * 100;
+  if (!Number.isFinite(pct)) return null;
+  if (Math.abs(pct) >= MAX_ABS_PERCENT_INCREASE) return null;
+  return roundPct(pct);
+}
+
 interface TickerAgg {
   ticker: string;
   institutionsBuying: number;
@@ -353,18 +394,11 @@ function finalizeRows(
   const top10 = new Set(sorted.slice(0, 10).map((r) => r.ticker));
 
   for (const row of sorted) {
-    const percentIncrease =
-      row.previousTotalShares > 0
-        ? roundPct((row.netSharesAdded / row.previousTotalShares) * 100)
-        : row.netSharesAdded > 0
-          ? null
-          : row.netSharesAdded < 0
-            ? roundPct(
-                (row.netSharesAdded /
-                  Math.max(row.previousTotalShares || row.currentTotalShares, 1)) *
-                  100
-              )
-            : 0;
+    const percentIncrease = computePercentIncrease({
+      netSharesAdded: row.netSharesAdded,
+      previousTotalShares: row.previousTotalShares,
+      currentTotalShares: row.currentTotalShares,
+    });
     const meta = enrichment.get(row.ticker);
     rows.push({
       ticker: row.ticker,
