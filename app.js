@@ -11785,6 +11785,13 @@ const NOTABLE_INVESTORS = [
     blurb: "Technology-focused growth investor with high-conviction public equity stakes.",
   },
   {
+    name: "Leopold Aschenbrenner",
+    firm: "Situational Awareness LP",
+    cik: "2045724",
+    style: "AI infrastructure",
+    blurb: "AI-thesis fund focused on compute, power, and infrastructure buildout around AGI timelines.",
+  },
+  {
     name: "Nicholas Maounis",
     firm: "Verition Fund Management",
     cik: "1454027",
