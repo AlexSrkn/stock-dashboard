@@ -2,7 +2,13 @@ import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import { listTrackedInstitutions } from "../institutionAnalytics.js";
 import { formatSecCik } from "../../sec/http.js";
-import { sortQuarters } from "../performance/quarters.js";
+import {
+  clearPortfolioProxyDiskCache,
+  getCachedPortfolioProxySnapshots,
+  savePortfolioProxySnapshotsToDisk,
+  setCachedPortfolioProxySnapshots,
+  type SnapshotCache,
+} from "./cache.js";
 import {
   applyProxyFilters,
   buildHistoryPoints,
@@ -30,48 +36,36 @@ import {
   PORTFOLIO_PROXY_METHODOLOGY,
 } from "./types.js";
 
-interface SnapshotCache {
-  loadedAt: number;
-  snapshots: RawPortfolioSnapshot[];
-  availableQuarters: string[];
-}
-
-const MEMORY_CACHE_MS = 10 * 60 * 1000;
-let snapshotCache: SnapshotCache | null = null;
 let inflight: Promise<SnapshotCache> | null = null;
 
+async function querySnapshotsFromDb(pool: pg.Pool): Promise<RawPortfolioSnapshot[]> {
+  const ciks = trackedInstitutionCiks();
+  const res = await pool.query<{
+    institution_id: string;
+    quarter: string;
+    filing_date: string | null;
+    holdings_count: number;
+    portfolio_value_usd: string | number;
+  }>(SELECT_PORTFOLIO_VALUE_HISTORY_SQL, [ciks]);
+
+  return res.rows.map((r) => ({
+    institutionId: formatSecCik(String(r.institution_id)),
+    quarter: String(r.quarter),
+    filingDate: r.filing_date ? String(r.filing_date) : null,
+    holdingsCount: Number(r.holdings_count) || 0,
+    portfolioValueUsd: Number(r.portfolio_value_usd) || 0,
+  }));
+}
+
 async function loadSnapshots(pool: pg.Pool): Promise<SnapshotCache> {
-  const now = Date.now();
-  if (snapshotCache && now - snapshotCache.loadedAt < MEMORY_CACHE_MS) {
-    return snapshotCache;
-  }
+  const hit = getCachedPortfolioProxySnapshots();
+  if (hit) return hit;
+
   if (!inflight) {
     inflight = (async () => {
-      const ciks = trackedInstitutionCiks();
-      const res = await pool.query<{
-        institution_id: string;
-        quarter: string;
-        filing_date: string | null;
-        holdings_count: number;
-        portfolio_value_usd: string | number;
-      }>(SELECT_PORTFOLIO_VALUE_HISTORY_SQL, [ciks]);
-
-      const snapshots: RawPortfolioSnapshot[] = res.rows.map((r) => ({
-        institutionId: formatSecCik(String(r.institution_id)),
-        quarter: String(r.quarter),
-        filingDate: r.filing_date ? String(r.filing_date) : null,
-        holdingsCount: Number(r.holdings_count) || 0,
-        portfolioValueUsd: Number(r.portfolio_value_usd) || 0,
-      }));
-
-      const availableQuarters = sortQuarters(snapshots.map((s) => s.quarter));
-      const payload: SnapshotCache = {
-        loadedAt: Date.now(),
-        snapshots,
-        availableQuarters,
-      };
-      snapshotCache = payload;
-      return payload;
+      const snapshots = await querySnapshotsFromDb(pool);
+      if (snapshots.length) savePortfolioProxySnapshotsToDisk(snapshots);
+      return setCachedPortfolioProxySnapshots(snapshots);
     })().finally(() => {
       inflight = null;
     });
@@ -190,5 +184,5 @@ export async function getPortfolioPerformanceProxyRankings(
 
 /** Test helper / cache bust. */
 export function clearPortfolioProxyCache(): void {
-  snapshotCache = null;
+  clearPortfolioProxyDiskCache();
 }

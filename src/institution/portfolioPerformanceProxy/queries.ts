@@ -7,11 +7,12 @@ export function trackedInstitutionCiks(): string[] {
 
 /**
  * Latest substantive filing per filer/quarter with reported portfolio value.
+ * Prefer the filing with the largest reported portfolio for the quarter so late
+ * thin amendments do not win.
  *
- * Some ingested rows still store SEC thousands; others store full USD. When the
- * majority of detectable holdings imply price value/shares < $1, treat the
- * filing total as thousands and ×1000. Prefer the filing with the largest
- * reported portfolio for the quarter so late thin amendments do not win.
+ * Raw `total_value` may mix SEC thousands and dollars across ingest eras. Unit
+ * normalization runs in JS via `normalizePortfolioValueSeriesUnits` when building
+ * history — avoids a heavy per-filing holdings scan in SQL.
  */
 export const SELECT_PORTFOLIO_VALUE_HISTORY_SQL = `
 WITH latest_filings AS (
@@ -29,42 +30,14 @@ WITH latest_filings AS (
     holdings_count DESC NULLS LAST,
     filing_date DESC,
     id DESC
-),
-unit_votes AS (
-  SELECT
-    h.filing_id,
-    COUNT(*) FILTER (
-      WHERE h.value IS NOT NULL
-        AND h.value > 0
-        AND h.shares IS NOT NULL
-        AND h.shares >= 100
-        AND (h.value / h.shares) < 1
-    )::int AS thousands_votes,
-    COUNT(*) FILTER (
-      WHERE h.value IS NOT NULL
-        AND h.value > 0
-        AND h.shares IS NOT NULL
-        AND h.shares >= 100
-        AND (h.value / h.shares) >= 1
-    )::int AS dollars_votes
-  FROM sec_holding h
-  INNER JOIN latest_filings lf ON lf.filing_id = h.filing_id
-  GROUP BY h.filing_id
 )
 SELECT
   lf.filer_cik AS institution_id,
   lf.quarter,
   lf.filing_date::text AS filing_date,
   COALESCE(lf.holdings_count, 0)::int AS holdings_count,
-  (
-    CASE
-      WHEN COALESCE(uv.thousands_votes, 0) > COALESCE(uv.dollars_votes, 0)
-      THEN COALESCE(lf.total_value, 0) * 1000.0
-      ELSE COALESCE(lf.total_value, 0)
-    END
-  )::float8 AS portfolio_value_usd
+  COALESCE(lf.total_value, 0)::float8 AS portfolio_value_usd
 FROM latest_filings lf
-LEFT JOIN unit_votes uv ON uv.filing_id = lf.filing_id
 WHERE COALESCE(lf.total_value, 0) > 0
 ORDER BY lf.filer_cik, lf.quarter
 `.trim();

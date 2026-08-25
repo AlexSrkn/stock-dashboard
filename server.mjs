@@ -41,6 +41,7 @@ import { tryHandleStocksHub } from "./src/api/stocksHub.ts";
 import { tryHandleAnalytics } from "./src/api/analytics.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
+import { ensurePortfolioProxyCacheOnStartup } from "./src/institution/portfolioPerformanceProxy/cache.ts";
 import { ensureSmartMoneyCacheOnStartup } from "./src/smartMoney/cache.ts";
 import { ensureInsiderClusterCacheOnStartup } from "./src/insiderCluster/cache.ts";
 import { ensureConvictionBuysCacheOnStartup } from "./src/insider/convictionBuys/cache.ts";
@@ -727,6 +728,7 @@ http
     console.log("Institutions API: /api/institutions, /api/institutions/performance-rankings, /api/institutions/most-accumulated, /api/institutions/new-positions, /api/institutions/completely-sold, /api/institutions/compare, /api/institutions/:cik/{holdings,activity,history,performance}");
     ensureReturnsMatrixOnStartup();
     ensurePerformanceSummariesOnStartup();
+    ensurePortfolioProxyCacheOnStartup();
     ensureSmartMoneyCacheOnStartup();
     ensureInsiderClusterCacheOnStartup();
     ensureConvictionBuysCacheOnStartup();
