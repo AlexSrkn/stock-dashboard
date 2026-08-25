@@ -1,5 +1,6 @@
 import http from "node:http";
 import https from "node:https";
+import dns from "node:dns";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,6 +86,13 @@ function loadEnvFile() {
 
 loadEnvFile();
 
+// Prefer IPv4 for SEC — some VPS IPv6 routes get HTML 403 pages.
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  /* Node < 17 */
+}
+
 const PORT = Number(process.env.PORT || 8787);
 const TOKEN = (process.env.FINNHUB_API_KEY || "").trim();
 const AV_KEY = (process.env.ALPHAVANTAGE_API_KEY || "").trim();
@@ -125,17 +133,16 @@ const TICKER_CACHE_MS = 6 * 60 * 60 * 1000;
 
 function secGet(host, pathname) {
   const userAgent = resolveSecUserAgent();
+  const url = `https://${host}${pathname}`;
   return new Promise((resolve, reject) => {
     https
       .get(
-        `https://${host}${pathname}`,
+        url,
         {
-          // Prefer IPv4 — some VPS IPv6 paths to SEC return 403 even when curl -4 works.
           family: 4,
           headers: {
             "User-Agent": userAgent,
             Accept: "application/json",
-            Host: host,
           },
         },
         (res) => {
@@ -144,13 +151,16 @@ function secGet(host, pathname) {
           res.on("end", () => {
             const body = Buffer.concat(chunks).toString("utf8");
             if (res.statusCode !== 200) {
-              let msg = `SEC HTTP ${res.statusCode} (${host}${pathname}): ${body.slice(0, 200)}`;
+              const uaHint = isDefaultSecUserAgent(userAgent)
+                ? "default"
+                : `custom:${userAgent.split(/\s+/)[0]}`;
+              let msg = `SEC HTTP ${res.statusCode} (${host}${pathname}, ua=${uaHint}): ${body.slice(0, 200)}`;
               if (res.statusCode === 403 && isDefaultSecUserAgent(userAgent)) {
                 msg +=
                   " — running process has no SEC_USER_AGENT; set it in .env next to server.mjs and restart.";
               } else if (res.statusCode === 403) {
                 msg +=
-                  " — SEC rejected this request (User-Agent is set). Restart the app after .env changes; prefer IPv4.";
+                  " — SEC rejected this Node request (curl may still work). Restart the app after git pull.";
               }
               reject(new Error(msg));
               return;
