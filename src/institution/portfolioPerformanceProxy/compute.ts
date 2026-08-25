@@ -32,13 +32,19 @@ export function pctChange(current: number | null | undefined, prior: number | nu
 }
 
 /** Min prior 13F book (USD) before % growth is shown — avoids micro-filer noise. */
-const MIN_PRIOR_PORTFOLIO_USD = 5_000_000;
+const MIN_PRIOR_PORTFOLIO_USD = 10_000_000;
 
-/** Prior book must be at least this share of current (catches AUM step-ups / first full filings). */
-const MIN_PRIOR_TO_CURRENT_RATIO = 0.05;
+/**
+ * Prior book must be at least this share of current. A jump from $200M → $1.2B
+ * (ratio ≈ 0.17) is almost always capital / mandate change, not investment return.
+ */
+const MIN_PRIOR_TO_CURRENT_RATIO = 0.33;
 
-/** Beyond this absolute %, treat growth as not meaningful for rankings (still show $ change). */
-const MAX_PROXY_GROWTH_PCT = 500;
+/**
+ * Cap absolute reported-value growth %. Diversified 13F books rarely "return" more
+ * than this; larger moves are treated as N/A (dollar change still shown).
+ */
+const MAX_PROXY_GROWTH_PCT = 100;
 
 /**
  * QoQ / 1Y / 3Y % for the portfolio-value proxy. Returns null when the prior quarter
@@ -55,7 +61,7 @@ export function proxyPortfolioGrowthPct(
   if (!Number.isFinite(cur) || !Number.isFinite(prv) || prv <= 0 || cur <= 0) return null;
   if (prv < MIN_PRIOR_PORTFOLIO_USD) return null;
   if (prv / cur < MIN_PRIOR_TO_CURRENT_RATIO) return null;
-  if (Math.abs(raw) > MAX_PROXY_GROWTH_PCT) return null;
+  if (Math.abs(raw) >= MAX_PROXY_GROWTH_PCT) return null;
   return raw;
 }
 

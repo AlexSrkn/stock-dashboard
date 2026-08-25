@@ -70,6 +70,16 @@ describe("portfolio performance proxy math", () => {
     assert.equal(proxyPortfolioGrowthPct(peGlobal2026Q2, peGlobal2025Q2), null);
   });
 
+  it("suppresses large AUM step-ups that clear the old 5% ratio guard", () => {
+    // ~$212M → $1.27B ≈ +500% — capital/mandate change, not return
+    assert.equal(proxyPortfolioGrowthPct(1_268_720_000, 211_600_000), null);
+    // +80% with stable book size is allowed
+    assert.equal(proxyPortfolioGrowthPct(180_000_000, 100_000_000), 80);
+    // +100% (doubling) and above are capped out
+    assert.equal(proxyPortfolioGrowthPct(200_000_000, 100_000_000), null);
+    assert.equal(proxyPortfolioGrowthPct(220_000_000, 100_000_000), null);
+  });
+
   it("suppresses step-up QoQ when prior book is tiny vs current", () => {
     assert.equal(proxyPortfolioGrowthPct(1_387_619_788, 500_045), null);
   });
