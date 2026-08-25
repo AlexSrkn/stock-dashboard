@@ -110,21 +110,32 @@ function sanitizeHttpHeader(value, fallback = SEC_USER_AGENT_DEFAULT) {
   return cleaned || fallback;
 }
 
-const SEC_USER_AGENT = sanitizeHttpHeader(process.env.SEC_USER_AGENT);
+/** Resolve on each request so a restarted process always picks up .env. */
+function resolveSecUserAgent() {
+  return sanitizeHttpHeader(process.env.SEC_USER_AGENT);
+}
+
+function isDefaultSecUserAgent(ua = resolveSecUserAgent()) {
+  return !process.env.SEC_USER_AGENT?.trim() || ua === SEC_USER_AGENT_DEFAULT;
+}
 
 /** @type {{ loadedAt: number; map: Map<string, number> } | null} */
 let tickerCache = null;
 const TICKER_CACHE_MS = 6 * 60 * 60 * 1000;
 
-function secGet(host, path) {
+function secGet(host, pathname) {
+  const userAgent = resolveSecUserAgent();
   return new Promise((resolve, reject) => {
     https
       .get(
-        `https://${host}${path}`,
+        `https://${host}${pathname}`,
         {
+          // Prefer IPv4 — some VPS IPv6 paths to SEC return 403 even when curl -4 works.
+          family: 4,
           headers: {
-            "User-Agent": SEC_USER_AGENT,
-            Accept: "application/json,text/plain,*/*",
+            "User-Agent": userAgent,
+            Accept: "application/json",
+            Host: host,
           },
         },
         (res) => {
@@ -133,7 +144,15 @@ function secGet(host, path) {
           res.on("end", () => {
             const body = Buffer.concat(chunks).toString("utf8");
             if (res.statusCode !== 200) {
-              reject(new Error(`SEC HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+              let msg = `SEC HTTP ${res.statusCode} (${host}${pathname}): ${body.slice(0, 200)}`;
+              if (res.statusCode === 403 && isDefaultSecUserAgent(userAgent)) {
+                msg +=
+                  " — running process has no SEC_USER_AGENT; set it in .env next to server.mjs and restart.";
+              } else if (res.statusCode === 403) {
+                msg +=
+                  " — SEC rejected this request (User-Agent is set). Restart the app after .env changes; prefer IPv4.";
+              }
+              reject(new Error(msg));
               return;
             }
             resolve(body);
@@ -652,9 +671,11 @@ http
     const rawSecUa = (process.env.SEC_USER_AGENT || "").trim();
     if (!rawSecUa) {
       console.warn("Tip: set SEC_USER_AGENT in .env (name + email) per SEC fair-access policy for data.sec.gov.");
-    } else if (SEC_USER_AGENT !== rawSecUa) {
+    } else if (isDefaultSecUserAgent()) {
       console.warn(
         "Tip: SEC_USER_AGENT contained non-ASCII characters; sanitized for SEC requests. Use plain ASCII (name + email)."
       );
+    } else {
+      console.log(`SEC_USER_AGENT loaded (${rawSecUa.split(/\s+/)[0]} …)`);
     }
   });

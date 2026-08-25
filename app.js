@@ -1857,9 +1857,11 @@ function setStockHubCollectionCount(collection, text) {
 }
 
 function stockHubPayloadCount(data) {
+  // Prefer the returned list length so hub cards match the capped payload
+  // (some APIs used to set `count` to the uncapped universe size).
+  if (Array.isArray(data?.stocks)) return data.stocks.length;
   const fromCount = Number(data?.count);
   if (Number.isFinite(fromCount) && fromCount >= 0) return fromCount;
-  if (Array.isArray(data?.stocks)) return data.stocks.length;
   return 0;
 }
 
