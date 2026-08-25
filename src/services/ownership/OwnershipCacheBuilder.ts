@@ -3,6 +3,10 @@
  * latest fundamentals shares-outstanding. This is the heavy step — it runs once
  * during ingestion, never on a screener request.
  *
+ * Uses the full curated + imported tracked universe (batched) so holder-overlap /
+ * held-by cover the same CIKs as ownership-history and ownership-movers. Loading
+ * all filers in one holdings query OOMs a 4GB VPS.
+ *
  * Produces:
  *   - ownership_cache   : per-ticker aggregate signals (% owned, trend, count, top holders, types)
  *   - ownership_holding : per ticker x institution rows (for fast "Held by" lookups)
@@ -10,7 +14,12 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import { loadInstitutionHoldings } from "../../institution/performance/holdingsLoader.js";
+import { SELECT_INSTITUTION_QUARTERS_BATCH_SQL } from "../../institution/performance/queries.js";
 import { sortQuarters } from "../../institution/performance/quarters.js";
+import { trackedInstitutionCiks } from "../../institution/mostAccumulated/queries.js";
+import {
+  reloadTrackedInstitutions,
+} from "../../ownership/trackedInstitutions.js";
 import { formatSecCik } from "../../sec/http.js";
 import {
   buildSeedDirectoryMap,
@@ -18,12 +27,15 @@ import {
   type InstitutionRecord,
   type InstitutionType,
 } from "./InstitutionDirectory.js";
-import { INSTITUTIONAL_13F_MANAGERS } from "../../sec/seed/institutional-ciks.js";
 import { normalizeCusip } from "../../sec/thirteenF/normalizeHoldings.js";
 
 const TREND_EPS = 0.005; // ±0.5% change band counts as neutral
 const TOP_INSTITUTIONS = 10;
 const INSERT_CHUNK = 200;
+/** Current + previous quarter only (enough for trend + held-by). */
+const OWNERSHIP_CACHE_QUARTERS = 2;
+/** CIKs per holdings load — same ballpark as ownership-history warm. */
+const OWNERSHIP_CACHE_CIK_BATCH = 50;
 
 export type OwnershipTrend = "increasing" | "decreasing" | "neutral";
 
@@ -117,28 +129,51 @@ async function chunkedInsert(
   }
 }
 
-export function computeOwnershipRows(
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function loadTrackedQuarters(
+  pool: pg.Pool,
+  ciks: string[],
+  maxQuarters: number
+): Promise<string[]> {
+  const quarters = new Set<string>();
+  for (const batch of chunkArray(ciks, OWNERSHIP_CACHE_CIK_BATCH)) {
+    const res = await pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [
+      batch,
+    ]);
+    for (const row of res.rows) quarters.add(String(row.quarter));
+  }
+  return sortQuarters([...quarters]).slice(-maxQuarters);
+}
+
+function ensureTickerAgg(byTicker: Map<string, TickerAgg>, ticker: string): TickerAgg {
+  let agg = byTicker.get(ticker);
+  if (!agg) {
+    agg = {
+      ticker,
+      currentShares: 0,
+      previousShares: 0,
+      holders: new Map(),
+      cusipShares: new Map(),
+    };
+    byTicker.set(ticker, agg);
+  }
+  return agg;
+}
+
+function mergeHoldingsIntoTickerAggs(
+  byTicker: Map<string, TickerAgg>,
   holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>,
-  directory: Map<string, InstitutionRecord>,
-  sharesOutstanding: Map<string, number>
-): { rows: OwnershipCacheRow[]; currentQuarter: string; previousQuarter: string | null } {
-  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter))]);
-  const currentQuarter = quarters[quarters.length - 1] ?? "";
-  const previousQuarter = quarters.length >= 2 ? quarters[quarters.length - 2] : null;
-
-  const byTicker = new Map<string, TickerAgg>();
-  const ensure = (ticker: string): TickerAgg => {
-    let agg = byTicker.get(ticker);
-    if (!agg) {
-      agg = { ticker, currentShares: 0, previousShares: 0, holders: new Map(), cusipShares: new Map() };
-      byTicker.set(ticker, agg);
-    }
-    return agg;
-  };
-
+  currentQuarter: string,
+  previousQuarter: string | null
+): void {
   for (const h of holdings) {
     if (!h.ticker || h.shares == null || !Number.isFinite(h.shares) || h.shares <= 0) continue;
-    const agg = ensure(h.ticker);
+    const agg = ensureTickerAgg(byTicker, h.ticker);
     const cik = formatSecCik(h.institutionId);
     if (h.quarter === currentQuarter) {
       agg.currentShares += h.shares;
@@ -155,7 +190,14 @@ export function computeOwnershipRows(
       agg.previousShares += h.shares;
     }
   }
+}
 
+function finalizeOwnershipFromAggs(
+  byTicker: Map<string, TickerAgg>,
+  directory: Map<string, InstitutionRecord>,
+  sharesOutstanding: Map<string, number>,
+  currentQuarter: string
+): OwnershipCacheRow[] {
   const rows: OwnershipCacheRow[] = [];
   for (const agg of byTicker.values()) {
     const so = sharesOutstanding.get(agg.ticker) ?? null;
@@ -172,7 +214,8 @@ export function computeOwnershipRows(
         name: rec?.name ?? holder.cik,
         type,
         shares: Math.round(holder.currentShares),
-        ownershipPercent: so && so > 0 ? Math.round((holder.currentShares / so) * 10000) / 100 : null,
+        ownershipPercent:
+          so && so > 0 ? Math.round((holder.currentShares / so) * 10000) / 100 : null,
       };
     });
 
@@ -192,8 +235,25 @@ export function computeOwnershipRows(
       primaryCusip: pickPrimaryCusip(agg.cusipShares),
     });
   }
+  return rows;
+}
 
-  return { rows, currentQuarter, previousQuarter };
+export function computeOwnershipRows(
+  holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>,
+  directory: Map<string, InstitutionRecord>,
+  sharesOutstanding: Map<string, number>
+): { rows: OwnershipCacheRow[]; currentQuarter: string; previousQuarter: string | null } {
+  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter))]);
+  const currentQuarter = quarters[quarters.length - 1] ?? "";
+  const previousQuarter = quarters.length >= 2 ? quarters[quarters.length - 2] : null;
+
+  const byTicker = new Map<string, TickerAgg>();
+  mergeHoldingsIntoTickerAggs(byTicker, holdings, currentQuarter, previousQuarter);
+  return {
+    rows: finalizeOwnershipFromAggs(byTicker, directory, sharesOutstanding, currentQuarter),
+    currentQuarter,
+    previousQuarter,
+  };
 }
 
 function pickPrimaryCusip(cusipShares: Map<string, number>): string | null {
@@ -212,8 +272,18 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
   const t0 = Date.now();
   await ensureOwnershipSchema(pool);
 
-  // Name/type lookup from directory; holdings aggregation uses the curated seed CIKs only.
-  // After a bulk sync TRACKED_* can be thousands of filers — loading all of them here OOMs.
+  reloadTrackedInstitutions(true);
+  const ciks = trackedInstitutionCiks();
+  if (ciks.length < 100) {
+    throw new Error(
+      `ownership cache: only ${ciks.length} tracked CIKs — expected imported-tracked-managers.json (thousands). Refusing to rebuild a thin holder-overlap universe.`
+    );
+  }
+  console.log(
+    `[ownership-cache] universe: ${ciks.length} tracked CIKs · batch=${OWNERSHIP_CACHE_CIK_BATCH}`
+  );
+
+  // Name/type lookup: full tracked seed + DB overlay (directory refresh should have synced first).
   const directory = buildSeedDirectoryMap();
   const dirRes = await pool.query<{
     cik: string;
@@ -223,7 +293,6 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
   }>(`SELECT cik, name, normalized_name, type FROM institution`);
   for (const r of dirRes.rows) {
     const cik = formatSecCik(r.cik);
-    if (!directory.has(cik)) continue;
     directory.set(cik, {
       cik,
       name: r.name,
@@ -232,12 +301,7 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
     });
   }
 
-  const curatedCiks = INSTITUTIONAL_13F_MANAGERS.filter((m) => m.cik).map((m) =>
-    formatSecCik(m.cik as string)
-  );
-
-  // Use one dedicated connection with no statement timeout: the raw 13F holdings
-  // aggregation is intentionally heavy (hundreds of thousands of rows).
+  // Dedicated connection with no statement timeout: heavy 13F aggregation.
   const client = await pool.connect();
   let holdingRowCount = 0;
   let rows: OwnershipCacheRow[] = [];
@@ -247,13 +311,42 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
     await client.query("SET statement_timeout = 0");
 
     const clientAsPool = client as unknown as pg.Pool;
-    const holdings = await loadInstitutionHoldings(clientAsPool, curatedCiks);
     const sharesOutstanding = await loadSharesOutstanding(clientAsPool);
+    const quarters = await loadTrackedQuarters(
+      clientAsPool,
+      ciks,
+      OWNERSHIP_CACHE_QUARTERS
+    );
+    currentQuarter = quarters[quarters.length - 1] ?? "";
+    previousQuarter = quarters.length >= 2 ? quarters[quarters.length - 2]! : null;
+    if (!currentQuarter) {
+      throw new Error("ownership cache: no 13F quarters found for tracked institutions");
+    }
+    console.log(
+      `[ownership-cache] quarters=${quarters.join(",")} current=${currentQuarter}`
+    );
 
-    const computed = computeOwnershipRows(holdings, directory, sharesOutstanding);
-    rows = computed.rows;
-    currentQuarter = computed.currentQuarter;
-    previousQuarter = computed.previousQuarter;
+    const byTicker = new Map<string, TickerAgg>();
+    const batches = chunkArray(ciks, OWNERSHIP_CACHE_CIK_BATCH);
+    let loadedHoldings = 0;
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i]!;
+      const holdings = await loadInstitutionHoldings(clientAsPool, batch, { quarters });
+      loadedHoldings += holdings.length;
+      mergeHoldingsIntoTickerAggs(byTicker, holdings, currentQuarter, previousQuarter);
+      if (i === 0 || (i + 1) % 20 === 0 || i + 1 === batches.length) {
+        console.log(
+          `[ownership-cache] batch ${i + 1}/${batches.length} · holdings=${loadedHoldings} · tickers=${byTicker.size}`
+        );
+      }
+    }
+
+    rows = finalizeOwnershipFromAggs(
+      byTicker,
+      directory,
+      sharesOutstanding,
+      currentQuarter
+    );
 
     await client.query("BEGIN");
     await client.query("TRUNCATE ownership_cache");
@@ -283,20 +376,35 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
       cacheRows
     );
 
-    const holdingRows: unknown[][] = [];
+    // Stream holdings inserts so we don't keep a second full copy of every row.
+    const holdingInsertSql = `INSERT INTO ownership_holding
+        (ticker, institution_cik, institution_name, institution_type, shares, ownership_pct)`;
+    let holdingBuf: unknown[][] = [];
     for (const r of rows) {
       for (const holder of r.allHolders) {
-        holdingRows.push([r.ticker, holder.cik, holder.name, holder.type, holder.shares, holder.ownershipPercent]);
+        holdingBuf.push([
+          r.ticker,
+          holder.cik,
+          holder.name,
+          holder.type,
+          holder.shares,
+          holder.ownershipPercent,
+        ]);
+        holdingRowCount += 1;
+        if (holdingBuf.length >= INSERT_CHUNK) {
+          await chunkedInsert(
+            client as unknown as pg.Pool,
+            holdingInsertSql,
+            6,
+            holdingBuf
+          );
+          holdingBuf = [];
+        }
       }
     }
-    holdingRowCount = holdingRows.length;
-    await chunkedInsert(
-      client as unknown as pg.Pool,
-      `INSERT INTO ownership_holding
-        (ticker, institution_cik, institution_name, institution_type, shares, ownership_pct)`,
-      6,
-      holdingRows
-    );
+    if (holdingBuf.length) {
+      await chunkedInsert(client as unknown as pg.Pool, holdingInsertSql, 6, holdingBuf);
+    }
 
     await client.query("COMMIT");
   } catch (err) {
@@ -305,6 +413,10 @@ export async function buildOwnershipCache(pool: pg.Pool = getPool()): Promise<Ow
   } finally {
     client.release();
   }
+
+  console.log(
+    `[ownership-cache] wrote ${rows.length} tickers, ${holdingRowCount} holdings in ${((Date.now() - t0) / 1000).toFixed(1)}s`
+  );
 
   return {
     tickers: rows.length,

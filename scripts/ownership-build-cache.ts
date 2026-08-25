@@ -1,6 +1,10 @@
 /**
  * Build the ownership cache (institution directory + ownership_cache + ownership_holding).
- * Heavy 13F aggregation runs here, once — the screener then uses only indexed lookups.
+ * Heavy 13F aggregation over the full tracked universe (batched) — powers
+ * /stocks/holder-overlap, held-by, and ownership screener fields.
+ *
+ * Requires data/13f-info/imported-tracked-managers.json (or a prior directory
+ * refresh that syncs filers from sec_filing). On a 4GB VPS this can take a while.
  *
  * Usage: npm run ownership:build-cache
  */
