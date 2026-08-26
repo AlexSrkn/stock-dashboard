@@ -19,6 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=name-topbar-1";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -1140,6 +1141,10 @@ function isLandingPath(pathname) {
   return p === "/" || p === "";
 }
 
+function isAuthRoutePath(pathname) {
+  return isAuthPath(pathname);
+}
+
 const LANDING_PAGE_TITLE = "TradeAtlant — Stock & institutional research";
 const APP_PAGE_TITLE = "TradeAtlant";
 
@@ -1151,6 +1156,7 @@ function showLandingView(visible) {
   document.body.classList.toggle("is-landing", visible);
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
+    hideAuthRoute();
     clearMobileOverlays();
     closeTopSearch();
     setDashboardStatus("");
@@ -1297,6 +1303,7 @@ function parseInstitutionRoute(pathname) {
 
 function parseAppRoute(pathname) {
   if (isLandingPath(pathname)) return { mode: "landing" };
+  if (isAuthRoutePath(pathname)) return { mode: "auth" };
   const inst = parseInstitutionRoute(pathname);
   if (inst) return { mode: "institutions", hub: false, ...inst };
   if (pathname === "/institutions" || pathname.startsWith("/institutions/")) {
@@ -21253,9 +21260,16 @@ function setupTabs() {
 async function handleRouteChange() {
   const route = parseAppRoute(window.location.pathname);
   if (route.mode === "landing") {
+    hideAuthRoute();
     showLandingView(true);
     return;
   }
+  if (route.mode === "auth") {
+    showLandingView(false);
+    showAuthRoute();
+    return;
+  }
+  hideAuthRoute();
   showLandingView(false);
   if (route.mode === "institutions") {
     closeStocksOverlays();
@@ -22699,6 +22713,7 @@ setupChartFullscreen();
 setupChartSettings();
 setupTabs();
 setupDrawer();
+setupAuthLoginPanel();
 setupTopSearch();
 setupWatchlistSearch();
 void init();

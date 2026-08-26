@@ -810,6 +810,217 @@ button.workspace-nav__subsection {
   display: none;
 }
 
+.topbar-login {
+  display: none;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.topbar-login__trigger {
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+a.topbar-login__link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.topbar-login__trigger--user {
+  max-width: 14rem;
+}
+
+.topbar-login__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.topbar-login__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.topbar-login__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(18rem, calc(100vw - 1.5rem));
+  padding: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(8, 8, 10, 0.98);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  z-index: 130;
+}
+
+.topbar-login__panel--menu {
+  width: min(12rem, calc(100vw - 1.5rem));
+  padding: 0.45rem;
+}
+
+.topbar-login__title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.topbar-login__hint {
+  margin: 0 0 0.85rem;
+}
+
+.topbar-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.topbar-login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.topbar-login__field[hidden] {
+  display: none !important;
+}
+
+.topbar-login__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.topbar-login__input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.topbar-login__input:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.45);
+  outline-offset: 1px;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.topbar-login__error {
+  margin: 0;
+  color: #f87171;
+  font-size: 0.78rem;
+}
+
+.topbar-login__success {
+  margin: 0;
+  color: rgba(52, 211, 153, 0.95);
+  font-size: 0.78rem;
+}
+
+.topbar-login__footer {
+  margin: 0.15rem 0 0;
+  text-align: center;
+}
+
+.topbar-login__text-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.topbar-login__text-btn:hover {
+  color: #6eefc4;
+}
+
+.topbar-login__plan {
+  margin: 0 0 0.25rem;
+  padding: 0.35rem 0.7rem 0.15rem;
+}
+
+.topbar-login__submit {
+  margin-top: 0.15rem;
+  width: 100%;
+  background: rgba(52, 211, 153, 0.14);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: var(--accent);
+}
+
+.topbar-login__submit:hover {
+  background: rgba(52, 211, 153, 0.22);
+}
+
+.topbar-login__submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.topbar-login__menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topbar-login__menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@media (min-width: 961px) {
+  body.has-auth-login .topbar-login,
+  body.is-localhost .topbar-login {
+    display: block;
+  }
+
+  body.has-auth-login .watchlist-toggle,
+  body.is-localhost .watchlist-toggle {
+    display: none !important;
+  }
+
+  .sidebar-card--watchlist {
+    display: none;
+  }
+}
+
+/* Auth control also available on smaller screens */
+@media (max-width: 960px) {
+  body.has-auth-login .topbar-login {
+    display: block;
+  }
+}
+
 .drawer-scrim {
   display: none;
 }

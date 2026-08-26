@@ -1,13 +1,10 @@
-/**
- * Create sec_filing + sec_holding tables.
- * Usage: npx tsx scripts/db-init.ts
- */
 import { createHoldingsInsertService } from "../src/db/index.js";
 import { getFinancialsRepository } from "../src/sec/financials/financialsRepository.js";
 import { getStocksRepository } from "../src/stocks/stocksRepository.js";
 import { getStockSignalsRepository } from "../src/stocks/stockSignalsRepository.js";
 import { getPoliticiansRepository } from "../src/politicians/politiciansRepository.js";
 import { ensureOwnershipSchema } from "../src/services/ownership/InstitutionDirectory.js";
+import { ensureAuthSchema } from "../src/auth/index.js";
 import { loadEnvFile } from "../src/db/pool.js";
 
 loadEnvFile();
@@ -19,12 +16,13 @@ try {
   await getStocksRepository().ensureSchema();
   await getStockSignalsRepository().ensureSchema();
   await ensureOwnershipSchema();
+  await ensureAuthSchema();
   try {
     await getPoliticiansRepository().ensureSchema();
   } catch {
     /* optional without DATABASE_URL */
   }
-  console.log("Schema applied (sec_filing, sec_holding, sec_financial_period, sec_earnings_release, stocks, stock_signal, institution, ownership_cache, ownership_holding, politicians).");
+  console.log("Schema applied (sec_filing, sec_holding, sec_financial_period, sec_earnings_release, stocks, stock_signal, institution, ownership_cache, ownership_holding, politicians, app_user/session).");
 } catch (err) {
   const message = err instanceof Error ? err.message : String(err);
   if (message.includes("DATABASE_URL")) {

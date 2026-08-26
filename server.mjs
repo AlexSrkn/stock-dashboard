@@ -39,6 +39,8 @@ import { tryHandleToolsFcfYield } from "./src/api/toolsFcfYield.ts";
 import { tryHandleToolsSimilarStocks } from "./src/api/toolsSimilarStocks.ts";
 import { tryHandleStocksHub } from "./src/api/stocksHub.ts";
 import { tryHandleAnalytics } from "./src/api/analytics.ts";
+import { tryHandleAuth } from "./src/api/auth.ts";
+import { ensureAuthSchema } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
 import { ensurePortfolioProxyCacheOnStartup } from "./src/institution/portfolioPerformanceProxy/cache.ts";
@@ -651,6 +653,7 @@ http
     }
 
     void (async () => {
+      if (await tryHandleAuth(u, req, clientRes)) return;
       if (await tryHandleStockSearch(u, clientRes)) return;
       if (await tryHandleStockCompare(u, clientRes)) return;
       if (await tryHandleWatchlistActivity(u, clientRes)) return;
@@ -687,6 +690,11 @@ http
 
       const rel = u.pathname === "/" ? "index.html" : u.pathname.slice(1);
       if (
+        u.pathname === "/login" ||
+        u.pathname === "/register" ||
+        u.pathname === "/check-email" ||
+        u.pathname === "/forgot-password" ||
+        u.pathname === "/reset-password" ||
         u.pathname === "/stock" ||
         u.pathname.startsWith("/stock/") ||
         u.pathname === "/stocks" ||
@@ -726,9 +734,18 @@ http
     console.log("Stocks activity API: /api/stocks/recently-active, /api/stocks/most-accumulated, /api/stocks/ownership-changes, /api/stocks/holder-overlap, /api/stocks/ownership-history");
     console.log("Insider API: /api/stocks/:ticker/insider-transactions");
     console.log("Institutions API: /api/institutions, /api/institutions/performance-rankings, /api/institutions/most-accumulated, /api/institutions/new-positions, /api/institutions/completely-sold, /api/institutions/compare, /api/institutions/:cik/{holdings,activity,history,performance}");
+    console.log("Auth API: /api/auth/{signup,login,logout,me,forgot-password,reset-password,verify-email}, /api/account, /api/premium/ping");
     ensureReturnsMatrixOnStartup();
     ensurePerformanceSummariesOnStartup();
     ensurePortfolioProxyCacheOnStartup();
+    void ensureAuthSchema().then(
+      () => console.log("Auth schema ready (app_user, app_session, app_auth_token)."),
+      (err) =>
+        console.warn(
+          "Auth schema ensure failed:",
+          err instanceof Error ? err.message : String(err)
+        )
+    );
     ensureSmartMoneyCacheOnStartup();
     ensureInsiderClusterCacheOnStartup();
     ensureConvictionBuysCacheOnStartup();

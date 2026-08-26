@@ -49,3 +49,7 @@ export function loadOwnershipCacheSchemaSql(): string {
 export function loadPoliticiansSchemaSql(): string {
   return fs.readFileSync(path.join(__dirname, "../../sql/politicians_schema.sql"), "utf8");
 }
+
+export function loadAuthSchemaSql(): string {
+  return fs.readFileSync(path.join(__dirname, "../../sql/auth_schema.sql"), "utf8");
+}

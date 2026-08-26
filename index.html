@@ -13,7 +13,8 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=mobile-scrim-2" />
+    <link rel="stylesheet" href="/styles.css?v=auth-pages-1" />
+    <link rel="stylesheet" href="/auth.css?v=auth-pages-2" />
     <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
   <body>
@@ -215,12 +216,191 @@
             </label>
             <ul class="topbar-search__results" id="top-search-results" role="listbox" hidden></ul>
           </div>
+          <div class="topbar-login" id="topbar-login" hidden>
+            <div class="topbar-login__guest" id="topbar-login-guest">
+              <a href="/login" class="btn btn--ghost topbar-login__trigger topbar-login__link" id="topbar-login-trigger">
+                Log in
+              </a>
+            </div>
+            <div class="topbar-login__user" id="topbar-login-user" hidden>
+              <button
+                type="button"
+                class="btn btn--ghost topbar-login__trigger topbar-login__trigger--user"
+                id="topbar-login-user-trigger"
+                aria-expanded="false"
+                aria-controls="topbar-login-user-menu"
+              >
+                <span class="topbar-login__avatar" id="topbar-login-user-avatar" aria-hidden="true">?</span>
+                <span class="topbar-login__email" id="topbar-login-user-name"></span>
+              </button>
+              <div class="topbar-login__panel topbar-login__panel--menu" id="topbar-login-user-menu" hidden>
+                <p class="topbar-login__plan muted small" id="topbar-login-user-email-menu" hidden></p>
+                <p class="topbar-login__plan muted small" id="topbar-login-user-plan" hidden>Free plan</p>
+                <button type="button" class="topbar-login__menu-item" id="topbar-login-logout">Log out</button>
+              </div>
+            </div>
+          </div>
           <button type="button" class="btn btn--ghost watchlist-toggle" aria-expanded="false" aria-controls="watchlist-panel">
             Watchlist
           </button>
         </div>
       </header>
       <div class="topbar-nav-backdrop" id="topbar-nav-backdrop" hidden></div>
+
+      <div id="view-auth" class="auth-page" hidden>
+        <a href="/" class="auth-page__brand" aria-label="TradeAtlant home">
+          <img class="auth-page__brand-mark" src="/assets/tradepile-chart.png" alt="" decoding="async" />
+          <span class="auth-page__brand-name">Tradeatlant</span>
+        </a>
+
+        <!-- Login -->
+        <div class="auth-card auth-screen" data-auth-screen="login">
+          <p class="auth-card__eyebrow">Welcome back</p>
+          <h1 class="auth-card__title">Log in</h1>
+          <p class="auth-card__lead">Access your research workspace with your email and password.</p>
+          <form class="auth-form" id="auth-login-form" novalidate>
+            <label class="auth-field">
+              <span class="auth-field__label">Email</span>
+              <input class="auth-input" id="auth-login-email" type="email" name="email" autocomplete="username" required />
+            </label>
+            <label class="auth-field">
+              <span class="auth-field__label">Password</span>
+              <span class="auth-field__control">
+                <input class="auth-input auth-input--with-toggle" id="auth-login-password" type="password" name="password" autocomplete="current-password" minlength="8" required />
+                <button type="button" class="auth-toggle-pw" data-toggle-password="auth-login-password" aria-label="Show password"></button>
+              </span>
+            </label>
+            <p class="auth-error" id="auth-login-error" role="alert" hidden></p>
+            <p class="auth-success" id="auth-login-success" hidden></p>
+            <button type="submit" class="auth-submit">Log in</button>
+          </form>
+          <p class="auth-footer"><a href="/forgot-password">Forgot password?</a></p>
+          <p class="auth-footer">New here? <a href="/register">Create account</a></p>
+        </div>
+
+        <!-- Register -->
+        <div class="auth-card auth-screen" data-auth-screen="register" hidden>
+          <p class="auth-card__eyebrow">Get started</p>
+          <h1 class="auth-card__title">Create your account</h1>
+          <p class="auth-card__lead">Join TradeAtlant on the free plan. Upgrade to premium later when you’re ready.</p>
+          <form class="auth-form" id="auth-register-form" novalidate>
+            <label class="auth-field">
+              <span class="auth-field__label">Name</span>
+              <input class="auth-input" id="auth-register-name" type="text" name="name" autocomplete="name" maxlength="80" required />
+            </label>
+            <label class="auth-field">
+              <span class="auth-field__label">Email</span>
+              <input class="auth-input" id="auth-register-email" type="email" name="email" autocomplete="email" required />
+            </label>
+            <label class="auth-field">
+              <span class="auth-field__label">Password</span>
+              <span class="auth-field__control">
+                <input class="auth-input auth-input--with-toggle" id="auth-register-password" type="password" name="password" autocomplete="new-password" minlength="8" required />
+                <button type="button" class="auth-toggle-pw" data-toggle-password="auth-register-password" aria-label="Show password"></button>
+              </span>
+            </label>
+            <div class="auth-strength" data-auth-strength>
+              <div class="auth-strength__bars" aria-hidden="true">
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+              </div>
+              <p class="auth-strength__label">Password strength</p>
+              <ul class="auth-reqs">
+                <li data-req="len">At least 8 characters</li>
+                <li data-req="case">Upper &amp; lower case</li>
+                <li data-req="num">A number</li>
+                <li data-req="special">A symbol</li>
+              </ul>
+            </div>
+            <label class="auth-field">
+              <span class="auth-field__label">Confirm password</span>
+              <span class="auth-field__control">
+                <input class="auth-input auth-input--with-toggle" id="auth-register-confirm" type="password" name="confirm" autocomplete="new-password" minlength="8" required />
+                <button type="button" class="auth-toggle-pw" data-toggle-password="auth-register-confirm" aria-label="Show password"></button>
+              </span>
+            </label>
+            <label class="auth-check">
+              <input type="checkbox" id="auth-register-terms" required />
+              <span>I agree to the Terms of use and acknowledge the Privacy policy.</span>
+            </label>
+            <p class="auth-error" id="auth-register-error" role="alert" hidden></p>
+            <button type="submit" class="auth-submit">Create account</button>
+          </form>
+          <p class="auth-footer">Already have an account? <a href="/login">Log in</a></p>
+        </div>
+
+        <!-- Check email -->
+        <div class="auth-card auth-screen" data-auth-screen="check-email" hidden>
+          <p class="auth-card__eyebrow">Almost there</p>
+          <h1 class="auth-card__title">Check your email</h1>
+          <p class="auth-card__lead">
+            We’ve sent a verification link to <strong id="auth-check-email-address">your inbox</strong>.
+            Please verify your email address to continue.
+          </p>
+          <p class="auth-error" id="auth-check-error" role="alert" hidden></p>
+          <p class="auth-success" id="auth-check-success" hidden></p>
+          <button type="button" class="auth-submit" id="auth-resend-verification">Resend verification email</button>
+          <button type="button" class="auth-secondary" id="auth-check-back" onclick="location.href='/register'">Back to registration</button>
+          <p class="auth-dev-hint" id="auth-check-dev-hint" hidden></p>
+          <p class="auth-footer"><a href="/login">Back to log in</a></p>
+        </div>
+
+        <!-- Forgot password -->
+        <div class="auth-card auth-screen" data-auth-screen="forgot" hidden>
+          <p class="auth-card__eyebrow">Account recovery</p>
+          <h1 class="auth-card__title">Forgot password?</h1>
+          <p class="auth-card__lead">Enter your email and we’ll send a reset link if an account exists.</p>
+          <form class="auth-form" id="auth-forgot-form" novalidate>
+            <label class="auth-field">
+              <span class="auth-field__label">Email</span>
+              <input class="auth-input" id="auth-forgot-email" type="email" name="email" autocomplete="email" required />
+            </label>
+            <p class="auth-error" id="auth-forgot-error" role="alert" hidden></p>
+            <p class="auth-success" id="auth-forgot-success" hidden></p>
+            <button type="submit" class="auth-submit">Send reset link</button>
+          </form>
+          <p class="auth-dev-hint" id="auth-forgot-dev-hint" hidden></p>
+          <p class="auth-footer"><a href="/login">Back to log in</a></p>
+        </div>
+
+        <!-- Reset password -->
+        <div class="auth-card auth-screen" data-auth-screen="reset" hidden>
+          <p class="auth-card__eyebrow">Account recovery</p>
+          <h1 class="auth-card__title">Choose a new password</h1>
+          <p class="auth-card__lead">Pick a strong password you haven’t used here before.</p>
+          <form class="auth-form" id="auth-reset-form" novalidate>
+            <input type="hidden" id="auth-reset-token" value="" />
+            <label class="auth-field">
+              <span class="auth-field__label">New password</span>
+              <span class="auth-field__control">
+                <input class="auth-input auth-input--with-toggle" id="auth-reset-password" type="password" name="password" autocomplete="new-password" minlength="8" required />
+                <button type="button" class="auth-toggle-pw" data-toggle-password="auth-reset-password" aria-label="Show password"></button>
+              </span>
+            </label>
+            <div class="auth-strength" data-auth-strength id="auth-reset-strength">
+              <div class="auth-strength__bars" aria-hidden="true">
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+                <span class="auth-strength__bar"></span>
+              </div>
+              <p class="auth-strength__label">Password strength</p>
+            </div>
+            <label class="auth-field">
+              <span class="auth-field__label">Confirm password</span>
+              <span class="auth-field__control">
+                <input class="auth-input auth-input--with-toggle" id="auth-reset-confirm" type="password" name="confirm" autocomplete="new-password" minlength="8" required />
+                <button type="button" class="auth-toggle-pw" data-toggle-password="auth-reset-confirm" aria-label="Show password"></button>
+              </span>
+            </label>
+            <p class="auth-error" id="auth-reset-error" role="alert" hidden></p>
+            <button type="submit" class="auth-submit">Update password</button>
+          </form>
+          <p class="auth-footer"><a href="/login">Back to log in</a></p>
+        </div>
+      </div>
 
       <div id="view-landing" class="landing" hidden>
         <section class="landing-hero" aria-labelledby="landing-title">
@@ -7667,6 +7847,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=proxy-perf-sort-arrows-1"></script>
+    <script type="module" src="/app.js?v=name-topbar-1"></script>
   </body>
 </html>
