@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=name-topbar-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-dock-1";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -21129,8 +21129,10 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
   if (watchlist) {
     document.getElementById("watchlist-panel")?.classList.remove("is-open");
     document.body.classList.remove("watchlist-drawer-open");
-    const toggle = document.querySelector(".watchlist-toggle");
-    if (toggle) toggle.setAttribute("aria-expanded", "false");
+    document.querySelectorAll(".watchlist-toggle").forEach((btn) => {
+      btn.setAttribute("aria-expanded", "false");
+      btn.classList.remove("is-active");
+    });
   }
   if (topbarNav) {
     if (typeof window.closeMobileTopbarNav === "function") {
@@ -21154,19 +21156,24 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
 
 function setupDrawer() {
   const aside = document.getElementById("watchlist-panel");
-  const toggle = document.querySelector(".watchlist-toggle");
+  const toggles = [...document.querySelectorAll(".watchlist-toggle")];
   const scrim = document.getElementById("drawer-scrim");
-  if (!toggle) return;
+  if (!aside || !toggles.length) return;
 
   function setOpen(open) {
     aside.classList.toggle("is-open", open);
     document.body.classList.toggle("watchlist-drawer-open", open);
-    toggle.setAttribute("aria-expanded", String(open));
+    for (const toggle of toggles) {
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.classList.toggle("is-active", open);
+    }
   }
 
-  toggle.addEventListener("click", () => {
-    setOpen(!aside.classList.contains("is-open"));
-  });
+  for (const toggle of toggles) {
+    toggle.addEventListener("click", () => {
+      setOpen(!aside.classList.contains("is-open"));
+    });
+  }
 
   if (scrim) scrim.addEventListener("click", () => setOpen(false));
 
@@ -21174,7 +21181,9 @@ function setupDrawer() {
     if (!window.matchMedia("(max-width: 960px)").matches) return;
     if (!aside.classList.contains("is-open")) return;
     const t = e.target;
-    if (aside.contains(t) || toggle.contains(t) || (scrim && scrim.contains(t))) return;
+    if (aside.contains(t) || toggles.some((btn) => btn.contains(t)) || (scrim && scrim.contains(t))) {
+      return;
+    }
     setOpen(false);
   });
 }

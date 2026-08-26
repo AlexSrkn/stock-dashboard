@@ -1025,6 +1025,41 @@ a.topbar-login__link {
   display: none;
 }
 
+/* Mobile bottom dock — Watchlist lives here so the topbar stays clean */
+.mobile-dock {
+  display: none;
+}
+
+.mobile-dock__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(18, 24, 34, 0.92);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-dock__btn.is-active,
+.mobile-dock__btn[aria-expanded="true"] {
+  border-color: rgba(62, 230, 176, 0.4);
+  color: var(--accent);
+  background: rgba(62, 230, 176, 0.1);
+}
+
+.mobile-dock__icon {
+  flex-shrink: 0;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -6682,7 +6717,16 @@ body.chart-fullscreen-active {
     order: -1;
     position: relative;
     z-index: 2;
-    margin-right: 0.15rem;
+    margin-right: 0.1rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    min-width: 2.2rem;
+    border-radius: 7px;
+  }
+
+  .topbar__menu-btn .topbar__menu-icon {
+    width: 16px;
+    height: 16px;
   }
 
   .topbar__start {
@@ -6806,28 +6850,83 @@ body.chart-fullscreen-active {
     flex: 0 0 auto;
     min-width: 0;
     justify-content: flex-end;
-    gap: 0.45rem;
+    gap: 0.35rem;
     z-index: 2;
   }
 
-  .topbar__actions .watchlist-toggle {
-    flex-shrink: 0;
-    padding: 0 0.65rem;
+  /* Watchlist moves to the bottom dock on phones */
+  .topbar__actions .watchlist-toggle--topbar {
+    display: none !important;
+  }
+
+  body.has-auth-login .topbar-login,
+  body.is-localhost .topbar-login {
+    display: block;
+  }
+
+  .topbar-login__trigger {
+    padding: 0 0.55rem;
     font-size: 0.78rem;
+    min-height: 2.2rem;
+  }
+
+  .topbar-login__trigger--user {
+    max-width: 7.5rem;
+    padding-inline: 0.35rem 0.45rem;
+  }
+
+  .topbar-login__email {
+    max-width: 4.5rem;
+    font-size: 0.75rem;
+  }
+
+  .topbar-login__avatar {
+    width: 1.4rem;
+    height: 1.4rem;
+    font-size: 0.65rem;
+  }
+
+  .mobile-dock {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    justify-content: center;
+    padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;
+    background: linear-gradient(to top, rgba(7, 10, 15, 0.92), rgba(7, 10, 15, 0));
+  }
+
+  .mobile-dock__btn {
+    pointer-events: auto;
+  }
+
+  body.is-auth .mobile-dock,
+  body.is-landing .mobile-dock,
+  body.watchlist-drawer-open .mobile-dock,
+  body.topbar-nav-open .mobile-dock {
+    display: none;
+  }
+
+  /* Room for the dock above content */
+  body:not(.is-auth):not(.is-landing) .app {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .topbar-search {
     flex: 0 0 auto;
     position: relative;
-    width: var(--topbar-control-height);
-    min-width: var(--topbar-control-height);
-    max-width: var(--topbar-control-height);
+    width: 2.2rem;
+    min-width: 2.2rem;
+    max-width: 2.2rem;
   }
 
   .topbar-search .topbar-search__field {
-    width: var(--topbar-control-height);
-    height: var(--topbar-control-height);
-    min-width: var(--topbar-control-height);
+    width: 2.2rem;
+    height: 2.2rem;
+    min-width: 2.2rem;
     padding: 0;
     justify-content: center;
     cursor: pointer;
