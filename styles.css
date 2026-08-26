@@ -831,21 +831,6 @@ a.topbar-login__link {
   max-width: 14rem;
 }
 
-.topbar-login__avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.65rem;
-  height: 1.65rem;
-  border-radius: 999px;
-  background: rgba(52, 211, 153, 0.16);
-  border: 1px solid rgba(52, 211, 153, 0.35);
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
 .topbar-login__email {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6871,19 +6856,13 @@ body.chart-fullscreen-active {
   }
 
   .topbar-login__trigger--user {
-    max-width: 7.5rem;
-    padding-inline: 0.35rem 0.45rem;
+    max-width: 8.5rem;
+    padding-inline: 0.45rem;
   }
 
   .topbar-login__email {
-    max-width: 4.5rem;
+    max-width: 7.5rem;
     font-size: 0.75rem;
-  }
-
-  .topbar-login__avatar {
-    width: 1.4rem;
-    height: 1.4rem;
-    font-size: 0.65rem;
   }
 
   .mobile-dock {

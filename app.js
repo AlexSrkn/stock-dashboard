@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-dock-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-dock-2";
 import {
   formatProxyHoldings,
   formatProxyPct,

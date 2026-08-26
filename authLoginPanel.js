@@ -218,7 +218,6 @@ function renderTopbarUser() {
   const guest = qs(root, "#topbar-login-guest");
   const user = qs(root, "#topbar-login-user");
   const nameEl = qs(root, "#topbar-login-user-name");
-  const avatarEl = qs(root, "#topbar-login-user-avatar");
   const planEl = qs(root, "#topbar-login-user-plan");
   const emailMenuEl = qs(root, "#topbar-login-user-email-menu");
 
@@ -234,7 +233,6 @@ function renderTopbarUser() {
       emailMenuEl.textContent = currentUser.email;
       emailMenuEl.hidden = false;
     }
-    if (avatarEl) avatarEl.textContent = (label[0] || "?").toUpperCase();
     if (planEl) {
       planEl.textContent = currentUser.plan === "premium" ? "Premium" : "Free plan";
       planEl.hidden = false;
