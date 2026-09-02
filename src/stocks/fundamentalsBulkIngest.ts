@@ -1,6 +1,7 @@
 import type pg from "pg";
 import { getPool, getDatabaseUrl } from "../db/pool.js";
 import { getFilingsFundamentals } from "../sec/financials/financialsService.js";
+import { clearCompanyFactsCache } from "../sec/financials/companyFacts.js";
 import { loadSp500 } from "./sp500.js";
 
 const TICKER_RE = /^[A-Z][A-Z0-9.\-^=]{0,14}$/;
@@ -13,6 +14,8 @@ export interface FundamentalsBulkIngestOptions {
   skipExisting?: boolean;
   /** Re-fetch even when ticker is already in the database. */
   force?: boolean;
+  /** Max failure records kept in memory (counts are still accurate). */
+  maxFailureRecords?: number;
   onProgress?: (event: FundamentalsBulkProgress) => void;
 }
 
@@ -56,6 +59,17 @@ export function loadSp500Tickers(): string[] {
   return normalizeTickerList(loadSp500().stocks.map((s) => s.symbol));
 }
 
+/** All tickers in the local `stocks` table (SEC company_tickers import). */
+export async function loadStocksTableTickers(pool: pg.Pool = getPool()): Promise<string[]> {
+  const res = await pool.query<{ ticker: string }>(
+    `SELECT UPPER(BTRIM(ticker)) AS ticker
+     FROM stocks
+     WHERE ticker IS NOT NULL AND BTRIM(ticker) <> ''
+     ORDER BY ticker`
+  );
+  return normalizeTickerList(res.rows.map((r) => r.ticker));
+}
+
 export async function loadTickersWithStoredFundamentals(
   pool: pg.Pool = getPool()
 ): Promise<Set<string>> {
@@ -75,6 +89,7 @@ export async function ingestFundamentalsForTickers(
   const delayMs = Math.max(0, options.delayMs ?? 250);
   const force = Boolean(options.force);
   const skipExisting = Boolean(options.skipExisting) && !force;
+  const maxFailureRecords = Math.max(1, options.maxFailureRecords ?? 100);
 
   let tickers = normalizeTickerList(options.tickers);
   const existing = skipExisting ? await loadTickersWithStoredFundamentals() : new Set<string>();
@@ -119,7 +134,9 @@ export async function ingestFundamentalsForTickers(
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       result.failed++;
-      result.failures.push({ ticker, error });
+      if (result.failures.length < maxFailureRecords) {
+        result.failures.push({ ticker, error });
+      }
       options.onProgress?.({
         index: i + 1,
         total,
@@ -127,6 +144,9 @@ export async function ingestFundamentalsForTickers(
         status: "failed",
         error,
       });
+    } finally {
+      // Company Facts payloads are large; drop cached JSON so bulk runs stay bounded.
+      clearCompanyFactsCache();
     }
 
     if (i < tickers.length - 1 && delayMs > 0) {

@@ -10,7 +10,7 @@ import {
 } from "./queries.js";
 
 const HOLDINGS_INSERT_CHUNK = 250;
-const INGEST_STATEMENT_TIMEOUT_MS = 300_000;
+const INGEST_STATEMENT_TIMEOUT_MS = 600_000;
 import type { IngestFilingPayload, InsertFilingWithHoldingsResult } from "./types.js";
 
 export class HoldingsInsertService {
@@ -27,6 +27,8 @@ export class HoldingsInsertService {
     const client = await this.pool.connect();
 
     try {
+      // Pool default is often 120s; ingest needs longer (SEC parse + large holdings + lock wait).
+      await client.query(`SET statement_timeout = ${INGEST_STATEMENT_TIMEOUT_MS}`);
       await client.query("BEGIN");
       await client.query(`SET LOCAL statement_timeout = ${INGEST_STATEMENT_TIMEOUT_MS}`);
 

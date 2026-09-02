@@ -158,11 +158,34 @@ export function showAuthRoute() {
   const landing = document.getElementById("view-landing");
   const shell = document.getElementById("app-shell");
   const auth = document.getElementById("view-auth");
+  const premium = document.getElementById("view-premium");
+  const faq = document.getElementById("view-faq");
+  const methodology = document.getElementById("view-methodology");
+  const dataSources = document.getElementById("view-data-sources");
+  const about = document.getElementById("view-about");
+  const contact = document.getElementById("view-contact");
+  const legalPages = document.querySelectorAll('[id^="view-legal-"]');
   if (landing) landing.hidden = true;
   if (shell) shell.hidden = true;
+  if (premium) premium.hidden = true;
+  if (faq) faq.hidden = true;
+  if (methodology) methodology.hidden = true;
+  if (dataSources) dataSources.hidden = true;
+  if (about) about.hidden = true;
+  if (contact) contact.hidden = true;
+  legalPages.forEach((page) => {
+    page.hidden = true;
+  });
   if (auth) auth.hidden = false;
   document.body.classList.add("is-auth");
   document.body.classList.remove("is-landing");
+  document.body.classList.remove("is-premium");
+  document.body.classList.remove("is-faq");
+  document.body.classList.remove("is-methodology");
+  document.body.classList.remove("is-data-sources");
+  document.body.classList.remove("is-about");
+  document.body.classList.remove("is-contact");
+  document.body.classList.remove("is-legal-page");
 
   const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
   const params = new URLSearchParams(location.search);

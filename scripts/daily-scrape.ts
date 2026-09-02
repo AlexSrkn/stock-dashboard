@@ -53,24 +53,30 @@ function runNpm(script: string, extraArgs: string[] = []): StepResult {
   const name = extraArgs.length ? `${script} ${extraArgs.join(" ")}` : script;
   const started = Date.now();
   console.log(`\n═══ ${name} ═══`);
+  // Windows: spawnSync('npm.cmd', …, { shell: false }) fails with EINVAL.
+  // Use shell on win32; keep shell:false on Unix for safer argv handling.
+  const isWin = process.platform === "win32";
   const result = spawnSync(
-    process.platform === "win32" ? "npm.cmd" : "npm",
+    isWin ? "npm.cmd" : "npm",
     ["run", script, ...(extraArgs.length ? ["--", ...extraArgs] : [])],
     {
       cwd: ROOT,
       env: process.env,
       stdio: "inherit",
-      shell: false,
+      shell: isWin,
     }
   );
   const ms = Date.now() - started;
   const ok = result.status === 0;
   if (!ok) {
-    console.error(`✖ Failed: ${name} (exit ${result.status ?? "null"})`);
-  } else {
-    console.log(`✔ Done: ${name} (${(ms / 1000).toFixed(1)}s)`);
+    const detail =
+      result.error?.message ||
+      (result.status == null ? "spawn failed" : `exit ${result.status}`);
+    console.error(`✖ Failed: ${name} (${detail})`);
+    return { name, ok: false, ms, detail };
   }
-  return { name, ok, ms, detail: ok ? undefined : `exit ${result.status}` };
+  console.log(`✔ Done: ${name} (${(ms / 1000).toFixed(1)}s)`);
+  return { name, ok: true, ms };
 }
 
 function skip(name: string, reason: string): StepResult {

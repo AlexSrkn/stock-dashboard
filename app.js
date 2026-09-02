@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-dock-2";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=tv-us-equity-1";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -99,6 +99,73 @@ let searchDebounceTimer = null;
 let searchRequestId = 0;
 let topSearchDebounceTimer = null;
 let topSearchRequestId = 0;
+/** Incremented on each panel load; only the latest load may commit results. */
+let panelLoadSeq = 0;
+/** Symbol the user is currently viewing (source of truth for panel loads). */
+let viewingSymbol = null;
+/** Symbol currently reflected in loaded panel data. */
+let loadedPanelSymbol = null;
+let openStockPreviewSeq = 0;
+
+function normalizeSymbol(symbol) {
+  return String(symbol || "").trim().toUpperCase();
+}
+
+function setViewingSymbol(symbol) {
+  viewingSymbol = normalizeSymbol(symbol) || null;
+}
+
+function getViewingSymbol() {
+  return viewingSymbol || normalizeSymbol(getDisplayStock()?.symbol) || null;
+}
+
+function isStalePanelLoad(loadSeq, symbol) {
+  if (loadSeq !== panelLoadSeq) return true;
+  const expected = normalizeSymbol(symbol);
+  if (!expected) return true;
+  return getViewingSymbol() !== expected;
+}
+
+function resetStockPanelUi(sym) {
+  const symbol = normalizeSymbol(sym);
+  loadedPanelSymbol = null;
+  lastStockClassification = null;
+  lastSecFilings = [];
+  lastFilingsFundamentals = null;
+  lastSecFilingsForScores = null;
+  lastOwnershipHolders = [];
+  lastOwnershipQuarterMeta = {};
+  filingsFundamentalsSymbol = null;
+  signalsSymbol = symbol || null;
+  insiderClusterSymbol = symbol || null;
+  secFilingsExpanded = false;
+  ownershipExpanded = false;
+
+  renderStockClassificationLabel(null);
+  renderTradingViewWidget(symbol, { force: true });
+  renderTradingViewSymbolInfo(symbol, { force: true });
+  setChartFootnote("Loading chart…");
+  setOverviewDataSource("Loading SEC filings…");
+  setOwnershipSubtitle("Loading 13F holdings…");
+  setSecSubtitle("Loading SEC submissions…");
+  renderStockOverview(null, "Loading…");
+  renderCategoryScoresPanel(null, "Loading…");
+  renderOwnershipIntelligencePanel(null, "Loading…");
+  renderStockInsiderCluster(null);
+  renderOwnershipHoldersBody(
+    `<tr><td colspan="6" class="trades-table__empty">Loading institutional holders…</td></tr>`
+  );
+  const secBody = document.getElementById("sec-filings-body");
+  if (secBody) {
+    secBody.innerHTML = `<tr><td colspan="5" class="trades-table__empty">Loading SEC submissions…</td></tr>`;
+  }
+  if (activeStockTab === "signals" && symbol) {
+    void loadSignalsPanel(symbol);
+  }
+  if (activeStockTab === "filings-fundamentals" && symbol) {
+    void loadFilingsFundamentalsPanel(symbol);
+  }
+}
 
 /** @type {{ points: Array<{ x: number; y: number }>; candleData: Array<{ time: number; open: number; high: number; low: number; close: number }>; volumeData: Array<{ time: number; value: number; color: string }>; rangeChangePct: number; positive: boolean; currency: string; range: string; interval?: string } | null} */
 let lastPriceSeries = null;
@@ -1145,14 +1212,315 @@ function isAuthRoutePath(pathname) {
   return isAuthPath(pathname);
 }
 
+function isPremiumPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/pricing" || p === "/premium";
+}
+
+function isFaqPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/faq";
+}
+
+function isMethodologyPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/methodology";
+}
+
+function isDataSourcesPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/data-sources";
+}
+
+function isAboutPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/about";
+}
+
+function isContactPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/contact";
+}
+
+const LEGAL_PAGES = {
+  cookies: { path: "/legal/cookies", viewId: "view-legal-cookies", title: "Cookie Policy — TradeAtlant" },
+  privacy: { path: "/legal/privacy", viewId: "view-legal-privacy", title: "Privacy Policy — TradeAtlant" },
+  terms: { path: "/legal/terms", viewId: "view-legal-terms", title: "Terms of Service — TradeAtlant" },
+  disclaimer: { path: "/legal/disclaimer", viewId: "view-legal-disclaimer", title: "Disclaimer — TradeAtlant" },
+  impressum: { path: "/legal/impressum", viewId: "view-legal-impressum", title: "Impressum — TradeAtlant" },
+};
+
+function parseLegalPageKey(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  for (const [key, page] of Object.entries(LEGAL_PAGES)) {
+    if (p === page.path) return key;
+  }
+  return null;
+}
+
 const LANDING_PAGE_TITLE = "TradeAtlant — Stock & institutional research";
+const PREMIUM_PAGE_TITLE = "Premium — TradeAtlant";
+const FAQ_PAGE_TITLE = "FAQ — TradeAtlant";
+const METHODOLOGY_PAGE_TITLE = "Methodology — TradeAtlant";
+const DATA_SOURCES_PAGE_TITLE = "Data Sources — TradeAtlant";
+const ABOUT_PAGE_TITLE = "About — TradeAtlant";
+const CONTACT_PAGE_TITLE = "Contact — TradeAtlant";
 const APP_PAGE_TITLE = "TradeAtlant";
+
+function hidePremiumView() {
+  const premium = document.getElementById("view-premium");
+  if (premium) premium.hidden = true;
+  document.body.classList.remove("is-premium");
+}
+
+function hideFaqView() {
+  const faq = document.getElementById("view-faq");
+  if (faq) faq.hidden = true;
+  document.body.classList.remove("is-faq");
+}
+
+function hideMethodologyView() {
+  const page = document.getElementById("view-methodology");
+  if (page) page.hidden = true;
+  document.body.classList.remove("is-methodology");
+}
+
+function hideDataSourcesView() {
+  const page = document.getElementById("view-data-sources");
+  if (page) page.hidden = true;
+  document.body.classList.remove("is-data-sources");
+}
+
+function hideAboutView() {
+  const page = document.getElementById("view-about");
+  if (page) page.hidden = true;
+  document.body.classList.remove("is-about");
+}
+
+function hideContactView() {
+  const page = document.getElementById("view-contact");
+  if (page) page.hidden = true;
+  document.body.classList.remove("is-contact");
+}
+
+function hideLegalView() {
+  for (const page of Object.values(LEGAL_PAGES)) {
+    const el = document.getElementById(page.viewId);
+    if (el) el.hidden = true;
+  }
+  document.body.classList.remove("is-legal-page");
+}
+
+function hideInfoViews() {
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+}
+
+function showPremiumView(visible) {
+  if (!visible) {
+    hidePremiumView();
+    return;
+  }
+  const premium = document.getElementById("view-premium");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (premium) premium.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-premium");
+  document.title = PREMIUM_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+}
+
+function showFaqView(visible) {
+  if (!visible) {
+    hideFaqView();
+    return;
+  }
+  const faq = document.getElementById("view-faq");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (faq) faq.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-faq");
+  document.title = FAQ_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
+
+function showMethodologyView(visible) {
+  if (!visible) {
+    hideMethodologyView();
+    return;
+  }
+  const page = document.getElementById("view-methodology");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (page) page.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-methodology");
+  document.title = METHODOLOGY_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
+
+function showDataSourcesView(visible) {
+  if (!visible) {
+    hideDataSourcesView();
+    return;
+  }
+  const page = document.getElementById("view-data-sources");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (page) page.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-data-sources");
+  document.title = DATA_SOURCES_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
+
+function showAboutView(visible) {
+  if (!visible) {
+    hideAboutView();
+    return;
+  }
+  const page = document.getElementById("view-about");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (page) page.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-about");
+  document.title = ABOUT_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
+
+function showContactView(visible) {
+  if (!visible) {
+    hideContactView();
+    return;
+  }
+  const page = document.getElementById("view-contact");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (page) page.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-contact");
+  document.title = CONTACT_PAGE_TITLE;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
+
+function showLegalView(key) {
+  if (!key) {
+    hideLegalView();
+    return;
+  }
+  const config = LEGAL_PAGES[key];
+  if (!config) {
+    hideLegalView();
+    return;
+  }
+  const page = document.getElementById(config.viewId);
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (page) page.hidden = false;
+  document.body.classList.remove("is-landing");
+  document.body.classList.add("is-legal-page");
+  document.title = config.title;
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  window.scrollTo(0, 0);
+}
 
 function showLandingView(visible) {
   const landing = document.getElementById("view-landing");
   const shell = document.getElementById("app-shell");
   if (landing) landing.hidden = !visible;
   if (shell) shell.hidden = visible;
+  if (visible) hideInfoViews();
   document.body.classList.toggle("is-landing", visible);
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
@@ -1304,6 +1672,14 @@ function parseInstitutionRoute(pathname) {
 function parseAppRoute(pathname) {
   if (isLandingPath(pathname)) return { mode: "landing" };
   if (isAuthRoutePath(pathname)) return { mode: "auth" };
+  if (isPremiumPath(pathname)) return { mode: "premium" };
+  if (isFaqPath(pathname)) return { mode: "faq" };
+  if (isMethodologyPath(pathname)) return { mode: "methodology" };
+  if (isDataSourcesPath(pathname)) return { mode: "data-sources" };
+  if (isAboutPath(pathname)) return { mode: "about" };
+  if (isContactPath(pathname)) return { mode: "contact" };
+  const legalKey = parseLegalPageKey(pathname);
+  if (legalKey) return { mode: "legal", legalKey };
   const inst = parseInstitutionRoute(pathname);
   if (inst) return { mode: "institutions", hub: false, ...inst };
   if (pathname === "/institutions" || pathname.startsWith("/institutions/")) {
@@ -1736,6 +2112,7 @@ function closeStocksOverlays() {
 function navigateToStocksHub() {
   previewStock = null;
   activeIndex = -1;
+  setViewingSymbol(null);
   const switching = activeStockHubCollection !== "sp500";
   activeStockHubCollection = "sp500";
   if (switching) {
@@ -12242,26 +12619,51 @@ function syncStockUrl(symbol) {
   }
 }
 
+function makePreviewStockStub(symbol) {
+  const sym = String(symbol || "").trim().toUpperCase();
+  return {
+    symbol: sym,
+    name: sym,
+    price: null,
+    changePct: 0,
+    currency: "USD",
+    exchange: "",
+    notifications: [],
+    signals: [],
+    latestActivity: null,
+  };
+}
+
 async function openStockFromRoute(route) {
-  const sym = route.symbol;
-  const idx = watchlist.findIndex((w) => w.symbol === sym);
+  const sym = normalizeSymbol(route.symbol);
+  if (!sym) return;
+  setViewingSymbol(sym);
+  const idx = watchlist.findIndex((w) => normalizeSymbol(w.symbol) === sym);
   closeStocksOverlays();
   setStockTab(route.tab, { updateUrl: false });
   if (idx >= 0) {
     previewStock = null;
     activeIndex = idx;
     activeCurrency = watchlist[idx].currency || "USD";
+    resetStockPanelUi(sym);
     renderWatchlist();
     renderHeader();
-    await loadActiveSymbolPanels();
+    await loadActiveSymbolPanels(sym);
     return;
   }
+  previewStock = makePreviewStockStub(sym);
+  activeIndex = -1;
+  resetStockPanelUi(sym);
+  renderWatchlist();
+  renderHeader();
+  setDashboardStatus(`Loading ${sym}…`);
   try {
-    previewStock = await fetchWatchlistEntry(sym);
-    activeIndex = -1;
-    renderWatchlist();
+    const entry = await fetchWatchlistEntry(sym);
+    if (getViewingSymbol() !== sym) return;
+    previewStock = entry;
     renderHeader();
-    await loadActiveSymbolPanels();
+    await loadActiveSymbolPanels(sym);
+    setDashboardStatus("");
   } catch (err) {
     setDashboardStatus(err instanceof Error ? err.message : String(err), true);
   }
@@ -14178,6 +14580,7 @@ function smartMoneyConvictionClass(score) {
 
 let insiderClusterLookbackDays = 60;
 let insiderClusterHubBound = false;
+let insiderClusterSymbol = null;
 
 function insiderClusterScoreClass(score) {
   const x = Number(score);
@@ -14242,14 +14645,18 @@ function renderStockInsiderCluster(signal) {
 }
 
 async function loadStockInsiderCluster(symbol) {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) return;
+  insiderClusterSymbol = sym;
   renderStockInsiderCluster(null);
-  if (!symbol) return;
   try {
-    const data = await apiJson(`/api/stocks/${encodeURIComponent(symbol)}/insider-cluster`, {
+    const data = await apiJson(`/api/stocks/${encodeURIComponent(sym)}/insider-cluster`, {
       window: insiderClusterLookbackDays,
     });
+    if (insiderClusterSymbol !== sym) return;
     renderStockInsiderCluster(data);
   } catch {
+    if (insiderClusterSymbol !== sym) return;
     renderStockInsiderCluster(null);
   }
 }
@@ -18858,7 +19265,9 @@ async function refreshWatchlistFromApi() {
   const failed = watchlist.length - next.length;
   if (next.length) {
     watchlist = next;
-    activeIndex = Math.min(Math.max(activeIndex, 0), watchlist.length - 1);
+    if (activeIndex >= 0) {
+      activeIndex = Math.min(activeIndex, watchlist.length - 1);
+    }
   }
   if (failed) {
     setDashboardStatus(`Some symbols failed to refresh (${failed}).`);
@@ -19186,27 +19595,38 @@ function renderTopInstitutionSearchResults(results) {
 }
 
 async function openStockPreview(symbol) {
-  const sym = String(symbol || "").trim();
+  const sym = normalizeSymbol(symbol);
   if (!sym) return;
+  const req = ++openStockPreviewSeq;
+  setViewingSymbol(sym);
   closeStocksOverlays();
+  // Always land on Overview when searching a stock from another tab/section.
+  setStockTab("overview", { updateUrl: false });
   // Leave /stocks/most-accumulated immediately so route handlers cannot reopen the overlay.
   syncStockUrl(sym);
   setExploreMode("stocks", { navigate: false });
-  previewStock = null;
   activeIndex = -1;
+  previewStock = makePreviewStockStub(sym);
+  resetStockPanelUi(sym);
   renderWatchlist();
+  renderHeader();
   setDashboardStatus(`Loading ${sym}…`);
+  const panelLoad = loadActiveSymbolPanels(sym);
   try {
-    previewStock = await fetchWatchlistEntry(sym);
+    const entry = await fetchWatchlistEntry(sym);
+    if (req !== openStockPreviewSeq || getViewingSymbol() !== sym) return;
+    previewStock = entry;
     activeCurrency = previewStock.currency || "USD";
     const input = document.getElementById("top-search-input");
     if (input) input.value = sym;
     closeTopSearch();
     renderHeader();
     syncStockUrl(sym);
-    await loadActiveSymbolPanels();
+    await panelLoad;
+    if (req !== openStockPreviewSeq || getViewingSymbol() !== sym) return;
     setDashboardStatus("");
   } catch (e) {
+    if (req !== openStockPreviewSeq || getViewingSymbol() !== sym) return;
     const msg = e instanceof Error ? e.message : String(e);
     setDashboardStatus(`Could not load ${sym}: ${msg}`, true);
     renderEmptyMain(true);
@@ -19302,13 +19722,15 @@ async function addToWatchlist(symbol) {
     saveWatchlistSymbols();
     previewStock = null;
     activeIndex = watchlist.length - 1;
+    setViewingSymbol(normalizeSymbol(sym));
+    resetStockPanelUi(normalizeSymbol(sym));
     updateWatchlistBadge();
     closeWatchlistSearch();
     renderWatchlist();
     void loadWatchlistActivity();
     renderHeader();
     renderEmptyMain(false);
-    await loadActiveSymbolPanels();
+    await loadActiveSymbolPanels(sym);
     setDashboardStatus("");
     setSearchHint("");
   } catch (e) {
@@ -19461,7 +19883,12 @@ function renderHeader() {
   activeCurrency = w.currency || activeCurrency;
   document.getElementById("active-symbol-label").textContent = w.symbol;
   document.getElementById("active-name-label").textContent = w.name;
-  renderStockClassificationLabel(lastStockClassification);
+  const sym = normalizeSymbol(w.symbol);
+  if (!loadedPanelSymbol || loadedPanelSymbol !== sym) {
+    renderStockClassificationLabel(null);
+  } else {
+    renderStockClassificationLabel(lastStockClassification);
+  }
   renderTradingViewSymbolInfo(w.symbol);
   updateStockAddWatchlistBtn();
 }
@@ -20123,9 +20550,11 @@ async function loadFilingsFundamentalsPanel(symbol) {
     const data = await apiJson(
       `/api/stocks/${encodeURIComponent(sym)}/filings-fundamentals?_=${Date.now()}`
     );
+    if (filingsFundamentalsSymbol !== sym) return;
     lastFilingsFundamentals = data;
     renderFilingsFundamentalsPanel(data);
   } catch (err) {
+    if (filingsFundamentalsSymbol !== sym) return;
     lastFilingsFundamentals = null;
     const msg = err instanceof Error ? err.message : String(err);
     renderFilingsFundamentalsPanel(null, msg);
@@ -20819,14 +21248,44 @@ const TRADINGVIEW_SYMBOL_INFO_SRC =
   "https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js";
 let lastTradingViewSymbol = null;
 let lastTradingViewSymbolInfo = null;
+/** @type {Map<string, string>} ticker → TradingView exchange prefix (e.g. NASDAQ) */
+const tradingViewExchangeBySymbol = new Map();
 
-/** Map an internal/Yahoo ticker to a TradingView symbol (auto-resolves exchange). */
+/** Map SEC / Yahoo-style exchange labels to TradingView prefixes. */
+function toTradingViewExchange(raw) {
+  const upper = String(raw || "").trim().toUpperCase();
+  if (!upper) return "";
+  if (upper.includes("NASDAQ")) return "NASDAQ";
+  if (upper.includes("NYSE ARCA") || upper === "ARCA") return "NYSEARCA";
+  if (upper.includes("NYSE AMERICAN") || upper === "AMEX" || upper.includes("AMERICAN")) return "AMEX";
+  if (upper.includes("NYSE")) return "NYSE";
+  if (upper.includes("OTC") || upper.includes("PINK")) return "OTC";
+  if (upper === "BATS" || upper.includes("CBOE")) return "CBOE";
+  return "";
+}
+
+function rememberTradingViewExchange(symbol, exchangeRaw) {
+  const sym = normalizeSymbol(symbol);
+  const ex = toTradingViewExchange(exchangeRaw);
+  if (!sym || !ex) return false;
+  const prev = tradingViewExchangeBySymbol.get(sym);
+  tradingViewExchangeBySymbol.set(sym, ex);
+  return prev !== ex;
+}
+
+/**
+ * Map an internal ticker to a TradingView symbol.
+ * Always prefer EXCHANGE:TICKER so EU locales don't auto-resolve broker CFDs
+ * (e.g. "NVDA Spot CFD") instead of the US cash equity.
+ */
 function toTradingViewSymbol(symbol) {
   let s = String(symbol || "").trim().toUpperCase();
   if (!s) return "";
+  if (s.includes(":")) return s;
   // Class shares: Yahoo "BRK-B" → TradingView "BRK.B".
   if (/^[A-Z]+-[A-Z]$/.test(s)) s = s.replace("-", ".");
-  return s;
+  const exchange = tradingViewExchangeBySymbol.get(s) || "NASDAQ";
+  return `${exchange}:${s}`;
 }
 
 function clearTradingViewWidget() {
@@ -20964,33 +21423,12 @@ function renderTradingViewWidget(symbol, { force = false } = {}) {
   host.appendChild(container);
 }
 
-async function loadActiveSymbolPanels() {
-  const stock = getDisplayStock();
-  const sym = stock?.symbol;
+async function loadActiveSymbolPanels(forSymbol) {
+  const sym = normalizeSymbol(forSymbol || getViewingSymbol());
   if (!sym) return;
-  renderTradingViewWidget(sym);
-  secFilingsExpanded = false;
-  lastFilingsFundamentals = null;
-  lastSecFilingsForScores = null;
-  lastStockClassification = null;
-  filingsFundamentalsSymbol = null;
-  ownershipExpanded = false;
-  renderStockClassificationLabel(null);
-  activeCurrency = stock.currency || activeCurrency;
-  setChartFootnote("Loading chart…");
-  setOverviewDataSource("Loading SEC filings…");
-  setOwnershipSubtitle("Loading 13F holdings…");
-  setSecSubtitle("Loading SEC submissions…");
-  renderStockOverview(null, "Loading…");
-  renderCategoryScoresPanel(null, "Loading…");
-  if (activeStockTab === "signals") {
-    void loadSignalsPanel(sym);
-  }
-  renderOwnershipIntelligencePanel(null, "Loading…");
-  renderStockInsiderCluster(null);
-  renderOwnershipHoldersBody(
-    `<tr><td colspan="6" class="trades-table__empty">Loading institutional holders…</td></tr>`
-  );
+  const loadSeq = ++panelLoadSeq;
+  const stock = getDisplayStock();
+  activeCurrency = stock?.currency || activeCurrency;
 
   const [secFilRes, ownRes, secRes, insiderRes, intelRes, classRes] = await Promise.allSettled([
     fetchFilingsFundamentals(sym),
@@ -21004,6 +21442,13 @@ async function loadActiveSymbolPanels() {
     apiJson(`/api/stocks/${encodeURIComponent(sym)}/ownership-intelligence`),
     fetchStockClassification(sym),
   ]);
+
+  if (isStalePanelLoad(loadSeq, sym)) return;
+
+  loadedPanelSymbol = sym;
+  lastFilingsFundamentals = null;
+  lastSecFilingsForScores = null;
+  filingsFundamentalsSymbol = null;
 
   const secFilings = secFilRes.status === "fulfilled" ? secFilRes.value : null;
   lastFilingsFundamentals = secFilings;
@@ -21077,6 +21522,11 @@ async function loadActiveSymbolPanels() {
     const name = p.entityName ? String(p.entityName) : "";
     const sub = name.length > 72 ? `${name.slice(0, 69)}…` : name;
     setSecSubtitle(sub ? `CIK ${p.cik} · ${sub}` : `CIK ${p.cik} · data.sec.gov submissions`);
+    // Pin TradingView to the SEC-listed US equity exchange (avoids broker CFDs).
+    if (rememberTradingViewExchange(sym, p.exchange)) {
+      renderTradingViewWidget(sym, { force: true });
+      renderTradingViewSymbolInfo(sym, { force: true });
+    }
   } else {
     lastSecFilings = [];
     secErr = String(secRes.reason?.message || secRes.reason);
@@ -21104,6 +21554,8 @@ async function loadActiveSymbolPanels() {
     void loadSignalsPanel(sym);
   }
 
+  if (isStalePanelLoad(loadSeq, sym)) return;
+
   void loadStockInsiderCluster(sym);
 }
 
@@ -21112,12 +21564,15 @@ async function selectStock(index) {
   setExploreMode("stocks", { navigate: false });
   previewStock = null;
   activeIndex = index;
+  const sym = normalizeSymbol(watchlist[index]?.symbol);
+  setViewingSymbol(sym);
   activeCurrency = watchlist[index]?.currency || "USD";
+  resetStockPanelUi(sym);
   renderWatchlist();
   renderHeader();
-  syncStockUrl(getDisplayStock()?.symbol);
+  syncStockUrl(sym || getDisplayStock()?.symbol);
   closeDrawerIfMobile();
-  await loadActiveSymbolPanels();
+  if (sym) await loadActiveSymbolPanels(sym);
 }
 
 function closeDrawerIfMobile() {
@@ -21261,12 +21716,14 @@ function setupTabs() {
         b.setAttribute("aria-selected", String(b === btn));
       });
       activeRange = btn.dataset.range;
-      void loadActiveSymbolPanels();
+      const sym = getViewingSymbol();
+      if (sym) void loadActiveSymbolPanels(sym);
     });
   });
 }
 
 async function handleRouteChange() {
+  hideInfoViews();
   const route = parseAppRoute(window.location.pathname);
   if (route.mode === "landing") {
     hideAuthRoute();
@@ -21276,6 +21733,34 @@ async function handleRouteChange() {
   if (route.mode === "auth") {
     showLandingView(false);
     showAuthRoute();
+    return;
+  }
+  if (route.mode === "premium") {
+    showPremiumView(true);
+    return;
+  }
+  if (route.mode === "faq") {
+    showFaqView(true);
+    return;
+  }
+  if (route.mode === "methodology") {
+    showMethodologyView(true);
+    return;
+  }
+  if (route.mode === "data-sources") {
+    showDataSourcesView(true);
+    return;
+  }
+  if (route.mode === "about") {
+    showAboutView(true);
+    return;
+  }
+  if (route.mode === "contact") {
+    showContactView(true);
+    return;
+  }
+  if (route.mode === "legal") {
+    showLegalView(route.legalKey);
     return;
   }
   hideAuthRoute();
@@ -21451,6 +21936,7 @@ async function handleRouteChange() {
   }
   previewStock = null;
   activeIndex = -1;
+  setViewingSymbol(null);
   renderWatchlist();
   renderHeader();
 }
@@ -21913,6 +22399,60 @@ function setupLanding() {
   initLandingPage();
 }
 
+function setupPremiumPage() {
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.('a[href="/pricing"], a[href="/premium"]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.pushState({}, "", a.getAttribute("href") || "/pricing");
+    void handleRouteChange();
+  });
+}
+
+function setupFaqPage() {
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.(
+      'a[href="/faq"], a[href="/methodology"], a[href="/data-sources"], a[href="/about"], a[href="/contact"], a[href^="/legal/"]'
+    );
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.pushState({}, "", a.getAttribute("href") || "/faq");
+    void handleRouteChange();
+  });
+}
+
+function setupContactForm() {
+  const form = document.getElementById("contact-form");
+  if (!form) return;
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const note = document.getElementById("contact-form-note");
+    const name = String(document.getElementById("contact-name")?.value || "").trim();
+    const email = String(document.getElementById("contact-email")?.value || "").trim();
+    const subject = String(document.getElementById("contact-subject")?.value || "").trim();
+    const message = String(document.getElementById("contact-message")?.value || "").trim();
+
+    if (!name || !email || !subject || !message) {
+      if (note) {
+        note.hidden = false;
+        note.textContent = "Please fill in all fields.";
+      }
+      return;
+    }
+
+    const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n");
+    const mailto = `mailto:contact@tradeatlant.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+
+    if (note) {
+      note.hidden = false;
+      note.textContent =
+        "Opening your email app to send the message. If nothing opens, email contact@tradeatlant.com directly.";
+    }
+  });
+}
+
 function setupEntityLinkDelegation() {
   document.addEventListener("click", (e) => {
     const instLink = e.target.closest?.("a.ownership-fund__link[data-institution-cik]");
@@ -22130,6 +22670,41 @@ async function init() {
       }
     }
     void refreshSidebarMarketPanels();
+    return;
+  }
+
+  if (appRoute.mode === "premium") {
+    showPremiumView(true);
+    return;
+  }
+
+  if (appRoute.mode === "faq") {
+    showFaqView(true);
+    return;
+  }
+
+  if (appRoute.mode === "methodology") {
+    showMethodologyView(true);
+    return;
+  }
+
+  if (appRoute.mode === "data-sources") {
+    showDataSourcesView(true);
+    return;
+  }
+
+  if (appRoute.mode === "about") {
+    showAboutView(true);
+    return;
+  }
+
+  if (appRoute.mode === "contact") {
+    showContactView(true);
+    return;
+  }
+
+  if (appRoute.mode === "legal") {
+    showLegalView(appRoute.legalKey);
     return;
   }
 
@@ -22360,8 +22935,9 @@ async function init() {
       setExploreMode("stocks", { navigate: false });
       renderHeader();
     } else if (activeIndex >= 0 && activeExploreMode === "stocks") {
-      syncStockUrl(getDisplayStock()?.symbol);
-      await loadActiveSymbolPanels();
+      const sym = getViewingSymbol();
+      syncStockUrl(sym || undefined);
+      if (sym) await loadActiveSymbolPanels(sym);
     } else {
       renderHeader();
     }
@@ -22385,7 +22961,8 @@ async function init() {
         }
         if (document.visibilityState === "visible" && activeExploreMode === "institutions" && activeInstitutionCik) {
           await loadInstitutionPanel(activeInstitutionTab, activeInstitutionCik);
-        } else if (document.visibilityState === "visible" && getDisplayStock()) {
+        } else if (document.visibilityState === "visible" && getViewingSymbol()) {
+          const refreshSym = getViewingSymbol();
           if (previewStock?.symbol) {
             try {
               previewStock = await fetchWatchlistEntry(previewStock.symbol);
@@ -22394,7 +22971,7 @@ async function init() {
             }
           }
           renderHeader();
-          await loadActiveSymbolPanels();
+          await loadActiveSymbolPanels(refreshSym);
         }
       } catch {
         /* ignore interval errors */
@@ -22715,6 +23292,9 @@ setupInsidersHub();
 setupExploreNav();
 setupMobileTopbarNav();
 setupLanding();
+setupPremiumPage();
+setupFaqPage();
+setupContactForm();
 setupMarketPulseSidebar();
 setupEntityLinkDelegation();
 initChartExtensions();

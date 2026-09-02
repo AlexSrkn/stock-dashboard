@@ -332,10 +332,15 @@ async function buildSecFilingsResponse(symbol, limit) {
   const raw = await secGet("data.sec.gov", `/submissions/CIK${cik10}.json`);
   const sub = JSON.parse(raw);
   const filings = parseRecentFilings(sub, limit, cikNum);
+  const tickers = Array.isArray(sub.tickers) ? sub.tickers.map((t) => String(t || "").toUpperCase()) : [];
+  const exchanges = Array.isArray(sub.exchanges) ? sub.exchanges.map((e) => String(e || "")) : [];
+  const tickerIdx = tickers.findIndex((t) => t === sym);
+  const exchangeRaw = tickerIdx >= 0 ? exchanges[tickerIdx] || "" : exchanges[0] || "";
   return {
     ticker: sym,
     cik: cik10,
     entityName: sub.name || "",
+    exchange: exchangeRaw,
     filings,
   };
 }
@@ -695,6 +700,18 @@ http
         u.pathname === "/check-email" ||
         u.pathname === "/forgot-password" ||
         u.pathname === "/reset-password" ||
+        u.pathname === "/pricing" ||
+        u.pathname === "/premium" ||
+        u.pathname === "/faq" ||
+        u.pathname === "/methodology" ||
+        u.pathname === "/data-sources" ||
+        u.pathname === "/about" ||
+        u.pathname === "/contact" ||
+        u.pathname === "/legal/cookies" ||
+        u.pathname === "/legal/privacy" ||
+        u.pathname === "/legal/terms" ||
+        u.pathname === "/legal/disclaimer" ||
+        u.pathname === "/legal/impressum" ||
         u.pathname === "/stock" ||
         u.pathname.startsWith("/stock/") ||
         u.pathname === "/stocks" ||

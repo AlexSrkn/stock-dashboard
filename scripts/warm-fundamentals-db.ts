@@ -9,9 +9,10 @@
  *   npm run stocks:warm-fundamentals -- --from 100 --limit 100
  *   npm run stocks:warm-fundamentals -- --ticker AAPL,MSFT
  *   npm run stocks:warm-fundamentals -- --skip-existing
+ *   npm run stocks:warm-fundamentals -- --sp500
  *   npm run stocks:warm-fundamentals -- --all-tickers --limit 200
  *
- * Default universe: S&P 500 (~503 tickers). Requires DATABASE_URL and SEC_USER_AGENT in .env.
+ * Default universe: all tickers in `stocks` table (~10k from SEC import).
  */
 import fs from "node:fs";
 import { closePool, getDatabaseUrl, loadEnvFile } from "../src/db/pool.js";
@@ -20,6 +21,7 @@ import { loadAllSecCompanyTickers } from "../src/sec/submissions.js";
 import {
   ingestFundamentalsForTickers,
   loadSp500Tickers,
+  loadStocksTableTickers,
   normalizeTickerList,
 } from "../src/stocks/fundamentalsBulkIngest.js";
 
@@ -36,8 +38,7 @@ function parseArgs(argv: string[]) {
   let delayMs = DEFAULT_DELAY_MS;
   let skipExisting = false;
   let force = false;
-  let allTickers = false;
-  let sp500 = true;
+  let universe: "stocks-db" | "sp500" | "all-tickers" = "stocks-db";
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -49,24 +50,22 @@ function parseArgs(argv: string[]) {
       delayMs = Math.max(0, Number(argv[++i]) || DEFAULT_DELAY_MS);
     } else if (arg === "--ticker" && argv[i + 1]) {
       tickersCsv = String(argv[++i]);
-      sp500 = false;
     } else if (arg === "--symbols-file" && argv[i + 1]) {
       symbolsFile = String(argv[++i]).trim();
-      sp500 = false;
     } else if (arg === "--skip-existing") {
       skipExisting = true;
     } else if (arg === "--force") {
       force = true;
     } else if (arg === "--all-tickers") {
-      allTickers = true;
-      sp500 = false;
+      universe = "all-tickers";
     } else if (arg === "--sp500") {
-      sp500 = true;
-      allTickers = false;
+      universe = "sp500";
+    } else if (arg === "--stocks-db") {
+      universe = "stocks-db";
     }
   }
 
-  return { from, limit, tickersCsv, symbolsFile, delayMs, skipExisting, force, allTickers, sp500 };
+  return { from, limit, tickersCsv, symbolsFile, delayMs, skipExisting, force, universe };
 }
 
 function loadTickersFromFile(filePath: string): string[] {
@@ -92,15 +91,20 @@ async function resolveTickerList(options: ReturnType<typeof parseArgs>): Promise
   if (options.symbolsFile) {
     return loadTickersFromFile(options.symbolsFile);
   }
-  if (options.allTickers) {
+  if (options.universe === "sp500") {
+    const tickers = loadSp500Tickers();
+    console.log(`Universe: S&P 500 (${tickers.length} tickers)`);
+    return tickers;
+  }
+  if (options.universe === "all-tickers") {
     console.log("Loading SEC company_tickers.json…");
     const entries = await loadAllSecCompanyTickers();
     const tickers = entries.map((e) => e.ticker).filter(filterSecTicker);
     console.log(`Universe: ${tickers.length} common SEC tickers`);
     return tickers;
   }
-  const tickers = loadSp500Tickers();
-  console.log(`Universe: S&P 500 (${tickers.length} tickers)`);
+  const tickers = await loadStocksTableTickers();
+  console.log(`Universe: stocks table (${tickers.length} tickers)`);
   return tickers;
 }
 

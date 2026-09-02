@@ -18,7 +18,7 @@ import {
 } from "../src/ownership/trackedInstitutions.js";
 import { ingestRecent13FForCik } from "../src/sec/ingest/ingestLatest13F.js";
 import {
-  loadThirteenFInfoImportUniverse,
+  loadThirteenFInfoImportUniverseFromDb,
   type ImportManagerCandidate,
 } from "../src/sec/thirteenFInfo/importUniverse.js";
 import { DEFAULT_MINIMUM_QUARTER } from "../src/sec/thirteenFInfo/scrapeManagers.js";
@@ -40,8 +40,85 @@ const PROGRESS_PATH = join("data", "13f-info", "import-progress.json");
 interface ProgressState {
   minimumQuarter: string;
   completedCiks: string[];
+  /** CIKs attempted this nightly pass (cleared at job start); waiting-on-SEC filers stay out of completed. */
+  attemptedCiks: string[];
   failed: Array<{ cik: string; name: string; error: string; at: string }>;
   updatedAt: string;
+}
+
+interface ProgressFile {
+  quarters: Record<
+    string,
+    {
+      completedCiks: string[];
+      attemptedCiks?: string[];
+      failed: ProgressState["failed"];
+      updatedAt: string;
+    }
+  >;
+}
+
+function emptyProgress(minimumQuarter: string): ProgressState {
+  return {
+    minimumQuarter,
+    completedCiks: [],
+    attemptedCiks: [],
+    failed: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function readProgressFile(): ProgressFile {
+  if (!existsSync(PROGRESS_PATH)) {
+    return { quarters: {} };
+  }
+  try {
+    const raw = JSON.parse(readFileSync(PROGRESS_PATH, "utf8")) as ProgressFile & ProgressState;
+    if (raw.quarters && typeof raw.quarters === "object") {
+      return { quarters: raw.quarters };
+    }
+    // Migrate legacy single-quarter file.
+    if (raw.minimumQuarter) {
+      return {
+        quarters: {
+          [raw.minimumQuarter]: {
+            completedCiks: Array.isArray(raw.completedCiks) ? raw.completedCiks : [],
+            attemptedCiks: [],
+            failed: Array.isArray(raw.failed) ? raw.failed : [],
+            updatedAt: raw.updatedAt || new Date().toISOString(),
+          },
+        },
+      };
+    }
+  } catch {
+    /* fall through */
+  }
+  return { quarters: {} };
+}
+
+function loadProgress(minimumQuarter: string): ProgressState {
+  const file = readProgressFile();
+  const bucket = file.quarters[minimumQuarter];
+  if (!bucket) return emptyProgress(minimumQuarter);
+  return {
+    minimumQuarter,
+    completedCiks: Array.isArray(bucket.completedCiks) ? bucket.completedCiks : [],
+    attemptedCiks: Array.isArray(bucket.attemptedCiks) ? bucket.attemptedCiks : [],
+    failed: Array.isArray(bucket.failed) ? bucket.failed : [],
+    updatedAt: bucket.updatedAt || new Date().toISOString(),
+  };
+}
+
+function saveProgress(state: ProgressState): void {
+  mkdirSync(join(PROGRESS_PATH, ".."), { recursive: true });
+  const file = readProgressFile();
+  file.quarters[state.minimumQuarter] = {
+    completedCiks: state.completedCiks,
+    attemptedCiks: state.attemptedCiks,
+    failed: state.failed,
+    updatedAt: new Date().toISOString(),
+  };
+  writeFileSync(PROGRESS_PATH, JSON.stringify(file, null, 2));
 }
 
 interface NameConflict {
@@ -52,6 +129,18 @@ interface NameConflict {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+async function filerHasQuarter(
+  pool: Awaited<ReturnType<typeof getPool>>,
+  cik: string,
+  quarter: string
+): Promise<boolean> {
+  const res = await pool.query(
+    `SELECT 1 FROM sec_filing WHERE filer_cik = $1 AND quarter = $2 LIMIT 1`,
+    [cik, quarter]
+  );
+  return res.rows.length > 0;
 }
 
 function argFlag(name: string): boolean {
@@ -66,49 +155,6 @@ function argValue(name: string): string | undefined {
     return process.argv[idx + 1];
   }
   return undefined;
-}
-
-function loadProgress(minimumQuarter: string): ProgressState {
-  if (!existsSync(PROGRESS_PATH)) {
-    return {
-      minimumQuarter,
-      completedCiks: [],
-      failed: [],
-      updatedAt: new Date().toISOString(),
-    };
-  }
-  try {
-    const raw = JSON.parse(readFileSync(PROGRESS_PATH, "utf8")) as ProgressState;
-    if (raw.minimumQuarter !== minimumQuarter) {
-      return {
-        minimumQuarter,
-        completedCiks: [],
-        failed: [],
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    return {
-      minimumQuarter,
-      completedCiks: Array.isArray(raw.completedCiks) ? raw.completedCiks : [],
-      failed: Array.isArray(raw.failed) ? raw.failed : [],
-      updatedAt: raw.updatedAt || new Date().toISOString(),
-    };
-  } catch {
-    return {
-      minimumQuarter,
-      completedCiks: [],
-      failed: [],
-      updatedAt: new Date().toISOString(),
-    };
-  }
-}
-
-function saveProgress(state: ProgressState): void {
-  mkdirSync(join(PROGRESS_PATH, ".."), { recursive: true });
-  writeFileSync(
-    PROGRESS_PATH,
-    JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2)
-  );
 }
 
 function mergeImportedTrackedFile(managers: ImportManagerCandidate[]): number {
@@ -176,8 +222,11 @@ async function main() {
   /** Exit cleanly after N ingest attempts so a watchdog can restart a fresh process (avoids long-run native crashes). */
   const batchSize = Math.max(0, Number(argValue("--batch-size") ?? "0") || 0);
 
-  const universe = loadThirteenFInfoImportUniverse({ path: sourcePath, minimumQuarter });
   const pool = getPool();
+  const universe = await loadThirteenFInfoImportUniverseFromDb(pool, {
+    path: sourcePath,
+    minimumQuarter,
+  });
   const existing = await loadInstitutionDirectoryByCik(pool);
 
   const alreadyExist: ImportManagerCandidate[] = [];
@@ -202,9 +251,9 @@ async function main() {
 
   console.log("=== 13f.info → institution import plan ===");
   console.log(`source:                 ${universe.sourcePath}`);
-  console.log(`minimum_quarter:        ${universe.minimumQuarter}`);
+  console.log(`target_quarter:         ${universe.minimumQuarter} (queue = missing in sec_filing)`);
   console.log(`universe (filtered):    ${universe.managers.length}`);
-  console.log(`skipped below quarter:  ${universe.skippedBelowQuarter}`);
+  console.log(`skipped have quarter:   ${universe.skippedAlreadyHaveQuarter}`);
   console.log(`skipped missing CIK:    ${universe.skippedMissingCik}`);
   console.log(`exact CIK dupes dropped:${universe.exactCikDuplicatesRemoved}`);
   console.log(`already exist (CIK):    ${alreadyExist.length}`);
@@ -246,19 +295,34 @@ async function main() {
     ? {
         minimumQuarter: universe.minimumQuarter,
         completedCiks: [] as string[],
+        attemptedCiks: [] as string[],
         failed: [] as ProgressState["failed"],
         updatedAt: new Date().toISOString(),
       }
     : loadProgress(universe.minimumQuarter);
   const completed = new Set(progress.completedCiks);
-  const pendingAll = work.filter((m) => !completed.has(m.cik));
+  const attempted = new Set(progress.attemptedCiks);
+  const waitingOnSec = work.filter((m) => !completed.has(m.cik)).length;
+  const pendingAll = work.filter((m) => !completed.has(m.cik) && !attempted.has(m.cik));
   const pending =
     batchSize > 0 ? pendingAll.slice(0, batchSize) : pendingAll;
   console.log(
-    `\nResume state: ${completed.size} already completed, ${pendingAll.length} remaining` +
+    `\nResume state: ${completed.size} with ${universe.minimumQuarter}, ${waitingOnSec} waiting on SEC, ${attempted.size} attempted this pass, ${pendingAll.length} left this pass` +
       (batchSize > 0 ? ` (this batch ${pending.length}/${batchSize})` : "") +
       ` of ${work.length} queued`
   );
+
+  if (!pending.length && waitingOnSec > 0 && attempted.size > 0) {
+    console.log(
+      `\nNightly pass complete — ${completed.size} have ${universe.minimumQuarter}, ${waitingOnSec} still waiting on SEC filings.`
+    );
+    return;
+  }
+
+  if (!pending.length && waitingOnSec === 0) {
+    console.log(`\nAll ${completed.size} queued filers have ${universe.minimumQuarter}.`);
+    return;
+  }
 
   const createdNow: string[] = [];
   const ingestedOk: Array<{ cik: string; name: string; filings: number; holdings: number; dupes: number }> =
@@ -325,13 +389,17 @@ async function main() {
       });
       // Cap in-memory samples so long batches don't retain every result object.
       if (ingestedOk.length > 50) ingestedOk.splice(0, ingestedOk.length - 50);
-      completed.add(m.cik);
-      progress.completedCiks = [...completed];
-      progress.failed = progress.failed.filter((f) => f.cik !== m.cik);
-      saveProgress(progress);
+      const haveTarget = await filerHasQuarter(pool, m.cik, universe.minimumQuarter);
+      if (haveTarget) {
+        completed.add(m.cik);
+        progress.completedCiks = [...completed];
+        progress.failed = progress.failed.filter((f) => f.cik !== m.cik);
+        saveProgress(progress);
+      }
       console.log(
         `ok (${result.filingsProcessed} filing(s), ${holdingsInserted} holdings` +
           (duplicates ? `, ${duplicates} duplicate(s)` : "") +
+          (haveTarget ? "" : `, no ${universe.minimumQuarter} yet`) +
           ")"
       );
     } catch (err) {
@@ -341,9 +409,11 @@ async function main() {
         ...progress.failed.filter((f) => f.cik !== m.cik),
         { cik: m.cik, name: existingName, error: message, at: new Date().toISOString() },
       ];
-      saveProgress(progress);
       console.log(`failed: ${message}`);
     }
+    attempted.add(m.cik);
+    progress.attemptedCiks = [...attempted];
+    saveProgress(progress);
     if (i < pending.length - 1) await sleep(delayMs);
   }
 
@@ -363,11 +433,10 @@ async function main() {
     }
   }
   if (ingestFailed.length) {
-    console.log("\nFailures:");
+    console.log("\nFailures (non-fatal for nightly job — warms still run):");
     for (const row of ingestFailed) {
       console.log(`  ${row.cik} · ${row.name}: ${row.error}`);
     }
-    process.exitCode = 1;
   }
 
   const totalHoldings = ingestedOk.reduce((s, r) => s + r.holdings, 0);
@@ -389,10 +458,14 @@ async function main() {
 
   console.log(`\nProgress file: ${PROGRESS_PATH}`);
   console.log(`Tracked supplement: ${IMPORTED_TRACKED_MANAGERS_PATH}`);
-  if (stillRemaining > 0) {
-    console.log(`Batch complete — ${stillRemaining} left. Re-run / watchdog will continue.`);
-    // Distinct exit code for watchdog: more work remains (not a failure).
-    if (batchSize > 0 && process.exitCode !== 1) process.exitCode = 2;
+  const leftThisPass = work.filter((m) => !completed.has(m.cik) && !attempted.has(m.cik)).length;
+  if (leftThisPass > 0) {
+    console.log(`Batch complete — ${leftThisPass} left this pass (${stillRemaining} total without ${universe.minimumQuarter}).`);
+    if (batchSize > 0) process.exitCode = 2;
+  } else if (stillRemaining > 0) {
+    console.log(
+      `Pass complete for pending filers — ${stillRemaining} still waiting on SEC for ${universe.minimumQuarter}.`
+    );
   }
 }
 

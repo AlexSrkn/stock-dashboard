@@ -90,7 +90,11 @@
     "politicians:fetch-since-last": "tsx scripts/fetch-politician-recent.ts --since-last",
     "politicians:refresh-party-roster": "tsx scripts/refresh-politician-party-roster.ts",
     "job:daily-scrape": "tsx scripts/daily-scrape.ts",
-    "job:daily-scrape:dry": "tsx scripts/daily-scrape.ts --dry-run"
+    "job:daily-scrape:dry": "tsx scripts/daily-scrape.ts --dry-run",
+    "job:13f-scrape": "tsx scripts/13f-scrape.ts",
+    "job:13f-scrape:dry": "tsx scripts/13f-scrape.ts --dry-run",
+    "job:fundamentals-scrape": "tsx scripts/fundamentals-scrape.ts",
+    "job:fundamentals-scrape:dry": "tsx scripts/fundamentals-scrape.ts --dry-run"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

@@ -74,7 +74,7 @@ export async function ingestRecent13FForCik(
   }
 
   const results: InsertFilingWithHoldingsResult[] = [];
-  let ensureSchema = options.ensureSchema !== false;
+  let ensureSchema = options.ensureSchema === true;
 
   for (const filing of filings) {
     const result = await ingestOneFiling(filing, options.fundName, ensureSchema);

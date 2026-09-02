@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=mobile-dock-2" />
+    <link rel="stylesheet" href="/styles.css?v=site-footer-15" />
     <link rel="stylesheet" href="/auth.css?v=auth-pages-2" />
     <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
@@ -398,6 +398,1493 @@
             <button type="submit" class="auth-submit">Update password</button>
           </form>
           <p class="auth-footer"><a href="/login">Back to log in</a></p>
+        </div>
+      </div>
+
+      <div id="view-premium" class="premium-page" hidden>
+        <article class="premium-page__card" aria-labelledby="premium-page-title">
+          <p class="premium-page__eyebrow">Premium</p>
+          <h1 id="premium-page-title" class="premium-page__title">Premium is coming soon.</h1>
+          <div class="premium-page__body">
+            <p>For now, enjoy everything for free.</p>
+            <p>Soon it won't be. :)</p>
+            <p>
+              All the features are already here — we're just keeping them free for now. Eventually, some of them will
+              move behind Premium.
+            </p>
+            <p class="premium-page__highlight">
+              Until then — explore everything, build your watchlist, and enjoy the free ride.
+            </p>
+          </div>
+          <div class="premium-page__actions">
+            <a href="/stocks" class="btn btn--primary premium-page__cta">Explore everything</a>
+          </div>
+        </article>
+      </div>
+
+      <div id="view-faq" class="faq-page" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header">
+            <p class="faq-page__eyebrow">Resources</p>
+            <h1 id="faq-page-title" class="faq-page__title">Frequently asked questions</h1>
+            <p class="faq-page__lead">
+              Simple answers about TradeAtlant, our data, accounts, and Premium. For deeper calculation detail, see
+              <a href="/methodology">Methodology</a> and <a href="/data-sources">Data Sources</a>.
+            </p>
+          </header>
+
+          <div class="faq-page__toc" aria-label="FAQ sections">
+            <a href="#faq-getting-started">Getting Started</a>
+            <a href="#faq-data-research">Data &amp; Research</a>
+            <a href="#faq-watchlist-accounts">Watchlist &amp; Accounts</a>
+            <a href="#faq-financial">Financial Information</a>
+            <a href="#faq-premium">Premium</a>
+            <a href="#faq-support">Support</a>
+          </div>
+
+          <section class="faq-section" id="faq-getting-started" aria-labelledby="faq-getting-started-title">
+            <h2 id="faq-getting-started-title" class="faq-section__title">Getting Started</h2>
+            <div class="faq-accordion">
+              <details class="faq-item">
+                <summary class="faq-item__q">What is TradeAtlant?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    TradeAtlant is a financial research and market intelligence platform for tracking institutional
+                    activity, insider transactions, and political activity — alongside stock charts, fundamentals, and
+                    SEC filings in one workspace.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Who is TradeAtlant for?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Investors, researchers, analysts, traders, and anyone interested in understanding publicly disclosed
+                    market activity.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Do I need an account to use TradeAtlant?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    You can browse research views, signals, and public market data without signing in. Creating an
+                    account unlocks a saved Watchlist and account settings (email verification, password reset, and
+                    profile). Sign-in is free.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Is TradeAtlant free?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Yes — currently everything is free. Some features may move behind Premium in the future. See
+                    <a href="/premium">Premium</a> for more.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="faq-section" id="faq-data-research" aria-labelledby="faq-data-research-title">
+            <h2 id="faq-data-research-title" class="faq-section__title">Data &amp; Research</h2>
+            <div class="faq-accordion">
+              <details class="faq-item">
+                <summary class="faq-item__q">Where does TradeAtlant get its data?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    TradeAtlant is built primarily on publicly available disclosures — including SEC filings such as
+                    institutional Form 13F holdings, Form 4 insider transactions, company fundamentals from 10-K / 10-Q
+                    (and related XBRL), and publicly reported congressional / political trading disclosures — plus market
+                    price data used for charts and context. For a fuller list, see
+                    <a href="/data-sources">Data Sources</a>.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How often is the data updated?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Update cadence depends on the source. Market prices refresh more frequently during trading hours.
+                    Insider (Form 4) and political disclosures are ingested on a recurring schedule as new filings appear.
+                    Institutional 13F data follows the SEC reporting calendar and is updated as new quarterly filings are
+                    published and processed. Exact pipelines and timing are described on
+                    <a href="/methodology">Methodology</a>.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">What are institutional transactions?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    On TradeAtlant, “institutional” activity usually refers to holdings and changes reported by large
+                    investment managers in SEC Form 13F filings — for example new positions, increased or reduced stakes,
+                    or exits between reporting periods. These are delayed public disclosures of portfolio holdings, not
+                    real-time trade tickets.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">What are insider transactions?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Insider transactions are trades and related filings by company officers, directors, and certain
+                    beneficial owners, typically reported on SEC Form 4. TradeAtlant surfaces open-market purchases and
+                    sales and related research views so you can see who bought or sold and when.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">What is political activity?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Political activity on TradeAtlant refers to publicly disclosed stock trades by members of Congress
+                    and related disclosures (for example PTR / STOCK Act reporting). These are delayed public filings, not
+                    live brokerage feeds.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How do you calculate changes in holdings?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Holding changes are derived by comparing reported positions across filing periods (for example share
+                    counts or estimated values between consecutive 13F quarters). Labels such as new, increased, reduced,
+                    or sold are based on those period-to-period comparisons. Step-by-step rules live on
+                    <a href="/methodology">Methodology</a>.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Why might TradeAtlant's data differ from another website?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Sites may use different filing cutoffs, ticker mappings, share-class handling, amendment timing,
+                    currency/unit conventions, or inclusion rules for certain instruments. TradeAtlant focuses on
+                    publicly disclosed filings and its own normalization rules — so totals or “change” labels can differ
+                    even when both sources are legitimate.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">What happens when a filing is amended or corrected?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    When an amended or corrected filing is ingested, TradeAtlant updates the relevant records to reflect
+                    the latest disclosed information. Historical views may change after amendments land. Processing
+                    details are covered in <a href="/methodology">Methodology</a>.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="faq-section" id="faq-watchlist-accounts" aria-labelledby="faq-watchlist-accounts-title">
+            <h2 id="faq-watchlist-accounts-title" class="faq-section__title">Watchlist &amp; Accounts</h2>
+            <div class="faq-accordion">
+              <details class="faq-item">
+                <summary class="faq-item__q">How does my Watchlist work?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Your Watchlist is a personal list of tickers you want to follow. Add or remove symbols from the
+                    Watchlist panel, then open any symbol for charts, ownership, insiders, signals, and filings. Signed-in
+                    users keep a saved Watchlist tied to their account.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Can I use TradeAtlant without creating an account?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Yes. Much of the research experience is available without an account. An account is mainly for saving
+                    your Watchlist and managing login settings.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">What happens to my Watchlist when I create an account?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    After you register and sign in, your Watchlist can be saved with your account so it is available the
+                    next time you log in. If you browsed as a guest first, create an account when you are ready to keep
+                    those symbols permanently.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How do I delete my account?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Contact us at <a href="/contact">Contact</a> and request account deletion. We will process the request
+                    and remove account data as described in our <a href="/legal/privacy">Privacy Policy</a>.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How do I reset my password?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Use <a href="/forgot-password">Forgot password</a> on the login page. Enter the email on your account
+                    and follow the reset link we send you.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How do I verify my email?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    After you register, open the verification link sent to your inbox. If you need a new link, return to
+                    the check-email / verification flow from registration or contact support via
+                    <a href="/contact">Contact</a>.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="faq-section" id="faq-financial" aria-labelledby="faq-financial-title">
+            <h2 id="faq-financial-title" class="faq-section__title">Financial Information</h2>
+            <div class="faq-accordion">
+              <details class="faq-item">
+                <summary class="faq-item__q">Is TradeAtlant financial advice?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    No. TradeAtlant provides research tools and publicly available information for informational purposes
+                    only. Nothing on the platform is personalized investment advice. See our
+                    <a href="/legal/disclaimer">Disclaimer</a>.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Should I make investment decisions based on TradeAtlant data?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    You should not rely solely on TradeAtlant (or any single research tool) when making investment
+                    decisions. Disclosures can be delayed, incomplete, or later amended. Always do your own research and,
+                    if needed, consult a qualified professional.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Does TradeAtlant recommend stocks?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    No. TradeAtlant does not recommend buying or selling any security. Screens, signals, and rankings are
+                    research views over public data — not personalized recommendations.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="faq-section" id="faq-premium" aria-labelledby="faq-premium-title">
+            <h2 id="faq-premium-title" class="faq-section__title">Premium</h2>
+            <div class="faq-accordion">
+              <details class="faq-item">
+                <summary class="faq-item__q">What is TradeAtlant Premium?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Premium is our upcoming paid plan. Today the product is fully usable for free; Premium will unlock or
+                    retain a subset of features once it launches. Details will be published on
+                    <a href="/pricing">Pricing</a> when ready.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">When will Premium launch?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Premium is coming soon. We have not announced a firm launch date yet — follow
+                    <a href="/premium">Premium</a> for updates.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">Will the features currently available for free remain free?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Some features that are free today may become Premium features later. We are not implying those
+                    capabilities are unfinished — they already exist; we may simply move some of them behind Premium over
+                    time.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="faq-section faq-section--support" id="faq-support" aria-labelledby="faq-support-title">
+            <h2 id="faq-support-title" class="faq-section__title">Support</h2>
+            <div class="faq-support">
+              <h3 class="faq-support__title">Still have questions?</h3>
+              <p class="faq-support__copy">
+                Can't find what you're looking for? Contact us and we'll be happy to help.
+              </p>
+              <a href="/contact" class="btn btn--primary faq-support__cta">Contact Support</a>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="view-methodology" class="faq-page method-page" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header">
+            <p class="faq-page__eyebrow">Resources</p>
+            <h1 id="methodology-page-title" class="faq-page__title">Methodology</h1>
+            <p class="faq-page__lead">
+              How TradeAtlant turns public filings and disclosures into the research views you see. For a shorter
+              overview, see the <a href="/faq">FAQ</a>. For source lists, see <a href="/data-sources">Data Sources</a>.
+            </p>
+          </header>
+
+          <div class="faq-page__toc" aria-label="Methodology sections">
+            <a href="#method-overview">Overview</a>
+            <a href="#method-sources">Data Sources</a>
+            <a href="#method-institutional">Institutional Holdings</a>
+            <a href="#method-insider">Insider Transactions</a>
+            <a href="#method-political">Political Activity</a>
+            <a href="#method-normalization">Normalization</a>
+            <a href="#method-changes">Change Calculations</a>
+            <a href="#method-dates">Filing vs Transaction Dates</a>
+            <a href="#method-amendments">Amendments</a>
+            <a href="#method-limitations">Limitations</a>
+            <a href="#method-updates">Updates</a>
+            <a href="#method-doesnt">What We Don't Do</a>
+          </div>
+
+          <section class="method-section" id="method-overview" aria-labelledby="method-overview-title">
+            <h2 id="method-overview-title" class="faq-section__title">1. Overview</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant aggregates and organizes publicly available financial and government disclosures to make
+                institutional, insider, and political activity easier to research — alongside charts, fundamentals, and
+                related SEC context in one workspace.
+              </p>
+              <p>
+                TradeAtlant does <strong>not</strong> create the underlying disclosures. We process, normalize, and
+                present information from public sources so filings can be compared across periods, filers, and tickers.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-sources" aria-labelledby="method-sources-title">
+            <h2 id="method-sources-title" class="faq-section__title">2. Data Sources</h2>
+            <div class="method-prose">
+              <p>TradeAtlant is built on sources we actually ingest or display. The main categories are:</p>
+
+              <h3 class="method-prose__h">Institutional activity</h3>
+              <ul>
+                <li>SEC Form 13F filings (including 13F-HR and related amendments when ingested)</li>
+                <li>Institutional investment manager holdings reported in those filings</li>
+                <li>Related SEC submissions metadata used to discover and process filings</li>
+              </ul>
+
+              <h3 class="method-prose__h">Insider activity</h3>
+              <ul>
+                <li>
+                  SEC Form 4 transaction filings (primary source for insider buys, sells, and other reported codes)
+                </li>
+                <li>
+                  Forms 3 and 5 are part of the broader SEC beneficial-ownership reporting regime; TradeAtlant's
+                  transaction research and signal views focus on Form 4 activity
+                </li>
+              </ul>
+
+              <h3 class="method-prose__h">Political activity</h3>
+              <ul>
+                <li>Official congressional financial disclosures (for example House PTR PDFs and Senate EFD reports)</li>
+                <li>Other applicable public government disclosure sources used by our politician ingest pipeline</li>
+              </ul>
+
+              <h3 class="method-prose__h">Fundamentals &amp; market context</h3>
+              <ul>
+                <li>
+                  Company financials from SEC Company Facts XBRL (for example metrics used in Filings → Fundamentals and
+                  related tools)
+                </li>
+                <li>
+                  Market context via TradingView for interactive charts
+                </li>
+                <li>
+                  Reported institutional position values primarily come from Form 13F filings, not from inventing
+                  real-time portfolio marks
+                </li>
+              </ul>
+              <p>
+                A user-facing summary of sources also lives on <a href="/data-sources">Data Sources</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-institutional" aria-labelledby="method-institutional-title">
+            <h2 id="method-institutional-title" class="faq-section__title">3. Institutional Holdings</h2>
+            <div class="method-prose">
+              <p>
+                Institutional holdings are derived from publicly filed Form 13F reports. TradeAtlant extracts reported
+                securities, share (or contract) quantities, and reported values, then normalizes them into a consistent
+                format so positions can be compared across reporting periods and managers.
+              </p>
+              <p>From consecutive reporting periods we classify activity such as:</p>
+              <ul>
+                <li><strong>New positions</strong> — a security appears in the later period but not the prior period</li>
+                <li><strong>Increased / add</strong> — shares held rise versus the prior period</li>
+                <li><strong>Reduced / trim</strong> — shares held fall versus the prior period but remain above zero</li>
+                <li><strong>Sold-out / exited</strong> — a prior position is no longer reported in the later period</li>
+              </ul>
+              <p>We also surface fields commonly used in research views:</p>
+              <ul>
+                <li><strong>Shares held</strong> — reported position size for the period</li>
+                <li><strong>Position value</strong> — reported filing value, normalized to USD where needed</li>
+                <li><strong>Quarter-over-quarter changes</strong> — share and (when available) value deltas between periods</li>
+              </ul>
+              <p>
+                Sold-out detection depends on having comparable period coverage for a filer. Missing filings are not
+                treated as exits.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-insider" aria-labelledby="method-insider-title">
+            <h2 id="method-insider-title" class="faq-section__title">4. Insider Transactions</h2>
+            <div class="method-prose">
+              <p>
+                Insider transactions on TradeAtlant come primarily from SEC Form 4 filings. Each row includes transaction
+                codes and acquisition/disposition flags that describe what happened.
+              </p>
+              <p>Common classifications include:</p>
+              <ul>
+                <li><strong>Purchases</strong> — open-market / private purchase (code <code>P</code>)</li>
+                <li><strong>Sales</strong> — open-market / private sale (code <code>S</code>)</li>
+                <li><strong>Option exercises</strong> — for example code <code>M</code></li>
+                <li><strong>Grants / awards</strong> — for example code <code>A</code></li>
+                <li><strong>Other types</strong> — gifts, tax withholdings, and other Form 4 codes when present</li>
+              </ul>
+              <p>
+                <strong>Not every Form 4 row is a discretionary buy or sell.</strong> Awards, option exercises, gifts, and
+                share withholdings can appear in filings without representing an open-market trade. Research views and
+                signals that focus on “buying” or “selling” typically emphasize open-market codes <code>P</code> and
+                <code>S</code> unless a page explicitly includes other transaction types.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-political" aria-labelledby="method-political-title">
+            <h2 id="method-political-title" class="faq-section__title">5. Political Activity</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant uses publicly available financial disclosures to organize reported securities activity
+                associated with members of Congress and other covered political figures.
+              </p>
+              <p>Where available, we capture and display:</p>
+              <ul>
+                <li>Reported transactions (for example purchase / sale type)</li>
+                <li>Transaction date and filing / disclosure date</li>
+                <li>Security identification (name / ticker when provided)</li>
+                <li>Reported amount ranges</li>
+                <li>Amendments when a later disclosure replaces or updates earlier information</li>
+              </ul>
+              <p>
+                Political transactions are often reported as <strong>dollar ranges</strong>, not exact amounts.
+                TradeAtlant preserves the reported range (and derived min/max bounds). Some analytics may use a midpoint
+                estimate for ranking or aggregation — that estimate is derived from the disclosed range and is not an
+                exact trade size from a brokerage confirmation.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-normalization" aria-labelledby="method-normalization-title">
+            <h2 id="method-normalization-title" class="faq-section__title">6. Normalization</h2>
+            <div class="method-prose">
+              <p>
+                Raw filings are not always clean or consistent across issuers, filers, and disclosure systems. TradeAtlant
+                may normalize fields such as:
+              </p>
+              <ul>
+                <li>Company names and ticker symbols</li>
+                <li>CUSIPs and other security identifiers</li>
+                <li>Security types (for example common stock vs options where distinguished)</li>
+                <li>Transaction types / codes</li>
+                <li>Dates (transaction, filing, period end)</li>
+                <li>Monetary values and share quantities (including 13F value unit handling)</li>
+              </ul>
+              <p>
+                Normalization exists to make different filings comparable in tables, charts, and change calculations. It
+                does not change the underlying public disclosure — it maps that disclosure into a consistent research
+                schema.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-changes" aria-labelledby="method-changes-title">
+            <h2 id="method-changes-title" class="faq-section__title">7. Change Calculations</h2>
+            <div class="method-prose">
+              <p>
+                When sufficient historical information is available, TradeAtlant calculates changes between reported
+                institutional positions to identify increases, decreases, new positions, and exits.
+              </p>
+              <dl class="method-dl">
+                <dt>Shares change</dt>
+                <dd><code>Current shares − Previous shares</code></dd>
+                <dt>Shares percentage change</dt>
+                <dd>
+                  <code>((Current shares − Previous shares) / Previous shares) × 100</code>
+                  <br />
+                  If previous shares are missing or zero, percentage change is not shown.
+                </dd>
+              </dl>
+              <p>
+                Event labels such as new, add/trim, or sold-out are based on those period-to-period share comparisons (and
+                presence/absence of a position), not on live trading activity after the filing date.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-dates" aria-labelledby="method-dates-title">
+            <h2 id="method-dates-title" class="faq-section__title">8. Filing Dates vs. Transaction Dates</h2>
+            <div class="method-prose">
+              <p>These dates are easy to confuse — especially for 13F research:</p>
+              <dl class="method-dl">
+                <dt>Transaction date</dt>
+                <dd>When the underlying activity occurred (used heavily for Form 4 and political disclosures).</dd>
+                <dt>Filing / disclosure date</dt>
+                <dd>When the report was submitted or published to the public source.</dd>
+                <dt>Reporting period</dt>
+                <dd>
+                  The period a filing represents (for example a 13F calendar quarter). A 13F can be published well after
+                  the quarter ends.
+                </dd>
+              </dl>
+              <p>
+                Holdings shown for a quarter reflect what was reported for that period — not necessarily what a manager
+                holds today.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-amendments" aria-labelledby="method-amendments-title">
+            <h2 id="method-amendments-title" class="faq-section__title">9. Amendments &amp; Corrections</h2>
+            <div class="method-prose">
+              <p>
+                Public filings can be amended or corrected after their initial submission. When an amended filing is
+                available and processed by TradeAtlant, associated records may be updated to reflect the latest available
+                disclosure.
+              </p>
+              <p>
+                As a result, historical tables, ownership totals, and change labels can change after amendments are
+                ingested. Duplicate or previously seen filings are treated as no-ops where our ingest pipeline detects
+                them.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-limitations" aria-labelledby="method-limitations-title">
+            <h2 id="method-limitations-title" class="faq-section__title">10. Data Limitations</h2>
+            <div class="method-prose">
+              <p>Transparency matters. Please keep these limitations in mind:</p>
+              <ul>
+                <li>Filings are reported after the underlying activity occurs.</li>
+                <li>Some disclosures provide estimated or ranged values, not exact amounts.</li>
+                <li>Public filings can contain errors or incomplete identification.</li>
+                <li>Data may be delayed by filing calendars, processing time, or source availability.</li>
+                <li>Security identification (ticker / CUSIP / name) can sometimes be ambiguous.</li>
+                <li>Historical information can change when filings are amended.</li>
+                <li>Reported holdings do not necessarily represent current holdings.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-updates" aria-labelledby="method-updates-title">
+            <h2 id="method-updates-title" class="faq-section__title">11. Updates</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant monitors applicable public filings and updates datasets as new disclosures become available
+                and are processed. This is <strong>not</strong> a real-time brokerage feed.
+              </p>
+              <p>In practice, scheduled jobs typically:</p>
+              <ul>
+                <li>
+                  Refresh politician disclosures and Form 4 insider data on a recurring daily schedule, then warm related
+                  research caches
+                </li>
+                <li>
+                  Process institutional 13F filings during filing windows (and via dedicated 13F ingest jobs), then rebuild
+                  ownership caches and institutional signal views
+                </li>
+                <li>Ingest SEC fundamentals for tracked tickers on a recurring fundamentals job</li>
+              </ul>
+              <p>
+                Exact run times depend on deployment configuration. Charts and quote search refresh according to their
+                market-data providers when those integrations are enabled.
+              </p>
+            </div>
+          </section>
+
+          <section class="method-section" id="method-doesnt" aria-labelledby="method-doesnt-title">
+            <h2 id="method-doesnt-title" class="faq-section__title">12. What TradeAtlant Doesn't Do</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant organizes and analyzes publicly available information. The platform does not determine whether
+                a transaction is a good or bad investment, and the presence of an institutional, insider, or political
+                transaction should not be interpreted as a recommendation to buy or sell a security.
+              </p>
+              <p>
+                For the full legal wording, see our <a href="/legal/disclaimer">Disclaimer</a>.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="view-data-sources" class="faq-page sources-page" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header">
+            <p class="faq-page__eyebrow">Resources</p>
+            <h1 id="data-sources-page-title" class="faq-page__title">Data Sources</h1>
+            <p class="faq-page__lead">
+              TradeAtlant uses publicly available data from the following sources. For how we process them, see
+              <a href="/methodology">Methodology</a>.
+            </p>
+          </header>
+
+          <div class="sources-list">
+            <article class="sources-item">
+              <h2 class="sources-item__title">SEC</h2>
+              <p class="sources-item__copy">Institutional holdings and insider transaction filings.</p>
+            </article>
+            <article class="sources-item">
+              <h2 class="sources-item__title">U.S. House of Representatives</h2>
+              <p class="sources-item__copy">Financial disclosures relating to members of Congress.</p>
+            </article>
+            <article class="sources-item">
+              <h2 class="sources-item__title">TradingView</h2>
+              <p class="sources-item__copy">Stock prices and market information.</p>
+            </article>
+          </div>
+
+          <p class="sources-footer">
+            TradeAtlant processes and organizes data from these sources to make it easier to research. The original
+            source remains the authoritative source.
+          </p>
+        </div>
+      </div>
+
+      <div id="view-about" class="faq-page about-page" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header about-page__header">
+            <p class="faq-page__eyebrow">Company</p>
+            <h1 id="about-page-title" class="faq-page__title">TradeAtlant</h1>
+            <p class="about-page__tagline">Financial research &amp; market intelligence.</p>
+          </header>
+
+          <div class="method-prose">
+            <p>
+              TradeAtlant makes it easier to research institutional, insider, and political activity by bringing
+              publicly available information together in one place.
+            </p>
+
+            <h2 class="method-prose__h">What we do</h2>
+            <p>
+              We organize financial and public disclosure data into tools that help users explore market activity,
+              discover companies, and conduct their own research.
+            </p>
+
+            <h2 class="method-prose__h">Our approach</h2>
+            <p class="about-page__approach">Simple. Transparent. Data-driven.</p>
+            <p>
+              We publish our underlying <a href="/data-sources">data sources</a> and
+              <a href="/methodology">methodology</a> so you can see where information comes from and how it is processed.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-contact" class="faq-page contact-page" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header contact-page__header">
+            <p class="faq-page__eyebrow">Company</p>
+            <h1 id="contact-page-title" class="faq-page__title">Contact</h1>
+            <p class="contact-page__lead">
+              Have a question, found an issue, or want to get in touch?
+            </p>
+          </header>
+
+          <div class="method-prose contact-page__prose">
+            <p>
+              Email us at
+              <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>.
+              We use one inbox for general inquiries, data issues, and privacy requests.
+            </p>
+
+            <form id="contact-form" class="contact-form" novalidate>
+              <label class="contact-field">
+                <span class="contact-field__label">Name</span>
+                <input class="contact-field__input" type="text" name="name" id="contact-name" autocomplete="name" required />
+              </label>
+              <label class="contact-field">
+                <span class="contact-field__label">Email</span>
+                <input class="contact-field__input" type="email" name="email" id="contact-email" autocomplete="email" required />
+              </label>
+              <label class="contact-field">
+                <span class="contact-field__label">Subject</span>
+                <input class="contact-field__input" type="text" name="subject" id="contact-subject" required />
+              </label>
+              <label class="contact-field">
+                <span class="contact-field__label">Message</span>
+                <textarea class="contact-field__input contact-field__textarea" name="message" id="contact-message" rows="6" required></textarea>
+              </label>
+              <div class="contact-form__actions">
+                <button type="submit" class="btn btn--primary">Send message</button>
+              </div>
+              <p id="contact-form-note" class="contact-form__note" hidden></p>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-legal-cookies" class="faq-page legal-page legal-page--cookies" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header legal-page__header">
+            <p class="faq-page__eyebrow">Legal</p>
+            <h1 id="legal-cookies-title" class="faq-page__title">Cookie Policy</h1>
+            <p class="legal-page__updated"><strong>Last updated: September 3, 2026</strong></p>
+          </header>
+
+          <section class="legal-section" id="cookies-what" aria-labelledby="cookies-what-title">
+            <h2 id="cookies-what-title" class="faq-section__title">1. What are cookies?</h2>
+            <div class="method-prose">
+              <p>
+                Cookies are small text files that are stored on your device when you visit a website. They can help
+                websites remember information, maintain sessions, and provide essential functionality.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-use" aria-labelledby="cookies-use-title">
+            <h2 id="cookies-use-title" class="faq-section__title">2. How TradeAtlant uses cookies</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant currently uses cookies and similar technologies primarily to provide and secure essential
+                website functionality.
+              </p>
+              <p>These may include cookies used for:</p>
+              <ul>
+                <li>User authentication and login sessions</li>
+                <li>Maintaining your session while using TradeAtlant</li>
+                <li>Security and preventing unauthorized access</li>
+                <li>Remembering necessary settings and preferences</li>
+                <li>Providing core website functionality</li>
+              </ul>
+              <p>
+                These cookies are necessary for the operation of the service and cannot generally be disabled without
+                affecting features such as logging in and using your account.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-analytics" aria-labelledby="cookies-analytics-title">
+            <h2 id="cookies-analytics-title" class="faq-section__title">3. Analytics and advertising</h2>
+            <div class="method-prose">
+              <p>TradeAtlant does not currently use cookies for advertising or personalized marketing.</p>
+              <p>
+                If we introduce analytics, advertising, or other non-essential tracking technologies in the future, this
+                Cookie Policy will be updated accordingly. Where required by applicable law, we will request your consent
+                before using such technologies.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-third-party" aria-labelledby="cookies-third-party-title">
+            <h2 id="cookies-third-party-title" class="faq-section__title">4. Third-party services</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant may use third-party services that are necessary to operate the website. Where such services
+                use cookies or similar technologies, the relevant information will be reflected in this policy.
+              </p>
+              <p>
+                Our current use of third-party services is described in our
+                <a href="/legal/privacy">Privacy Policy</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-managing" aria-labelledby="cookies-managing-title">
+            <h2 id="cookies-managing-title" class="faq-section__title">5. Managing cookies</h2>
+            <div class="method-prose">
+              <p>
+                You can configure your browser to block or delete cookies. However, disabling necessary cookies may
+                prevent parts of TradeAtlant, including login and account functionality, from working correctly.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-changes" aria-labelledby="cookies-changes-title">
+            <h2 id="cookies-changes-title" class="faq-section__title">6. Changes to this Cookie Policy</h2>
+            <div class="method-prose">
+              <p>
+                We may update this Cookie Policy if our use of cookies or similar technologies changes or if required
+                by applicable law.
+              </p>
+              <p>
+                The latest version will always be published on this page together with the date of the most recent
+                update.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" id="cookies-contact" aria-labelledby="cookies-contact-title">
+            <h2 id="cookies-contact-title" class="faq-section__title">7. Contact</h2>
+            <div class="method-prose">
+              <p>If you have questions about our use of cookies, please contact us at:</p>
+              <p>
+                <strong><a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a></strong>
+              </p>
+            </div>
+          </section>
+
+          <p class="legal-page__updated legal-page__updated--footer">
+            <strong>Last updated: September 3, 2026</strong>
+          </p>
+        </div>
+      </div>
+
+      <div id="view-legal-privacy" class="faq-page legal-page legal-page--privacy" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header legal-page__header">
+            <p class="faq-page__eyebrow">Legal</p>
+            <h1 class="faq-page__title">Privacy Policy</h1>
+            <p class="legal-page__updated"><strong>Last updated: September 3, 2026</strong></p>
+          </header>
+
+          <section class="legal-section" aria-labelledby="privacy-intro-title">
+            <h2 id="privacy-intro-title" class="faq-section__title">1. Introduction</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant (“we”, “us”, “our”) operates the website tradeatlant.com and related services (the
+                “Service”). This Privacy Policy explains how we collect, use, store, and protect personal information when
+                you visit or use TradeAtlant.
+              </p>
+              <p>
+                By using the Service, you acknowledge that you have read this Privacy Policy. If you do not agree, please
+                do not use the Service.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-controller-title">
+            <h2 id="privacy-controller-title" class="faq-section__title">2. Who is responsible</h2>
+            <div class="method-prose">
+              <p>
+                The operator of TradeAtlant is responsible for processing personal data described in this policy. For
+                privacy-related questions or requests, contact us at
+                <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-collect-title">
+            <h2 id="privacy-collect-title" class="faq-section__title">3. Information we collect</h2>
+            <div class="method-prose">
+              <h3 class="method-prose__h">Account information</h3>
+              <p>If you create an account, we may collect:</p>
+              <ul>
+                <li>Name</li>
+                <li>Email address</li>
+                <li>Password (stored in hashed form)</li>
+                <li>Account status, verification state, and subscription tier where applicable</li>
+              </ul>
+
+              <h3 class="method-prose__h">Usage and technical information</h3>
+              <p>When you use TradeAtlant, we may automatically collect information such as:</p>
+              <ul>
+                <li>IP address and approximate location derived from it</li>
+                <li>Browser type, device type, and operating system</li>
+                <li>Pages viewed, features used, and timestamps</li>
+                <li>Session and authentication identifiers necessary to operate the Service</li>
+                <li>Server and error logs for security, debugging, and reliability</li>
+              </ul>
+
+              <h3 class="method-prose__h">Communications</h3>
+              <p>
+                If you contact us, we process the information you provide (such as your name, email address, and message
+                content) so we can respond.
+              </p>
+
+              <h3 class="method-prose__h">Public market data</h3>
+              <p>
+                TradeAtlant displays publicly available financial and government disclosure data (for example SEC filings,
+                congressional disclosures, and market quotes). That information originates from public sources and is not
+                personal data about you unless you appear in such public records in your own capacity.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-use-title">
+            <h2 id="privacy-use-title" class="faq-section__title">4. How we use information</h2>
+            <div class="method-prose">
+              <p>We use personal information to:</p>
+              <ul>
+                <li>Provide, operate, and maintain the Service</li>
+                <li>Create and manage user accounts and authentication</li>
+                <li>Send service-related messages such as email verification and password reset emails</li>
+                <li>Respond to support requests and communicate with you</li>
+                <li>Protect the Service, prevent abuse, and enforce our terms</li>
+                <li>Improve reliability, performance, and user experience</li>
+                <li>Comply with legal obligations</li>
+              </ul>
+              <p>
+                We do not sell your personal information. We do not use your account data to provide personalized
+                investment advice.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-legal-basis-title">
+            <h2 id="privacy-legal-basis-title" class="faq-section__title">5. Legal bases (EEA/UK users)</h2>
+            <div class="method-prose">
+              <p>Where applicable law requires a legal basis, we rely on:</p>
+              <ul>
+                <li><strong>Contract</strong> — to provide the Service you request, including account functionality</li>
+                <li><strong>Legitimate interests</strong> — to secure, maintain, and improve the Service</li>
+                <li><strong>Legal obligation</strong> — where we must retain or disclose information by law</li>
+                <li><strong>Consent</strong> — where required for optional processing such as non-essential cookies</li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-cookies-title">
+            <h2 id="privacy-cookies-title" class="faq-section__title">6. Cookies</h2>
+            <div class="method-prose">
+              <p>
+                We use cookies and similar technologies for essential functionality such as login sessions and security.
+                For details, see our <a href="/legal/cookies">Cookie Policy</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-sharing-title">
+            <h2 id="privacy-sharing-title" class="faq-section__title">7. Sharing and service providers</h2>
+            <div class="method-prose">
+              <p>We may share information with:</p>
+              <ul>
+                <li>Hosting, infrastructure, and email delivery providers that help us operate the Service</li>
+                <li>Professional advisers where reasonably necessary</li>
+                <li>Authorities or other parties when required by law or to protect rights and safety</li>
+              </ul>
+              <p>
+                TradeAtlant integrates third-party data and tools where needed to provide research features (for example
+                market charting or quote search). Those providers may process technical information according to their own
+                policies when their services are loaded or used. See also our
+                <a href="/data-sources">Data Sources</a> page.
+              </p>
+              <p>We require service providers to handle personal data only as needed to perform their services for us.</p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-retention-title">
+            <h2 id="privacy-retention-title" class="faq-section__title">8. Retention</h2>
+            <div class="method-prose">
+              <p>
+                We retain personal information for as long as needed to provide the Service, comply with legal obligations,
+                resolve disputes, and enforce agreements. Account data is generally kept while your account is active and
+                for a reasonable period afterward unless deletion is requested or required.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-security-title">
+            <h2 id="privacy-security-title" class="faq-section__title">9. Security</h2>
+            <div class="method-prose">
+              <p>
+                We use reasonable technical and organizational measures to protect personal information. No method of
+                transmission or storage is completely secure, and we cannot guarantee absolute security.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-rights-title">
+            <h2 id="privacy-rights-title" class="faq-section__title">10. Your rights</h2>
+            <div class="method-prose">
+              <p>Depending on your location, you may have rights to:</p>
+              <ul>
+                <li>Access the personal information we hold about you</li>
+                <li>Request correction or deletion</li>
+                <li>Object to or restrict certain processing</li>
+                <li>Withdraw consent where processing is consent-based</li>
+                <li>Request data portability where applicable</li>
+                <li>Lodge a complaint with a supervisory authority</li>
+              </ul>
+              <p>
+                To exercise these rights, contact
+                <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>. You may also delete your account
+                through the account settings flow or by contacting us as described in our FAQ.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-transfers-title">
+            <h2 id="privacy-transfers-title" class="faq-section__title">11. International transfers</h2>
+            <div class="method-prose">
+              <p>
+                Your information may be processed in countries other than your own, including where our service providers
+                operate. Where required, we use appropriate safeguards for cross-border transfers.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-children-title">
+            <h2 id="privacy-children-title" class="faq-section__title">12. Children</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant is not directed at children under 16, and we do not knowingly collect personal information from
+                children. If you believe a child has provided us personal data, please contact us.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-changes-title">
+            <h2 id="privacy-changes-title" class="faq-section__title">13. Changes</h2>
+            <div class="method-prose">
+              <p>
+                We may update this Privacy Policy from time to time. The latest version will be posted on this page with an
+                updated date. Material changes may also be communicated where appropriate.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="privacy-contact-title">
+            <h2 id="privacy-contact-title" class="faq-section__title">14. Contact</h2>
+            <div class="method-prose">
+              <p>Privacy questions or requests:</p>
+              <p><strong><a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a></strong></p>
+            </div>
+          </section>
+
+          <p class="legal-page__updated legal-page__updated--footer">
+            <strong>Last updated: September 3, 2026</strong>
+          </p>
+        </div>
+      </div>
+
+      <div id="view-legal-terms" class="faq-page legal-page legal-page--terms" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header legal-page__header">
+            <p class="faq-page__eyebrow">Legal</p>
+            <h1 class="faq-page__title">Terms of Service</h1>
+            <p class="legal-page__updated"><strong>Last updated: September 3, 2026</strong></p>
+          </header>
+
+          <section class="legal-section" aria-labelledby="terms-intro-title">
+            <h2 id="terms-intro-title" class="faq-section__title">1. Agreement</h2>
+            <div class="method-prose">
+              <p>
+                These Terms of Service (“Terms”) govern your access to and use of TradeAtlant, including tradeatlant.com
+                and related services (the “Service”), operated by TradeAtlant (“we”, “us”, “our”).
+              </p>
+              <p>
+                By accessing or using the Service, you agree to these Terms and our
+                <a href="/legal/privacy">Privacy Policy</a>. If you do not agree, do not use the Service.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-service-title">
+            <h2 id="terms-service-title" class="faq-section__title">2. The Service</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant is a financial research and market intelligence platform. We organize and present publicly
+                available information — including institutional holdings, insider transactions, political disclosures, SEC
+                filings, fundamentals, and related research views — to help users conduct their own research.
+              </p>
+              <p>
+                We may add, change, or remove features at any time. Some features may require an account; some may become
+                part of a paid Premium plan in the future.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-eligibility-title">
+            <h2 id="terms-eligibility-title" class="faq-section__title">3. Eligibility</h2>
+            <div class="method-prose">
+              <p>
+                You must be at least 16 years old and able to form a binding contract to use the Service. You are
+                responsible for ensuring that your use complies with applicable laws in your jurisdiction.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-accounts-title">
+            <h2 id="terms-accounts-title" class="faq-section__title">4. Accounts</h2>
+            <div class="method-prose">
+              <p>If you create an account, you agree to:</p>
+              <ul>
+                <li>Provide accurate and current information</li>
+                <li>Keep your login credentials confidential</li>
+                <li>Notify us promptly of unauthorized access to your account</li>
+                <li>Accept responsibility for activity under your account</li>
+              </ul>
+              <p>
+                We may suspend or terminate accounts that violate these Terms, pose a security risk, or are inactive for
+                an extended period where permitted by law.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-acceptable-title">
+            <h2 id="terms-acceptable-title" class="faq-section__title">5. Acceptable use</h2>
+            <div class="method-prose">
+              <p>You agree not to:</p>
+              <ul>
+                <li>Use the Service for unlawful purposes</li>
+                <li>Attempt to gain unauthorized access to systems, accounts, or data</li>
+                <li>Scrape, crawl, or harvest the Service in a way that exceeds normal use or violates our robots rules</li>
+                <li>Interfere with or disrupt the Service or its infrastructure</li>
+                <li>Reverse engineer or copy the Service except where permitted by law</li>
+                <li>Misrepresent your identity or affiliation</li>
+                <li>Resell, sublicense, or commercially exploit the Service without our permission</li>
+              </ul>
+              <p>
+                Automated access may be restricted to protect service stability and comply with upstream data provider
+                requirements.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-ip-title">
+            <h2 id="terms-ip-title" class="faq-section__title">6. Intellectual property</h2>
+            <div class="method-prose">
+              <p>
+                The Service, including its design, software, branding, and original content, is owned by TradeAtlant or its
+                licensors and protected by applicable intellectual property laws.
+              </p>
+              <p>
+                Public disclosure data displayed on TradeAtlant remains subject to the terms of its original sources. We
+                grant you a limited, non-exclusive, non-transferable license to access and use the Service for personal or
+                internal business research in accordance with these Terms.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-third-party-title">
+            <h2 id="terms-third-party-title" class="faq-section__title">7. Third-party content and links</h2>
+            <div class="method-prose">
+              <p>
+                The Service may include data, tools, or links from third parties. We do not control and are not responsible
+                for third-party content or services. Your use of third-party services may be subject to their separate terms.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-disclaimer-title">
+            <h2 id="terms-disclaimer-title" class="faq-section__title">8. No financial advice</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant provides information and research tools only. Nothing on the Service constitutes investment,
+                legal, tax, or other professional advice, nor a recommendation to buy or sell any security. See our
+                <a href="/legal/disclaimer">Disclaimer</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-warranty-title">
+            <h2 id="terms-warranty-title" class="faq-section__title">9. Disclaimers</h2>
+            <div class="method-prose">
+              <p>
+                THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE” WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS OR
+                IMPLIED, INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+                NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, COMPLETE, OR
+                ACCURATE.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-liability-title">
+            <h2 id="terms-liability-title" class="faq-section__title">10. Limitation of liability</h2>
+            <div class="method-prose">
+              <p>
+                TO THE MAXIMUM EXTENT PERMITTED BY LAW, TRADEATLANT AND ITS OPERATORS, DIRECTORS, EMPLOYEES, AND SUPPLIERS
+                WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF
+                PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING FROM YOUR USE OF OR INABILITY TO USE THE
+                SERVICE.
+              </p>
+              <p>
+                OUR TOTAL LIABILITY FOR ANY CLAIM RELATING TO THE SERVICE WILL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU
+                PAID US IN THE TWELVE MONTHS BEFORE THE CLAIM OR (B) EUR 100, EXCEPT WHERE LIABILITY CANNOT BE LIMITED BY
+                APPLICABLE LAW.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-indemnity-title">
+            <h2 id="terms-indemnity-title" class="faq-section__title">11. Indemnity</h2>
+            <div class="method-prose">
+              <p>
+                You agree to indemnify and hold harmless TradeAtlant from claims, damages, losses, and expenses (including
+                reasonable legal fees) arising from your misuse of the Service or violation of these Terms, except to the
+                extent caused by our intentional misconduct or where prohibited by law.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-termination-title">
+            <h2 id="terms-termination-title" class="faq-section__title">12. Termination</h2>
+            <div class="method-prose">
+              <p>
+                You may stop using the Service at any time. We may suspend or terminate access if you breach these Terms or
+                if we discontinue the Service. Provisions that by nature should survive termination will remain in effect.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-changes-title">
+            <h2 id="terms-changes-title" class="faq-section__title">13. Changes</h2>
+            <div class="method-prose">
+              <p>
+                We may update these Terms from time to time. Continued use after changes take effect constitutes acceptance
+                of the updated Terms, except where applicable law requires otherwise.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-law-title">
+            <h2 id="terms-law-title" class="faq-section__title">14. Governing law</h2>
+            <div class="method-prose">
+              <p>
+                These Terms are governed by the laws applicable to the operator of TradeAtlant, without regard to conflict
+                of law principles. Mandatory consumer protection laws in your country of residence may still apply.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="terms-contact-title">
+            <h2 id="terms-contact-title" class="faq-section__title">15. Contact</h2>
+            <div class="method-prose">
+              <p>Questions about these Terms:</p>
+              <p><strong><a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a></strong></p>
+            </div>
+          </section>
+
+          <p class="legal-page__updated legal-page__updated--footer">
+            <strong>Last updated: September 3, 2026</strong>
+          </p>
+        </div>
+      </div>
+
+      <div id="view-legal-disclaimer" class="faq-page legal-page legal-page--disclaimer" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header legal-page__header">
+            <p class="faq-page__eyebrow">Legal</p>
+            <h1 class="faq-page__title">Disclaimer</h1>
+            <p class="legal-page__updated"><strong>Last updated: September 3, 2026</strong></p>
+          </header>
+
+          <section class="legal-section" aria-labelledby="disclaimer-info-title">
+            <h2 id="disclaimer-info-title" class="faq-section__title">1. Informational purposes only</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant provides financial research tools and publicly available information for informational and
+                educational purposes only. Nothing on tradeatlant.com or related services constitutes investment advice,
+                financial advice, trading advice, legal advice, tax advice, or any other form of professional recommendation.
+              </p>
+              <p>
+                TradeAtlant does not recommend that you buy, sell, or hold any security, nor does it take into account your
+                personal financial situation, objectives, or risk tolerance.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-no-relationship-title">
+            <h2 id="disclaimer-no-relationship-title" class="faq-section__title">2. No client relationship</h2>
+            <div class="method-prose">
+              <p>
+                Use of TradeAtlant does not create a fiduciary, advisory, broker-dealer, or client relationship between you
+                and TradeAtlant. You are solely responsible for your investment and financial decisions.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-data-title">
+            <h2 id="disclaimer-data-title" class="faq-section__title">3. Data accuracy and completeness</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant aggregates data from public sources such as SEC filings, government disclosures, and market data
+                providers. While we aim to present information clearly and consistently, we do not guarantee that any data
+                is complete, current, accurate, or free from errors.
+              </p>
+              <p>In particular:</p>
+              <ul>
+                <li>Filings may be delayed, amended, corrected, or restated after initial publication</li>
+                <li>Different sources may classify, normalize, or report the same event differently</li>
+                <li>Charts, quotes, and fundamentals may be delayed or subject to provider limitations</li>
+                <li>Signals, rankings, and screens are derived views — not statements of fact about future performance</li>
+              </ul>
+              <p>
+                You should verify important information using primary source documents before relying on it. See our
+                <a href="/methodology">Methodology</a> and <a href="/data-sources">Data Sources</a> pages for how we
+                process information.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-past-title">
+            <h2 id="disclaimer-past-title" class="faq-section__title">4. No guarantee of results</h2>
+            <div class="method-prose">
+              <p>
+                Past institutional, insider, or political activity does not predict future results. Historical patterns,
+                screens, and signals shown on TradeAtlant may not repeat and should not be interpreted as forecasts or
+                endorsements.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-risk-title">
+            <h2 id="disclaimer-risk-title" class="faq-section__title">5. Investment risk</h2>
+            <div class="method-prose">
+              <p>
+                Investing in securities involves risk, including the possible loss of principal. You should conduct your own
+                research and consult qualified professionals before making financial decisions.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-third-party-title">
+            <h2 id="disclaimer-third-party-title" class="faq-section__title">6. Third-party content</h2>
+            <div class="method-prose">
+              <p>
+                TradeAtlant may display or link to third-party content, tools, or websites. We do not control and are not
+                responsible for third-party information, availability, or policies.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-liability-title">
+            <h2 id="disclaimer-liability-title" class="faq-section__title">7. Limitation of liability</h2>
+            <div class="method-prose">
+              <p>
+                To the fullest extent permitted by law, TradeAtlant and its operators will not be liable for any loss or
+                damage arising from reliance on information available through the Service, including trading losses or missed
+                opportunities. Your use of the Service is at your own risk.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-changes-title">
+            <h2 id="disclaimer-changes-title" class="faq-section__title">8. Changes</h2>
+            <div class="method-prose">
+              <p>
+                We may update this Disclaimer from time to time. The latest version will be published on this page with an
+                updated date.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="disclaimer-contact-title">
+            <h2 id="disclaimer-contact-title" class="faq-section__title">9. Contact</h2>
+            <div class="method-prose">
+              <p>Questions about this Disclaimer:</p>
+              <p><strong><a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a></strong></p>
+            </div>
+          </section>
+
+          <p class="legal-page__updated legal-page__updated--footer">
+            <strong>Last updated: September 3, 2026</strong>
+          </p>
+        </div>
+      </div>
+
+      <div id="view-legal-impressum" class="faq-page legal-page legal-page--impressum" hidden>
+        <div class="faq-page__inner">
+          <header class="faq-page__header legal-page__header">
+            <p class="faq-page__eyebrow">Legal</p>
+            <h1 class="faq-page__title">Impressum</h1>
+            <p class="legal-page__updated"><strong>Last updated: September 3, 2026</strong></p>
+          </header>
+
+          <section class="legal-section" aria-labelledby="impressum-provider-title">
+            <h2 id="impressum-provider-title" class="faq-section__title">Service provider</h2>
+            <div class="method-prose">
+              <p>Information pursuant to § 5 TMG and § 18 Abs. 2 MStV:</p>
+              <p>
+                <strong>TradeAtlant</strong><br />
+                Financial research &amp; market intelligence<br />
+                Website: <a href="https://tradeatlant.com">tradeatlant.com</a>
+              </p>
+              <p>
+                A full postal address for the operator is available on request at
+                <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-contact-title">
+            <h2 id="impressum-contact-title" class="faq-section__title">Contact</h2>
+            <div class="method-prose">
+              <p>
+                Email:
+                <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>
+              </p>
+              <p>
+                General inquiries, support, and legal notices:
+                <a href="/contact">Contact page</a>
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-responsible-title">
+            <h2 id="impressum-responsible-title" class="faq-section__title">Responsible for content</h2>
+            <div class="method-prose">
+              <p>
+                Responsible for editorial content according to § 18 Abs. 2 MStV: the operator of TradeAtlant. Contact details
+                are available at <a href="mailto:contact@tradeatlant.com">contact@tradeatlant.com</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-dispute-title">
+            <h2 id="impressum-dispute-title" class="faq-section__title">Dispute resolution</h2>
+            <div class="method-prose">
+              <p>
+                The European Commission provides an online dispute resolution platform at
+                <a href="https://ec.europa.eu/consumers/odr" rel="noopener noreferrer" target="_blank">ec.europa.eu/consumers/odr</a>.
+                We are not obliged or willing to participate in dispute resolution proceedings before a consumer arbitration
+                board unless required by law.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-liability-content-title">
+            <h2 id="impressum-liability-content-title" class="faq-section__title">Liability for content</h2>
+            <div class="method-prose">
+              <p>
+                We make reasonable efforts to keep the information on this website accurate and current. However, we assume
+                no liability for the completeness, correctness, or timeliness of content, except where mandatory law
+                provides otherwise. See also our <a href="/legal/disclaimer">Disclaimer</a>.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-liability-links-title">
+            <h2 id="impressum-liability-links-title" class="faq-section__title">Liability for links</h2>
+            <div class="method-prose">
+              <p>
+                This website may contain links to external third-party websites. We have no control over their content and
+                therefore assume no liability for external content. The respective provider or operator of linked pages is
+                always responsible for their content.
+              </p>
+            </div>
+          </section>
+
+          <section class="legal-section" aria-labelledby="impressum-copyright-title">
+            <h2 id="impressum-copyright-title" class="faq-section__title">Copyright</h2>
+            <div class="method-prose">
+              <p>
+                Content and works created by TradeAtlant on this website are subject to applicable copyright law. Public
+                disclosure data displayed on the platform remains subject to the terms of its original sources.
+              </p>
+            </div>
+          </section>
+
+          <p class="legal-page__updated legal-page__updated--footer">
+            <strong>Last updated: September 3, 2026</strong>
+          </p>
         </div>
       </div>
 
@@ -7846,6 +9333,81 @@
       </div>
     </div>
 
+    <footer class="site-footer" id="site-footer">
+      <div class="site-footer__inner">
+        <div class="site-footer__grid">
+          <div class="site-footer__col site-footer__col--brand">
+            <a href="/" class="site-footer__brand logo-lockup logo-lockup--link" aria-label="TradeAtlant home">
+              <img class="logo-chart logo-chart--footer" src="/assets/tradepile-chart.png" alt="" decoding="async" />
+              <span class="logo-wordmark logo-wordmark--footer site-footer__brand-name">TradeAtlant</span>
+            </a>
+            <div class="site-footer__social" aria-label="Social links">
+              <a
+                href="https://x.com/tradeatlant"
+                class="site-footer__social-link site-footer__social-link--x"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span aria-hidden="true">𝕏</span>
+                <span class="visually-hidden">TradeAtlant on X</span>
+              </a>
+            </div>
+            <p class="site-footer__tagline">
+              Financial research &amp;<br />
+              market intelligence
+            </p>
+          </div>
+
+          <div class="site-footer__col">
+            <h3 class="site-footer__col-title">Product</h3>
+            <ul class="site-footer__links">
+              <li><a href="/stocks">Research</a></li>
+              <li><a href="/premium">Premium</a></li>
+              <li><a href="/pricing">Pricing</a></li>
+            </ul>
+          </div>
+
+          <div class="site-footer__col">
+            <h3 class="site-footer__col-title">Resources</h3>
+            <ul class="site-footer__links">
+              <li><a href="/faq">FAQ</a></li>
+              <li><a href="/methodology">Methodology</a></li>
+              <li><a href="/data-sources">Data Sources</a></li>
+            </ul>
+          </div>
+
+          <div class="site-footer__col">
+            <h3 class="site-footer__col-title">Company</h3>
+            <ul class="site-footer__links">
+              <li><a href="/about">About</a></li>
+              <li><a href="/contact">Contact</a></li>
+            </ul>
+          </div>
+
+          <div class="site-footer__col">
+            <h3 class="site-footer__col-title">Legal</h3>
+            <ul class="site-footer__links">
+              <li><a href="/legal/impressum">Impressum</a></li>
+              <li><a href="/legal/privacy">Privacy</a></li>
+              <li><a href="/legal/terms">Terms</a></li>
+              <li><a href="/legal/disclaimer">Disclaimer</a></li>
+              <li><a href="/legal/cookies">Cookies</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="site-footer__bottom">
+          <p class="site-footer__disclaimer">
+            Market information is provided for informational and research purposes only and does not constitute
+            personalized investment advice or a recommendation to buy or sell any financial instrument.
+          </p>
+          <div class="site-footer__bar">
+            <p class="site-footer__copyright">&copy; 2026 TradeAtlant</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
     <nav class="mobile-dock" id="mobile-dock" aria-label="Mobile shortcuts">
       <button
         type="button"
@@ -7860,6 +9422,6 @@
       </button>
     </nav>
 
-    <script type="module" src="/app.js?v=mobile-dock-2"></script>
+    <script type="module" src="/app.js?v=tv-us-equity-1"></script>
   </body>
 </html>
