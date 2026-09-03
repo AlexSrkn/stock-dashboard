@@ -93,6 +93,24 @@ async function main() {
   const results: StepResult[] = [];
   const t0 = Date.now();
 
+  const managersPath = join(ROOT, "data", "13f-info", "managers-all.json");
+  const needManagersScrape = !existsSync(managersPath) || hasFlag("--refresh-managers");
+  if (needManagersScrape) {
+    results.push(
+      dryRun
+        ? skip("sec:scrape-13f-info-managers", "dry-run")
+        : runNpm("sec:scrape-13f-info-managers", [`--minimum-quarter=${quarter}`])
+    );
+    const managersStep = results[results.length - 1];
+    if (!managersStep.ok) {
+      console.error("Managers directory scrape failed — cannot import 13F without managers-all.json");
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    results.push(skip("sec:scrape-13f-info-managers", "managers-all.json already present"));
+  }
+
   const importArgs = [
     `--filings=${filings}`,
     `--minimum-quarter=${quarter}`,
