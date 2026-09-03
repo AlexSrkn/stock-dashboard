@@ -11,8 +11,18 @@ export function isAcknowledgementGate(html: string): boolean {
 }
 
 export function extractCsrfToken(html: string): string | null {
-  const m = html.match(/name=['"]csrfmiddlewaretoken['"]\s+value=['"]([^'"]+)['"]/i);
-  return m?.[1] ?? null;
+  if (!html) return null;
+  const patterns = [
+    /name=['"]csrfmiddlewaretoken['"]\s+value=['"]([^'"]+)['"]/i,
+    /value=['"]([^'"]+)['"]\s+name=['"]csrfmiddlewaretoken['"]/i,
+    /<meta[^>]+name=['"]csrf-token['"][^>]+content=['"]([^'"]+)['"]/i,
+    /<meta[^>]+content=['"]([^'"]+)['"][^>]+name=['"]csrf-token['"]/i,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return null;
 }
 
 export function extractFormAction(html: string, pageUrl: string): string {
@@ -46,8 +56,16 @@ export function buildAcknowledgementBody(html: string): URLSearchParams {
 }
 
 export function storeSetCookies(jar: Map<string, string>, res: Response): void {
-  const raw = res.headers.getSetCookie?.() ?? [];
-  for (const c of raw) {
+  const raw =
+    typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+  const lines = raw.length
+    ? raw
+    : (() => {
+        const single = res.headers.get("set-cookie");
+        return single ? [single] : [];
+      })();
+
+  for (const c of lines) {
     const [pair] = c.split(";");
     const eq = pair.indexOf("=");
     if (eq > 0) jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());

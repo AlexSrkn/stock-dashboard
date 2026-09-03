@@ -226,7 +226,9 @@ export class SenateEfdClient {
   private baseHeaders(extra: Record<string, string> = {}): Record<string, string> {
     const headers: Record<string, string> = {
       "User-Agent": BROWSER_UA,
-      Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Upgrade-Insecure-Requests": "1",
       ...extra,
     };
     const cookies = cookieHeader(this.jar);
@@ -234,6 +236,29 @@ export class SenateEfdClient {
     const csrf = csrfHeader(this.jar);
     if (csrf) headers["X-CSRFToken"] = csrf;
     return headers;
+  }
+
+  private describePage(html: string, res?: Response): string {
+    const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim();
+    const blocked =
+      /cloudflare|attention required|access denied|captcha|bot.?detect|request blocked|forbidden/i.test(
+        html
+      );
+    const maintenance = /site under maintenance|under maintenance/i.test(html);
+    const snippet = html.replace(/\s+/g, " ").trim().slice(0, 160);
+    return [
+      res ? `status=${res.status}` : null,
+      `htmlLen=${html.length}`,
+      title ? `title=${JSON.stringify(title)}` : "title=?",
+      blocked ? "blocked=yes" : null,
+      maintenance ? "maintenance=yes" : null,
+      `cookies=[${[...this.jar.keys()].join(",")}]`,
+      `csrfHtml=${Boolean(extractCsrfToken(html))}`,
+      `csrfCookie=${Boolean(csrfHeader(this.jar))}`,
+      `snippet=${JSON.stringify(snippet)}`,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   private async fetchHtml(url: string, init: RequestInit = {}): Promise<{ res: Response; html: string }> {
@@ -296,24 +321,43 @@ export class SenateEfdClient {
   async ensureSession(): Promise<void> {
     if (this.sessionReady) return;
 
-    let { html } = await this.fetchHtml(EFD_HOME);
+    let { res, html } = await this.fetchHtml(EFD_HOME, {
+      headers: {
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+      },
+    });
     html = await this.passGateIfNeeded(html, EFD_HOME);
 
     if (isAcknowledgementGate(html)) {
-      throw new Error("Senate eFD: still on acknowledgement gate after home submission");
+      throw new Error(
+        `Senate eFD: still on acknowledgement gate after home submission (${this.describePage(html)})`
+      );
     }
 
-    ({ html } = await this.fetchHtml(EFD_SEARCH, {
-      headers: { Referer: EFD_HOME },
+    ({ res, html } = await this.fetchHtml(EFD_SEARCH, {
+      headers: {
+        Referer: EFD_HOME,
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+      },
     }));
     html = await this.passGateIfNeeded(html, EFD_SEARCH);
 
     if (isAcknowledgementGate(html)) {
-      throw new Error("Senate eFD: search page blocked by acknowledgement gate");
+      throw new Error(
+        `Senate eFD: search page blocked by acknowledgement gate (${this.describePage(html, res)})`
+      );
     }
 
     if (!extractCsrfToken(html) && !csrfHeader(this.jar)) {
-      throw new Error("Senate eFD: no CSRF token after session setup");
+      throw new Error(
+        `Senate eFD: no CSRF token after session setup (${this.describePage(html, res)})`
+      );
     }
 
     this.sessionReady = true;
