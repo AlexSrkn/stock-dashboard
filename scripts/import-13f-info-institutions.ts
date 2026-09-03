@@ -33,7 +33,7 @@ import type { InstitutionalManagerType } from "../src/sec/seed/institutional-cik
 
 loadEnvFile();
 
-const SEC_DELAY_MS = 250;
+const SEC_DELAY_MS = 700;
 const DEFAULT_FILING_LIMIT = 8;
 const PROGRESS_PATH = join("data", "13f-info", "import-progress.json");
 
@@ -410,6 +410,12 @@ async function main() {
         { cik: m.cik, name: existingName, error: message, at: new Date().toISOString() },
       ];
       console.log(`failed: ${message}`);
+      // SEC overload / IP throttling — cool down before the next filer.
+      if (/SEC HTTP (429|503)/i.test(message)) {
+        const coolDownMs = 10000;
+        console.log(`SEC rate-limit/overload — pausing ${coolDownMs / 1000}s…`);
+        await sleep(coolDownMs);
+      }
     }
     attempted.add(m.cik);
     progress.attemptedCiks = [...attempted];

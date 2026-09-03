@@ -97,7 +97,9 @@ export async function secFetchJson<T>(url: string, options: SecFetchOptions = {}
   }
 }
 
-/** SEC fair-access: stay under ~10 requests/second. */
-export function secThrottle(ms = 150): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** SEC fair-access: stay under ~10 requests/second. Datacenter IPs often need slower. */
+export function secThrottle(ms?: number): Promise<void> {
+  const fromEnv = Number(process.env.SEC_THROTTLE_MS);
+  const delay = Number.isFinite(fromEnv) && fromEnv >= 0 ? fromEnv : (ms ?? 250);
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }

@@ -49,3 +49,7 @@ export PG_STATEMENT_TIMEOUT_MS
 # Always cap cron heap on small VPS — ignore a 4096 value from .env (causes exit 137).
 : "${CRON_NODE_HEAP_MB:=1536}"
 export NODE_OPTIONS="--max-old-space-size=${CRON_NODE_HEAP_MB}"
+
+# SEC fair-access: datacenter IPs get more 503s — keep request spacing conservative.
+: "${SEC_THROTTLE_MS:=300}"
+export SEC_THROTTLE_MS

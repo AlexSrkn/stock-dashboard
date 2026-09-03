@@ -96,7 +96,8 @@ function runBatch(batchSize: number, passthrough: string[]): Promise<number> {
     ...(has("--minimum-quarter") ? [] : ["--minimum-quarter=2026-Q2"]),
     ...(has("--filings") ? [] : ["--filings=1"]),
     "--source=data/13f-info/managers-all.json",
-    "--delay-ms=250",
+    // VPS/datacenter IPs get SEC 503s more often than home — default slower than local.
+    "--delay-ms=700",
     "--skip-cache",
     `--batch-size=${batchSize}`,
   ];
