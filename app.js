@@ -5713,6 +5713,8 @@ function setExploreMode(mode, { navigate = true } = {}) {
   if (!EXPLORE_MODES.includes(mode)) mode = "stocks";
   // Close mobile chrome so the dimmed scrim cannot stick after a section change.
   clearMobileOverlays();
+  // Hide any open info/legal pages so their body classes don't block #app-shell.
+  hideInfoViews();
   showLandingView(false);
   activeExploreMode = mode;
   updateExploreNav();
