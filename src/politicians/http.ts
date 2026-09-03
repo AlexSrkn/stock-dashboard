@@ -6,6 +6,42 @@ export function politicianUserAgent(): string {
   return fromEnv || DEFAULT_UA;
 }
 
+/** Optional HTTP(S) proxy for politician scrapes (Senate eFD often blocks datacenter IPs). */
+export function politicianProxyUrl(): string | null {
+  const raw = (
+    process.env.POLITICIAN_HTTP_PROXY ||
+    process.env.SENATE_EFD_PROXY ||
+    process.env.HTTPS_PROXY ||
+    process.env.HTTP_PROXY ||
+    ""
+  ).trim();
+  return raw || null;
+}
+
+type FetchInit = RequestInit & { dispatcher?: unknown };
+
+let proxyDispatcher: unknown | null | undefined;
+
+async function getProxyDispatcher(): Promise<unknown | null> {
+  if (proxyDispatcher !== undefined) return proxyDispatcher;
+  const proxyUrl = politicianProxyUrl();
+  if (!proxyUrl) {
+    proxyDispatcher = null;
+    return null;
+  }
+  try {
+    const undici = await import("undici");
+    proxyDispatcher = new undici.ProxyAgent(proxyUrl);
+    return proxyDispatcher;
+  } catch (err) {
+    throw new Error(
+      `POLITICIAN_HTTP_PROXY is set but undici ProxyAgent failed to load: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
+}
+
 export async function politicianFetch(
   url: string,
   init: RequestInit = {},
@@ -15,7 +51,11 @@ export async function politicianFetch(
   const headers = new Headers(init.headers);
   if (!headers.has("User-Agent")) headers.set("User-Agent", politicianUserAgent());
   if (!headers.has("Accept")) headers.set("Accept", "*/*");
-  return fetch(url, { ...init, headers });
+
+  const dispatcher = await getProxyDispatcher();
+  const opts: FetchInit = { ...init, headers };
+  if (dispatcher) opts.dispatcher = dispatcher;
+  return fetch(url, opts as RequestInit);
 }
 
 export async function politicianFetchText(url: string, init?: RequestInit): Promise<string> {

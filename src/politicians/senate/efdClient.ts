@@ -329,6 +329,16 @@ export class SenateEfdClient {
         "Sec-Fetch-User": "?1",
       },
     });
+
+    if (res.status === 403 || /access denied|403 forbidden/i.test(html)) {
+      throw new Error(
+        `Senate eFD blocked this server IP (HTTP ${res.status} Access Denied on /search/home/). ` +
+          `Datacenter IPs are often blocked. Set POLITICIAN_HTTP_PROXY in .env to a residential/HTTP proxy, ` +
+          `or run the Senate scrape from an unblocked machine and copy data/politicians/recent.json. ` +
+          `(${this.describePage(html, res)})`
+      );
+    }
+
     html = await this.passGateIfNeeded(html, EFD_HOME);
 
     if (isAcknowledgementGate(html)) {
