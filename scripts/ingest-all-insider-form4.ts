@@ -128,8 +128,13 @@ async function resolveTickerList(options: ReturnType<typeof parseArgs>): Promise
   }
   if (options.existingOnly) {
     console.log("Loading tickers already present in insider_transaction…");
-    const tickers = await loadExistingTickers();
-    console.log(`Universe: ${tickers.length} existing tickers`);
+    const raw = await loadExistingTickers();
+    // Drop OTC suffixes / junk symbols that are no longer in SEC company_tickers.
+    const tickers = raw.filter((t) => filterTickerSymbol(t, false));
+    console.log(
+      `Universe: ${tickers.length} existing common-equity tickers` +
+        (raw.length !== tickers.length ? ` (filtered from ${raw.length})` : "")
+    );
     return tickers;
   }
 
@@ -236,8 +241,14 @@ async function main() {
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      summary.push({ ticker, ok: false, error: message });
-      console.log(`failed: ${message}`);
+      // Delisted / renamed issuers still in DB but gone from SEC company_tickers.
+      if (/Unknown ticker for SEC mapping/i.test(message)) {
+        summary.push({ ticker, ok: true, error: message });
+        console.log(`skip: not in SEC company_tickers`);
+      } else {
+        summary.push({ ticker, ok: false, error: message });
+        console.log(`failed: ${message}`);
+      }
     }
 
     if (i < tickers.length - 1 && opts.delayMs > 0) {

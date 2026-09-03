@@ -197,15 +197,27 @@ export async function fetchRecentPoliticianFilings(
     }
   }
 
-  let senateRows: SenateSearchRow[];
-  if (sinceDate) {
-    senateRows = await senate.listAllPtrFilings({
-      fromDate: isoToUsDate(sinceDate),
-      htmlOnly: true,
+  let senateRows: SenateSearchRow[] = [];
+  try {
+    if (sinceDate) {
+      senateRows = await senate.listAllPtrFilings({
+        fromDate: isoToUsDate(sinceDate),
+        htmlOnly: true,
+      });
+      senateRows = senateRows.filter((row) => !existingIds.has(String(row.reportId)));
+    } else {
+      senateRows = await senate.listAllPtrFilings({ limit, htmlOnly: true });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`\nSenate PTR catalog failed (House data will still be saved): ${message}`);
+    scrapeErrors.push({
+      chamber: "senate",
+      politicianName: "(catalog)",
+      filingId: "catalog",
+      filingDate: null,
+      message,
     });
-    senateRows = senateRows.filter((row) => !existingIds.has(String(row.reportId)));
-  } else {
-    senateRows = await senate.listAllPtrFilings({ limit, htmlOnly: true });
   }
 
   const senateOut: PoliticianFilingBundle[] = [];
