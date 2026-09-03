@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Install (or update) production crontab for nightly politicians + insiders scrape.
+# Install (or update) production crontab for the heavy 13F import job.
 #
 # Usage (on the production server, from repo root):
-#   bash scripts/cron/install-daily-scrape-cron.sh
-#   bash scripts/cron/install-daily-scrape-cron.sh --time 02:00 --tz Europe/Berlin
+#   bash scripts/cron/install-13f-scrape-cron.sh
+#   bash scripts/cron/install-13f-scrape-cron.sh --time 03:00 --tz Europe/Berlin
 #
-# Default: every day at 02:00 in Europe/Berlin (CEST/CET).
-# Preserves other crontab entries (including TradeAtlant 13f-scrape).
+# Default: every day at 03:00 Europe/Berlin (after the 02:00 daily politicians/insiders job).
+# Preserves other crontab entries (including TradeAtlant daily-scrape).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-WRAPPER="$ROOT/scripts/cron/run-daily-scrape.sh"
-BOOT_LOG="$ROOT/data/logs/cron-daily-scrape.log"
-MARKER="# TradeAtlant daily-scrape"
-TIME="02:00"
+WRAPPER="$ROOT/scripts/cron/run-13f-scrape.sh"
+BOOT_LOG="$ROOT/data/logs/cron-13f-scrape.log"
+MARKER="# TradeAtlant 13f-scrape"
+TIME="03:00"
 TZ_NAME="Europe/Berlin"
 
 while [[ $# -gt 0 ]]; do
@@ -44,7 +44,7 @@ fi
 HOUR="${TIME%%:*}"
 MIN="${TIME##*:}"
 if [[ ! "$HOUR" =~ ^[0-9]+$ ]] || [[ ! "$MIN" =~ ^[0-9]+$ ]]; then
-  echo "Invalid --time (use HH:MM, e.g. 02:00)" >&2
+  echo "Invalid --time (use HH:MM, e.g. 03:00)" >&2
   exit 1
 fi
 
@@ -56,6 +56,7 @@ FILTERED="$(printf '%s\n' "$EXISTING" | grep -v "$MARKER" || true)"
 
 TMP="$(mktemp)"
 {
+  # Keep prior jobs; only ensure env headers once.
   if ! printf '%s\n' "$FILTERED" | grep -q '^SHELL='; then
     echo "SHELL=$BASH_BIN"
   fi
@@ -74,9 +75,11 @@ TMP="$(mktemp)"
 crontab "$TMP"
 rm -f "$TMP"
 
-echo "Installed daily scrape cron:"
+echo "Installed 13F scrape cron:"
 crontab -l
 echo ""
-echo "Dated logs: $ROOT/data/logs/daily-scrape-YYYY-MM-DD.log"
+echo "Dated logs: $ROOT/data/logs/13f-scrape-YYYY-MM-DD.log"
 echo "Cron stderr: $BOOT_LOG"
-echo "Test now: $BASH_BIN $WRAPPER"
+echo "Dry-run:    npm run job:13f-scrape:dry"
+echo "Smoke test: npm run institutions:import-13f-info -- --limit-new=5 --filings=1 --minimum-quarter=2026-Q2"
+echo "Full job:   bash $WRAPPER"
