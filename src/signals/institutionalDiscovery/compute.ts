@@ -514,13 +514,23 @@ export async function computeInstitutionalDiscovery(
     ? withHistory.filter((r) => r.quarter === currentQuarter && !r.insufficientData)
     : [];
 
+  // Cache only the latest pair of quarters (UI default + QoQ). Keeping every
+  // ticker×quarter row blew past ~500MB / 1.5GB heap on the production VPS.
+  const keepQuarters = new Set(
+    [currentQuarter, previousQuarter].filter((q): q is string => Boolean(q))
+  );
+  const slimSignals = withHistory
+    .filter((r) => keepQuarters.has(r.quarter) && !r.insufficientData)
+    .map((r) => ({
+      ...r,
+      history: r.history.filter((h) => keepQuarters.has(h.quarter)),
+    }));
+
   const sectors = [
-    ...new Set(withHistory.map((s) => s.sector).filter((s): s is string => !!s)),
+    ...new Set(slimSignals.map((s) => s.sector).filter((s): s is string => !!s)),
   ].sort((a, b) => a.localeCompare(b));
 
-  const pairQuarters = [
-    ...new Set(withHistory.map((s) => s.quarter).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b));
+  const pairQuarters = sortQuarters([...keepQuarters]);
 
   return {
     version: 1,
@@ -530,6 +540,6 @@ export async function computeInstitutionalDiscovery(
     quarters: pairQuarters.length ? pairQuarters : currentQuarter ? [currentQuarter] : [],
     summary: buildSummary(latest, currentQuarter, previousQuarter),
     sectors,
-    signals: withHistory,
+    signals: slimSignals,
   };
 }

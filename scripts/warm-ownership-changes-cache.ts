@@ -27,11 +27,14 @@ console.log(`cache → ${cachePath}`);
 reloadTrackedInstitutions(true);
 const cikCount = trackedInstitutionCiks().length;
 console.log(`Warming ownership movers for ${cikCount} tracked institutions…`);
-if (cikCount < 100) {
-  console.error(
-    "Tracked universe looks curated-only. Copy/import data/13f-info/imported-tracked-managers.json first."
-  );
+if (cikCount < 1) {
+  console.error("No tracked institutions found — nothing to warm.");
   process.exit(1);
+}
+if (cikCount < 100) {
+  console.warn(
+    "Tracked universe looks curated-only (no large imported-tracked-managers.json). Continuing."
+  );
 }
 
 const payload = await computeOwnershipChangesCache();

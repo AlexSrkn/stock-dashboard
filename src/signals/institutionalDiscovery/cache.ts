@@ -52,11 +52,12 @@ export function ensureInstitutionalDiscoveryCacheOnStartup(): void {
       );
       return;
     }
-    const payload = loadInstitutionalDiscoveryFromDisk();
-    if (!payload?.signals?.length) return;
-    hydrateMemory(payload);
-    const scored = payload.signals.filter((s) => !s.insufficientData).length;
-    console.log(`Institutional discovery cache loaded (${scored} scored rows).`);
+    // Do not hydrate the full JSON into memory at boot — the file can be huge
+    // and would pin hundreds of MB for every server process.
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
+    console.log(
+      `Institutional discovery cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
+    );
   } catch (err) {
     console.warn(
       "Institutional discovery cache load failed:",
