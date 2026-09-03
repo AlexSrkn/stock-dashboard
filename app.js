@@ -11934,8 +11934,8 @@ const NOTABLE_INVESTORS = [
   },
   {
     name: "Bill Ackman",
-    firm: "Pershing Square Capital Management",
-    cik: "1336528",
+    firm: "Pershing Square Inc.",
+    cik: "2026053",
     style: "Activist",
     blurb: "Concentrated activist stakes with public campaigns and high-conviction bets.",
   },

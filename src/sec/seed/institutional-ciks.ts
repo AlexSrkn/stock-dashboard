@@ -55,9 +55,16 @@ export const INSTITUTIONAL_13F_MANAGERS: readonly Institutional13FManager[] = [
   { name: "Marshall Wace, LLP", cik: "1318757", type: "hedge_fund" },
 
   // --- Tier 3: Activist / Event Driven ---
+  // Through Q1 2026 holdings were on Capital Management (1336528). From Q2 2026
+  // that CIK files 13F-NT only; the consolidated 13F-HR is Pershing Square Inc.
   {
     name: "Pershing Square Capital Management, L.P.",
     cik: "1336528",
+    type: "activist",
+  },
+  {
+    name: "Pershing Square Inc.",
+    cik: "2026053",
     type: "activist",
   },
   { name: "Third Point LLC", cik: "1040273", type: "activist" },
