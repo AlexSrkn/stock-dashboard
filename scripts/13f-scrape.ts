@@ -1,11 +1,14 @@
 /**
- * 13F quarterly ingest job: 13f.info import loop + ownership cache + institutional warms.
+ * 13F quarterly ingest job: curated institutional filers + ownership cache + warms.
  * Same orchestration pattern as job:daily-scrape (politicians/insiders).
+ *
+ * Uses the tracked list in institutional-ciks.ts via db:ingest-institutional-13f
+ * (SEC EDGAR only) — not the 13f.info bulk manager universe.
  *
  * Usage:
  *   npm run job:13f-scrape
  *   npm run job:13f-scrape -- --dry-run
- *   npm run job:13f-scrape -- --quarter=2026-Q2 --filings=1 --batch-size=150
+ *   npm run job:13f-scrape -- --filings=2
  *   npm run job:13f-scrape -- --skip-warm
  *
  * Schedule:
@@ -74,59 +77,32 @@ async function main() {
   }
   const dryRun = hasFlag("--dry-run");
   const skipWarm = hasFlag("--skip-warm");
-  const quarter =
-    argValue("--quarter") ||
-    process.env.THIRTEEN_F_MINIMUM_QUARTER ||
-    "2026-Q2";
-  const filings = argValue("--filings") || "1";
-  const batchSize = argValue("--batch-size") || process.env.THIRTEEN_F_BATCH_SIZE || "150";
+  // Match daily-scrape: pull 2 filings so QoQ (e.g. Q1→Q2) stays available.
+  const filings = argValue("--filings") || "2";
 
   if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
 
-  console.log("13F scrape job");
+  console.log("13F scrape job (curated institutional filers)");
   console.log(`  when: ${new Date().toISOString()}`);
-  console.log(`  quarter: ${quarter}`);
   console.log(`  filings per manager: ${filings}`);
-  console.log(`  batch size: ${batchSize}`);
   if (dryRun) console.log("  mode: dry-run (no commands executed)");
 
   const results: StepResult[] = [];
   const t0 = Date.now();
 
-  const managersPath = join(ROOT, "data", "13f-info", "managers-all.json");
-  const needManagersScrape = !existsSync(managersPath) || hasFlag("--refresh-managers");
-  if (needManagersScrape) {
-    results.push(
-      dryRun
-        ? skip("sec:scrape-13f-info-managers", "dry-run")
-        : runNpm("sec:scrape-13f-info-managers", [`--minimum-quarter=${quarter}`])
-    );
-    const managersStep = results[results.length - 1];
-    if (!managersStep.ok) {
-      console.error("Managers directory scrape failed — cannot import 13F without managers-all.json");
-      process.exitCode = 1;
-      return;
-    }
-  } else {
-    results.push(skip("sec:scrape-13f-info-managers", "managers-all.json already present"));
-  }
-
-  const importArgs = [
-    `--filings=${filings}`,
-    `--minimum-quarter=${quarter}`,
-    `--batch-size=${batchSize}`,
-  ];
+  // --skip-cache: ownership rebuild runs in the warm steps below (avoid double work).
+  const ingestArgs = [`--filings`, filings, `--skip-cache`];
 
   results.push(
     dryRun
-      ? skip("institutions:import-13f-info:loop", "dry-run")
-      : runNpm("institutions:import-13f-info:loop", importArgs)
+      ? skip("db:ingest-institutional-13f", "dry-run")
+      : runNpm("db:ingest-institutional-13f", ingestArgs)
   );
 
-  const importStep = results[results.length - 1];
-  const importOk = importStep.ok && !importStep.skipped;
+  const ingestStep = results[results.length - 1];
+  const ingestOk = ingestStep.ok && !ingestStep.skipped;
 
-  if (!skipWarm && (dryRun || importOk)) {
+  if (!skipWarm && (dryRun || ingestOk)) {
     const warmSteps = [
       "ownership:build-cache",
       "signals:warm-conviction-score",
@@ -145,7 +121,7 @@ async function main() {
   } else if (skipWarm) {
     results.push(skip("warm-caches", "--skip-warm"));
   } else {
-    results.push(skip("warm-caches", "import failed"));
+    results.push(skip("warm-caches", "ingest failed"));
   }
 
   const failed = results.filter((r) => !r.ok);

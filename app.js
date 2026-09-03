@@ -142,8 +142,15 @@ function resetStockPanelUi(sym) {
   ownershipExpanded = false;
 
   renderStockClassificationLabel(null);
-  renderTradingViewWidget(symbol, { force: true });
-  renderTradingViewSymbolInfo(symbol, { force: true });
+  // Only mount TradingView once we know the exchange (or have it cached).
+  // Mounting as NASDAQ:TICKER first causes a brief "symbol doesn't exist" flash.
+  if (symbol && tradingViewExchangeBySymbol.has(symbol)) {
+    renderTradingViewWidget(symbol, { force: true });
+    renderTradingViewSymbolInfo(symbol, { force: true });
+  } else {
+    showTradingViewChartPlaceholder();
+    showTradingViewSymbolInfoPlaceholder();
+  }
   setChartFootnote("Loading chart…");
   setOverviewDataSource("Loading SEC filings…");
   setOwnershipSubtitle("Loading 13F holdings…");
@@ -19891,7 +19898,10 @@ function renderHeader() {
   } else {
     renderStockClassificationLabel(lastStockClassification);
   }
-  renderTradingViewSymbolInfo(w.symbol);
+  // Avoid remounting with a guessed exchange before SEC panels resolve.
+  if (sym && tradingViewExchangeBySymbol.has(sym)) {
+    renderTradingViewSymbolInfo(w.symbol);
+  }
   updateStockAddWatchlistBtn();
 }
 
@@ -21277,17 +21287,34 @@ function rememberTradingViewExchange(symbol, exchangeRaw) {
 
 /**
  * Map an internal ticker to a TradingView symbol.
- * Always prefer EXCHANGE:TICKER so EU locales don't auto-resolve broker CFDs
+ * Prefer EXCHANGE:TICKER so EU locales don't auto-resolve broker CFDs
  * (e.g. "NVDA Spot CFD") instead of the US cash equity.
+ * @param {string} symbol
+ * @param {{ fallbackExchange?: string | null }} [opts]
  */
-function toTradingViewSymbol(symbol) {
+function toTradingViewSymbol(symbol, { fallbackExchange = null } = {}) {
   let s = String(symbol || "").trim().toUpperCase();
   if (!s) return "";
   if (s.includes(":")) return s;
   // Class shares: Yahoo "BRK-B" → TradingView "BRK.B".
   if (/^[A-Z]+-[A-Z]$/.test(s)) s = s.replace("-", ".");
-  const exchange = tradingViewExchangeBySymbol.get(s) || "NASDAQ";
+  const exchange = tradingViewExchangeBySymbol.get(s) || fallbackExchange || "";
+  if (!exchange) return "";
   return `${exchange}:${s}`;
+}
+
+function showTradingViewChartPlaceholder() {
+  lastTradingViewSymbol = null;
+  const host = document.getElementById("tradingview-chart");
+  if (!host) return;
+  host.innerHTML = `<div class="tradingview-widget-placeholder muted small">Loading chart…</div>`;
+}
+
+function showTradingViewSymbolInfoPlaceholder() {
+  lastTradingViewSymbolInfo = null;
+  const host = document.getElementById("tradingview-symbol-info");
+  if (!host) return;
+  host.innerHTML = `<div class="tradingview-widget-placeholder muted small">Loading quote…</div>`;
 }
 
 function clearTradingViewWidget() {
@@ -21306,14 +21333,16 @@ function clearTradingViewSymbolInfo() {
  * Render the TradingView Symbol Info widget (price, change, key stats) in the
  * stock header, replacing the Yahoo-sourced price block. Re-creates the embed
  * only when the symbol actually changes.
+ * @param {string} symbol
+ * @param {{ force?: boolean, fallbackExchange?: string | null }} [opts]
  */
-function renderTradingViewSymbolInfo(symbol, { force = false } = {}) {
+function renderTradingViewSymbolInfo(symbol, { force = false, fallbackExchange = null } = {}) {
   const host = document.getElementById("tradingview-symbol-info");
   if (!host) return;
 
-  const tvSymbol = toTradingViewSymbol(symbol);
+  const tvSymbol = toTradingViewSymbol(symbol, { fallbackExchange });
   if (!tvSymbol) {
-    clearTradingViewSymbolInfo();
+    showTradingViewSymbolInfoPlaceholder();
     return;
   }
   if (!force && tvSymbol === lastTradingViewSymbolInfo) return;
@@ -21356,14 +21385,16 @@ function renderTradingViewSymbolInfo(symbol, { force = false } = {}) {
 /**
  * Render the TradingView Advanced Chart widget for a symbol. Re-creates the
  * embed only when the symbol actually changes to avoid needless reloads.
+ * @param {string} symbol
+ * @param {{ force?: boolean, fallbackExchange?: string | null }} [opts]
  */
-function renderTradingViewWidget(symbol, { force = false } = {}) {
+function renderTradingViewWidget(symbol, { force = false, fallbackExchange = null } = {}) {
   const host = document.getElementById("tradingview-chart");
   if (!host) return;
 
-  const tvSymbol = toTradingViewSymbol(symbol);
+  const tvSymbol = toTradingViewSymbol(symbol, { fallbackExchange });
   if (!tvSymbol) {
-    clearTradingViewWidget();
+    showTradingViewChartPlaceholder();
     return;
   }
   if (!force && tvSymbol === lastTradingViewSymbol) return;
@@ -21525,14 +21556,16 @@ async function loadActiveSymbolPanels(forSymbol) {
     const sub = name.length > 72 ? `${name.slice(0, 69)}…` : name;
     setSecSubtitle(sub ? `CIK ${p.cik} · ${sub}` : `CIK ${p.cik} · data.sec.gov submissions`);
     // Pin TradingView to the SEC-listed US equity exchange (avoids broker CFDs).
-    if (rememberTradingViewExchange(sym, p.exchange)) {
-      renderTradingViewWidget(sym, { force: true });
-      renderTradingViewSymbolInfo(sym, { force: true });
-    }
+    rememberTradingViewExchange(sym, p.exchange);
+    renderTradingViewWidget(sym, { force: true, fallbackExchange: "NASDAQ" });
+    renderTradingViewSymbolInfo(sym, { force: true, fallbackExchange: "NASDAQ" });
   } else {
     lastSecFilings = [];
     secErr = String(secRes.reason?.message || secRes.reason);
     setSecSubtitle("SEC submissions (error)");
+    // SEC failed — still show a chart rather than leave the placeholder forever.
+    renderTradingViewWidget(sym, { force: true, fallbackExchange: "NASDAQ" });
+    renderTradingViewSymbolInfo(sym, { force: true, fallbackExchange: "NASDAQ" });
   }
 
   if (insiderRes.status === "fulfilled") {

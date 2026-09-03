@@ -5359,6 +5359,17 @@ body.is-legal-page #view-contact {
   height: 100%;
 }
 
+.tradingview-widget-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3rem;
+  height: 100%;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
 .tradingview-chart .tradingview-widget-copyright {
   font: 0.72rem var(--font);
   line-height: 24px;
