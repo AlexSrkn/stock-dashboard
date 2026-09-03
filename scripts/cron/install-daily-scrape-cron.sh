@@ -10,6 +10,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WRAPPER="$ROOT/scripts/cron/run-daily-scrape.sh"
+BOOT_LOG="$ROOT/data/logs/cron-daily-scrape.log"
 MARKER="# TradeAtlant daily-scrape"
 TIME="02:00"
 TZ_NAME="Europe/Berlin"
@@ -31,9 +32,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ! -x "$WRAPPER" ]]; then
-  chmod +x "$ROOT/scripts/cron/"*.sh
-fi
+chmod +x "$ROOT/scripts/cron/"*.sh
+mkdir -p "$ROOT/data/logs"
 
 if ! command -v crontab >/dev/null 2>&1; then
   echo "crontab not found. Install cron on the server first." >&2
@@ -47,21 +47,24 @@ if [[ ! "$HOUR" =~ ^[0-9]+$ ]] || [[ ! "$MIN" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-CRON_LINE="$MIN $HOUR * * * $WRAPPER $MARKER"
-TZ_LINE="CRON_TZ=$TZ_NAME"
+BASH_BIN="$(command -v bash || echo /bin/bash)"
+CRON_LINE="$MIN $HOUR * * * $BASH_BIN $WRAPPER >> $BOOT_LOG 2>&1 $MARKER"
 
 TMP="$(mktemp)"
 {
-  crontab -l 2>/dev/null | grep -v "$MARKER" | grep -v '^CRON_TZ=' || true
-  echo "$TZ_LINE"
+  crontab -l 2>/dev/null | grep -v "$MARKER" | grep -v '^CRON_TZ=' | grep -v '^SHELL=' | grep -v '^HOME=' || true
+  echo "SHELL=$BASH_BIN"
+  echo "HOME=${HOME:-/root}"
+  echo "PATH=/usr/local/bin:/usr/bin:/bin"
+  echo "CRON_TZ=$TZ_NAME"
   echo "$CRON_LINE"
 } >"$TMP"
 crontab "$TMP"
 rm -f "$TMP"
 
 echo "Installed daily scrape cron:"
-echo "  $TZ_LINE"
-echo "  $CRON_LINE"
+crontab -l
 echo ""
-echo "Logs: $ROOT/data/logs/daily-scrape-YYYY-MM-DD.log"
-echo "Test now: $WRAPPER"
+echo "Dated logs: $ROOT/data/logs/daily-scrape-YYYY-MM-DD.log"
+echo "Cron stderr: $BOOT_LOG"
+echo "Test now: $BASH_BIN $WRAPPER"
