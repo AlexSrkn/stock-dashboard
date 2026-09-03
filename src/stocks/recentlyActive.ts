@@ -1,7 +1,8 @@
 import type pg from "pg";
+import { statSync } from "node:fs";
 import { getPool } from "../db/pool.js";
 import { openMarketInsiderActionLabel } from "../insider/openMarketSide.js";
-import { readPoliticiansRecent } from "../politicians/recent.js";
+import { POLITICIANS_RECENT_PATH, readPoliticiansRecent } from "../politicians/recent.js";
 import { normalizeTicker } from "../politicians/byTicker.js";
 import { SELECT_STOCK_ENRICHMENT_SQL } from "../institution/mostAccumulated/queries.js";
 
