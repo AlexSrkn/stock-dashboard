@@ -46,5 +46,6 @@ load_env_file "$ROOT/.env"
 : "${PG_STATEMENT_TIMEOUT_MS:=600000}"
 export PG_STATEMENT_TIMEOUT_MS
 
-: "${NODE_OPTIONS:=--max-old-space-size=4096}"
-export NODE_OPTIONS
+# Always cap cron heap on small VPS — ignore a 4096 value from .env (causes exit 137).
+: "${CRON_NODE_HEAP_MB:=1536}"
+export NODE_OPTIONS="--max-old-space-size=${CRON_NODE_HEAP_MB}"

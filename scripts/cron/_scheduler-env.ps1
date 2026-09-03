@@ -12,7 +12,7 @@ if (-not $env:PG_STATEMENT_TIMEOUT_MS) {
   $env:PG_STATEMENT_TIMEOUT_MS = "600000"
 }
 
-# Bulk fundamentals ingest processes thousands of SEC Company Facts JSON blobs.
+# Bulk jobs on a 4GB VPS: keep heap well under RAM so Postgres + the app survive.
 if (-not $env:NODE_OPTIONS) {
-  $env:NODE_OPTIONS = "--max-old-space-size=4096"
+  $env:NODE_OPTIONS = "--max-old-space-size=1536"
 }

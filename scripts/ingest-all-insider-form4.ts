@@ -255,7 +255,16 @@ async function main() {
     for (const row of summary.filter((s) => !s.ok).slice(0, 20)) {
       console.log(`  - ${row.ticker}: ${row.error}`);
     }
-    process.exitCode = 1;
+    // Nightly incremental runs often hit a few SEC/network errors; don't fail the whole job
+    // unless most tickers failed or nothing succeeded.
+    const failRate = failed / summary.length;
+    if (ok === 0 || failRate > 0.25) {
+      process.exitCode = 1;
+    } else {
+      console.log(
+        `Treating as success (${failed}/${summary.length} ticker failures ≤ 25%).`
+      );
+    }
   }
 }
 
