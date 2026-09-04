@@ -8,7 +8,8 @@ $Log = "data\logs\fundamentals-scrape-$(Get-Date -Format 'yyyy-MM-dd').log"
 $stamp = Get-Date -Format "o"
 Add-Content -Path $Log -Value "==== $stamp starting fundamentals-scrape ====" -Encoding utf8
 
-cmd /c "npm run job:fundamentals-scrape >> `"$Log`" 2>&1"
+$extra = if ($env:FUNDAMENTALS_SCRAPE_ARGS) { $env:FUNDAMENTALS_SCRAPE_ARGS } else { "--force" }
+cmd /c "npm run job:fundamentals-scrape -- $extra >> `"$Log`" 2>&1"
 $code = $LASTEXITCODE
 
 $stamp = Get-Date -Format "o"

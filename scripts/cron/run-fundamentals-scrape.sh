@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Linux production wrapper for fundamentals scrape.
+# Linux production wrapper for fundamentals scrape (SEC 10-K / 10-Q).
+# Uses --force so tickers that already have older periods still pick up new 10-Qs.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -24,8 +25,12 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 127
 fi
 
+# Extra args from env or defaults: force re-ingest so Q2 10-Qs replace stale skips.
+EXTRA_ARGS="${FUNDAMENTALS_SCRAPE_ARGS:---force}"
+
 set +e
-npm run job:fundamentals-scrape >>"$LOG" 2>&1
+# shellcheck disable=SC2086
+npm run job:fundamentals-scrape -- $EXTRA_ARGS >>"$LOG" 2>&1
 code=$?
 set -e
 echo "==== $(date -Is) finished (exit $code) ====" | tee -a "$LOG"
