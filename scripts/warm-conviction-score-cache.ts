@@ -7,6 +7,8 @@ import { computeConvictionScores } from "../src/signals/convictionScore/compute.
 import { saveConvictionScoreToDisk } from "../src/signals/convictionScore/cache.js";
 
 loadEnvFile();
+// Batched holdings queries can exceed the default 120s pool timeout.
+process.env.PG_STATEMENT_TIMEOUT_MS = "0";
 
 const pool = getPool();
 console.log("Computing conviction scores…");
