@@ -14,6 +14,10 @@ export interface InstitutionProfileMeta {
   positionCount: number;
   portfolioValueUsd: number | null;
   filingsOnRecord: number;
+  /** When set, holdings/activity aggregate across these related SEC CIKs. */
+  relatedCiks?: string[];
+  filerGroupId?: string | null;
+  filerGroupNote?: string | null;
 }
 
 export interface InstitutionHoldingRow {

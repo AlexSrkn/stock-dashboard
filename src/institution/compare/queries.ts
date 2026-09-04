@@ -10,7 +10,11 @@ WITH latest_filings AS (
     filing_date
   FROM sec_filing
   WHERE filer_cik = ANY($1::char(10)[])
-  ORDER BY filer_cik, quarter, filing_date DESC, id DESC
+  ORDER BY filer_cik, quarter,
+    holdings_count DESC NULLS LAST,
+    total_value DESC NULLS LAST,
+    filing_date DESC,
+    id DESC
 ),
 latest_quarter AS (
   SELECT DISTINCT ON (filer_cik)

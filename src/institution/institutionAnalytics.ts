@@ -4,6 +4,7 @@ import {
   getTrackedInstitutionByCik,
   TRACKED_INSTITUTIONAL_MANAGERS,
 } from "../ownership/trackedInstitutions.js";
+import { resolveHoldingsCiksForProfile, relatedCiksForGroup } from "./filerGroups.js";
 import {
   SELECT_FILER_CALLS_FOR_QUARTER_SQL,
   SELECT_FILER_FILINGS_HISTORY_SQL,
@@ -60,8 +61,8 @@ export function listTrackedInstitutions(): InstitutionSummary[] {
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function loadFilerQuarters(pool: pg.Pool, cik: string, count = 2): Promise<string[]> {
-  const res = await pool.query<{ quarter: string }>(SELECT_FILER_QUARTERS_SQL, [cik, count]);
+async function loadFilerQuarters(pool: pg.Pool, ciks: string[], count = 2): Promise<string[]> {
+  const res = await pool.query<{ quarter: string }>(SELECT_FILER_QUARTERS_SQL, [ciks, count]);
   return res.rows.map((r) => String(r.quarter));
 }
 
@@ -69,12 +70,13 @@ export async function loadInstitutionMeta(
   pool: pg.Pool,
   cik: string
 ): Promise<InstitutionProfileMeta | null> {
+  const { ciks, group } = resolveHoldingsCiksForProfile(cik);
   const manager = getTrackedInstitutionByCik(cik);
-  const quarters = await loadFilerQuarters(pool, cik, 2);
+  const quarters = await loadFilerQuarters(pool, ciks, 2);
   const stats = await pool.query<{
     filings_count: number;
     latest_filing_date: string | null;
-  }>(SELECT_FILER_PROFILE_STATS_SQL, [cik]);
+  }>(SELECT_FILER_PROFILE_STATS_SQL, [ciks]);
 
   const filingsOnRecord = Number(stats.rows[0]?.filings_count ?? 0);
   if (!manager && filingsOnRecord <= 0 && quarters.length === 0) {
@@ -88,7 +90,11 @@ export async function loadInstitutionMeta(
       `SELECT COALESCE(NULLIF(BTRIM(fund_name), ''), filer_cik) AS fund_name
        FROM sec_filing
        WHERE filer_cik = $1
-       ORDER BY filing_date DESC NULLS LAST, id DESC
+       ORDER BY
+         holdings_count DESC NULLS LAST,
+         total_value DESC NULLS LAST,
+         filing_date DESC NULLS LAST,
+         id DESC
        LIMIT 1`,
       [cik]
     );
@@ -109,7 +115,7 @@ export async function loadInstitutionMeta(
   if (currentQuarter) {
     const holdings = await pool.query<{ cusip: string; value_usd_thousands: number }>(
       SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL,
-      [cik, currentQuarter, 5000]
+      [ciks, currentQuarter, 5000]
     );
     positionCount = holdings.rows.length;
     const totalK = holdings.rows.reduce(
@@ -130,6 +136,9 @@ export async function loadInstitutionMeta(
     positionCount,
     portfolioValueUsd,
     filingsOnRecord,
+    relatedCiks: relatedCiksForGroup(group),
+    filerGroupId: group?.id ?? null,
+    filerGroupNote: group?.note ?? null,
   };
 }
 
@@ -141,13 +150,14 @@ export async function getInstitutionHoldings(
   const meta = await loadInstitutionMeta(pool, cik);
   if (!meta?.currentQuarter) return meta ? { meta, holdings: [] } : null;
 
+  const { ciks } = resolveHoldingsCiksForProfile(cik);
   const res = await pool.query<{
     cusip: string;
     ticker: string | null;
     issuer: string;
     shares: number;
     value_usd_thousands: number;
-  }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [cik, meta.currentQuarter, limit]);
+  }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [ciks, meta.currentQuarter, limit]);
 
   const totalK = res.rows.reduce((s, r) => s + (Number(r.value_usd_thousands) || 0), 0);
   const totalUsd = filingValueUsd(totalK) ?? 0;
@@ -291,6 +301,7 @@ export async function getInstitutionActivity(
       : null;
   }
 
+  const { ciks } = resolveHoldingsCiksForProfile(cik);
   const [curRes, prevRes] = await Promise.all([
     pool.query<{
       cusip: string;
@@ -298,14 +309,14 @@ export async function getInstitutionActivity(
       issuer: string;
       shares: number;
       value_usd_thousands: number;
-    }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [cik, meta.currentQuarter, 5000]),
+    }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [ciks, meta.currentQuarter, 5000]),
     pool.query<{
       cusip: string;
       ticker: string | null;
       issuer: string;
       shares: number;
       value_usd_thousands: number;
-    }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [cik, meta.previousQuarter, 5000]),
+    }>(SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL, [ciks, meta.previousQuarter, 5000]),
   ]);
 
   const prevMap = new Map(
@@ -419,22 +430,23 @@ export async function getInstitutionOptions(
     return meta ? { meta, commonExposureUsd: 0, calls: [], puts: [] } : null;
   }
 
+  const { ciks } = resolveHoldingsCiksForProfile(cik);
   const cappedLimit = Math.min(200, Math.max(1, limit));
 
   const [callsRes, putsRes, holdingsRes] = await Promise.all([
     pool.query<FilerOptionDbRow>(SELECT_FILER_CALLS_FOR_QUARTER_SQL, [
-      cik,
+      ciks,
       meta.currentQuarter,
       cappedLimit,
     ]),
     pool.query<FilerOptionDbRow>(SELECT_FILER_PUTS_FOR_QUARTER_SQL, [
-      cik,
+      ciks,
       meta.currentQuarter,
       cappedLimit,
     ]),
     pool.query<{ cusip: string; value_usd_thousands: number }>(
       SELECT_FILER_HOLDINGS_FOR_QUARTER_SQL,
-      [cik, meta.currentQuarter, 5000]
+      [ciks, meta.currentQuarter, 5000]
     ),
   ]);
 

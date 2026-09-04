@@ -107,6 +107,8 @@ export class HoldingsInsertService {
     const client = await this.pool.connect();
     try {
       await client.query("SET statement_timeout = 0");
+      // Fail fast if another session holds AccessExclusiveLock (e.g. long ALTER).
+      await client.query("SET lock_timeout = '15s'");
       const { loadHoldingsSchemaSql, loadHoldingsMigrateV2Sql } = await import("./schema.js");
       await client.query(loadHoldingsSchemaSql());
       await client.query(loadHoldingsMigrateV2Sql());

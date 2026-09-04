@@ -37,7 +37,11 @@ latest_filings AS (
   FROM sec_filing
   WHERE filer_cik = ANY($1::char(10)[])
     AND quarter = ANY($2::text[])
-  ORDER BY filer_cik, quarter, filing_date DESC, id DESC
+  ORDER BY filer_cik, quarter,
+    holdings_count DESC NULLS LAST,
+    total_value DESC NULLS LAST,
+    filing_date DESC,
+    id DESC
 )
 `.trim();
 

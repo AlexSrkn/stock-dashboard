@@ -54,7 +54,8 @@ async function main() {
     const padded = paddedInstitutionalCik(singleCik);
     managers = managers.filter((m) => paddedInstitutionalCik(m.cik) === padded);
     if (!managers.length) {
-      throw new Error(`CIK ${singleCik} is not in institutional-ciks.ts`);
+      // Allow ad-hoc CIK ingest (e.g. backfill a combination reporter).
+      managers = [{ name: `CIK ${padded}`, cik: singleCik.replace(/^0+/, "") || singleCik, type: "asset_manager" }];
     }
   } else {
     managers = managers.slice(from, limit != null ? from + limit : undefined);

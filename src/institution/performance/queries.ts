@@ -1,6 +1,6 @@
 import { sqlCommonStockOnly } from "../../ownership/queries.js";
 
-/** Latest filing per filer per quarter across tracked CIKs. */
+/** Latest substantive filing per filer per quarter across tracked CIKs. */
 export const CTE_LATEST_FILINGS_BATCH = `
 latest_filings AS (
   SELECT DISTINCT ON (filer_cik, quarter)
@@ -9,7 +9,11 @@ latest_filings AS (
     quarter
   FROM sec_filing
   WHERE filer_cik = ANY($1::char(10)[])
-  ORDER BY filer_cik, quarter, filing_date DESC, id DESC
+  ORDER BY filer_cik, quarter,
+    holdings_count DESC NULLS LAST,
+    total_value DESC NULLS LAST,
+    filing_date DESC,
+    id DESC
 )
 `.trim();
 

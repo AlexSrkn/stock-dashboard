@@ -22,7 +22,11 @@ export const SQL_COMMON_STOCK_ONLY = sqlCommonStockOnly();
 /** @deprecated alias */
 export const SQL_EQUITY_SHARES_ONLY = SQL_COMMON_STOCK_ONLY;
 
-/** One filing per filer per quarter — latest filing_date (13F-HR/A supersedes). */
+/**
+ * One filing per filer per quarter.
+ * Prefer the richest filing so thin late amendments (NEW HOLDINGS) do not
+ * replace a full combination report for the same quarter.
+ */
 export const CTE_LATEST_FILINGS = `
 latest_filings AS (
   SELECT DISTINCT ON (filer_cik, quarter)
@@ -30,7 +34,11 @@ latest_filings AS (
     filer_cik,
     quarter
   FROM sec_filing
-  ORDER BY filer_cik, quarter, filing_date DESC, id DESC
+  ORDER BY filer_cik, quarter,
+    holdings_count DESC NULLS LAST,
+    total_value DESC NULLS LAST,
+    filing_date DESC,
+    id DESC
 )
 `.trim();
 

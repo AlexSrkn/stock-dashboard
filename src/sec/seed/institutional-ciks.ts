@@ -85,4 +85,9 @@ export const INSTITUTIONAL_13F_MANAGERS: readonly Institutional13FManager[] = [
   { name: "Verition Fund Management LLC", cik: "1454027", type: "hedge_fund" },
   { name: "Hudson Bay Capital Management LP", cik: "1393825", type: "hedge_fund" },
   { name: "Sachem Head Capital Management LP", cik: "1582090", type: "activist" },
+
+  // --- Tier 5: Multi-filer combination reporters ---
+  // Parent combination report consolidates included managers (often 13F-NT).
+  // Late thin amendments must not replace the full combo for the quarter.
+  { name: "Amundi", cik: "1330387", type: "asset_manager" },
 ] as const;
