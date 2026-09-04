@@ -1,12 +1,13 @@
 import type pg from "pg";
 import { getPool } from "../../db/pool.js";
 import { loadInstitutionHoldings } from "../../institution/performance/holdingsLoader.js";
-import {
-  buildPortfolioSnapshots,
-  indexPortfolioSnapshots,
-} from "../../institution/performance/portfolioWeights.js";
 import { previousQuarter, sortQuarters } from "../../institution/performance/quarters.js";
+import { SELECT_INSTITUTION_QUARTERS_BATCH_SQL } from "../../institution/performance/queries.js";
 import { formatSecCik } from "../../sec/http.js";
+import {
+  TRACKED_INSTITUTIONAL_CIK_PADDED,
+  reloadTrackedInstitutions,
+} from "../../ownership/trackedInstitutions.js";
 import {
   SELECT_SHARES_OUTSTANDING_SQL,
   SELECT_STOCK_ENRICHMENT_SQL,
@@ -33,13 +34,55 @@ import type {
 } from "./types.js";
 import { DEFAULT_CONVICTION_THRESHOLDS } from "./types.js";
 
+/** CIKs per holdings query — keep small on 4GB VPS. */
+const HOLDINGS_CIK_BATCH = 60;
+/** Quarters loaded for streak math (4Q accumulation needs ~4). */
+const MAX_HOLDINGS_QUARTERS = 4;
+
 interface InstTickerQuarter {
   shares: number;
   valueUsd: number;
+  /** Position weight in that institution's portfolio for the quarter (0–1). */
+  portfolioWeight: number;
 }
 
 /** institutionId::ticker → quarter → state */
 type HistoryMap = Map<string, Map<string, InstTickerQuarter>>;
+
+function mergeHoldingsIntoHistory(
+  map: HistoryMap,
+  holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>
+): void {
+  const totals = new Map<string, number>();
+  for (const h of holdings) {
+    if (!h.ticker || !Number.isFinite(h.marketValue) || h.marketValue <= 0) continue;
+    const cik = formatSecCik(h.institutionId);
+    const tk = `${cik}::${h.quarter}`;
+    totals.set(tk, (totals.get(tk) ?? 0) + Number(h.marketValue));
+  }
+
+  for (const h of holdings) {
+    if (!h.ticker || h.shares == null || !Number.isFinite(h.shares)) continue;
+    const cik = formatSecCik(h.institutionId);
+    const key = `${cik}::${h.ticker}`;
+    let byQ = map.get(key);
+    if (!byQ) {
+      byQ = new Map();
+      map.set(key, byQ);
+    }
+    const totalKey = `${cik}::${h.quarter}`;
+    const total = totals.get(totalKey) ?? 0;
+    const mv = Number(h.marketValue) || 0;
+    const w = total > 0 && mv > 0 ? mv / total : 0;
+    const prev = byQ.get(h.quarter) ?? { shares: 0, valueUsd: 0, portfolioWeight: 0 };
+    prev.shares += h.shares;
+    prev.valueUsd += mv;
+    // Recompute weight from accumulated value after share merges in the same batch.
+    prev.portfolioWeight = total > 0 ? prev.valueUsd / total : 0;
+    if (w > 0 && prev.portfolioWeight <= 0) prev.portfolioWeight = w;
+    byQ.set(h.quarter, prev);
+  }
+}
 
 async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>> {
   const out = new Map<string, number>();
@@ -75,27 +118,6 @@ async function loadStockEnrichment(
     });
   }
   return out;
-}
-
-function buildHistoryMap(
-  holdings: Awaited<ReturnType<typeof loadInstitutionHoldings>>
-): HistoryMap {
-  const map: HistoryMap = new Map();
-  for (const h of holdings) {
-    if (!h.ticker || h.shares == null || !Number.isFinite(h.shares)) continue;
-    const cik = formatSecCik(h.institutionId);
-    const key = `${cik}::${h.ticker}`;
-    let byQ = map.get(key);
-    if (!byQ) {
-      byQ = new Map();
-      map.set(key, byQ);
-    }
-    const prev = byQ.get(h.quarter) ?? { shares: 0, valueUsd: 0 };
-    prev.shares += h.shares;
-    prev.valueUsd += Number(h.marketValue) || 0;
-    byQ.set(h.quarter, prev);
-  }
-  return map;
 }
 
 function sharesAt(byQ: Map<string, InstTickerQuarter> | undefined, quarter: string): number {
@@ -176,12 +198,11 @@ interface DraftMetrics {
 
 function computeQuarterDrafts(input: {
   history: HistoryMap;
-  weightIndex: ReturnType<typeof indexPortfolioSnapshots>;
   quarters: string[];
   quarter: string;
   thresholds: ConvictionScoreThresholds;
 }): DraftMetrics[] {
-  const { history, weightIndex, quarters, quarter, thresholds } = input;
+  const { history, quarters, quarter, thresholds } = input;
   const prevQ = previousQuarter(quarter);
   const qIdx = quarters.indexOf(quarter);
   const quartersUpTo = qIdx >= 0 ? quarters.slice(0, qIdx + 1) : quarters;
@@ -233,8 +254,7 @@ function computeQuarterDrafts(input: {
       agg.currentShares += cur;
       agg.currentValueUsd += byQ.get(quarter)?.valueUsd ?? 0;
 
-      const snap = weightIndex.get(cik)?.get(quarter);
-      const w = snap?.weights?.[ticker];
+      const w = byQ.get(quarter)?.portfolioWeight;
       if (typeof w === "number" && Number.isFinite(w) && w > 0) {
         agg.weights.push(w);
       }
@@ -485,42 +505,62 @@ export async function computeConvictionScores(
   pool: pg.Pool = getPool(),
   thresholds: ConvictionScoreThresholds = DEFAULT_CONVICTION_THRESHOLDS
 ): Promise<ConvictionScoreCachePayload> {
-  // 4 quarters: enough for 4Q accumulation streaks on the latest period without
-  // loading ~8× full-universe holdings (OOM on 4GB VPS with 7k+ filers).
-  const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool, undefined, { maxQuarters: 4 }),
+  reloadTrackedInstitutions();
+  const ciks = [...TRACKED_INSTITUTIONAL_CIK_PADDED].map((c) => formatSecCik(c));
+
+  const [qRes, sharesOutstanding] = await Promise.all([
+    pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [ciks]),
     loadSharesOutstanding(pool),
   ]);
-
-  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter).filter(Boolean))]);
+  const quarters = sortQuarters(qRes.rows.map((r) => String(r.quarter))).slice(
+    -MAX_HOLDINGS_QUARTERS
+  );
   const currentQuarter = quarters[quarters.length - 1] ?? "";
   const previousQuarterLabel =
     quarters.length >= 2 ? quarters[quarters.length - 2]! : previousQuarter(currentQuarter);
 
-  const weightIndex = indexPortfolioSnapshots(buildPortfolioSnapshots(holdings));
-  const history = buildHistoryMap(holdings);
+  if (!quarters.length || !ciks.length) {
+    return {
+      version: 1,
+      computedAt: new Date().toISOString(),
+      currentQuarter,
+      previousQuarter: previousQuarterLabel,
+      quarters: [],
+      thresholds,
+      summary: buildSummary([], currentQuarter, previousQuarterLabel),
+      sectors: [],
+      signals: [],
+    };
+  }
 
-  const tickers = [
-    ...new Set(
-      holdings
-        .map((h) => (h.ticker ? String(h.ticker).trim().toUpperCase() : ""))
-        .filter(Boolean)
-    ),
-  ];
-  // Drop raw holdings ASAP — maps above retain what scoring needs.
-  holdings.length = 0;
+  const history: HistoryMap = new Map();
+  const tickerSet = new Set<string>();
+  const totalBatches = Math.ceil(ciks.length / HOLDINGS_CIK_BATCH) || 1;
 
+  for (let i = 0; i < ciks.length; i += HOLDINGS_CIK_BATCH) {
+    const batch = ciks.slice(i, i + HOLDINGS_CIK_BATCH);
+    const batchNo = Math.floor(i / HOLDINGS_CIK_BATCH) + 1;
+    process.stdout.write(
+      `  holdings [${batchNo}/${totalBatches}] ${batch.length} CIKs… `
+    );
+    const t0 = Date.now();
+    const holdings = await loadInstitutionHoldings(pool, batch, { quarters });
+    mergeHoldingsIntoHistory(history, holdings);
+    for (const h of holdings) {
+      if (h.ticker) tickerSet.add(String(h.ticker).toUpperCase());
+    }
+    console.log(`ok (${holdings.length} rows, ${Date.now() - t0}ms)`);
+  }
+
+  const tickers = [...tickerSet];
   const enrichment = await loadStockEnrichment(pool, tickers);
 
   const allRows: ConvictionScoreRow[] = [];
-  // Score only the latest pair (UI default + QoQ). Earlier quarters stay in
-  // `history` for streak math but are not materialized as full signal rows.
   const scoreFromIdx = Math.max(1, quarters.length - 2);
   for (let i = scoreFromIdx; i < quarters.length; i++) {
     const q = quarters[i]!;
     const drafts = computeQuarterDrafts({
       history,
-      weightIndex,
       quarters,
       quarter: q,
       thresholds,

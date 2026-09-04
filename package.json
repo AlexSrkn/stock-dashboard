@@ -32,7 +32,7 @@
     "signals:warm-triple-signal": "tsx scripts/warm-triple-signal-cache.ts",
     "signals:warm-conflict-signals": "tsx scripts/warm-conflict-signals-cache.ts",
     "signals:warm-hidden-gems": "tsx scripts/warm-hidden-gems-cache.ts",
-    "signals:warm-conviction-score": "node --max-old-space-size=3072 --import tsx scripts/warm-conviction-score-cache.ts",
+    "signals:warm-conviction-score": "node --max-old-space-size=2048 --import tsx scripts/warm-conviction-score-cache.ts",
     "signals:warm-institutional-discovery": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-discovery-cache.ts",
     "test:conviction-score": "tsx --test src/signals/convictionScore/score.test.ts",
     "test:institutional-discovery": "tsx --test src/signals/institutionalDiscovery/score.test.ts",
