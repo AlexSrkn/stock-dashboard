@@ -485,8 +485,10 @@ export async function computeConvictionScores(
   pool: pg.Pool = getPool(),
   thresholds: ConvictionScoreThresholds = DEFAULT_CONVICTION_THRESHOLDS
 ): Promise<ConvictionScoreCachePayload> {
+  // 4 quarters: enough for 4Q accumulation streaks on the latest period without
+  // loading ~8× full-universe holdings (OOM on 4GB VPS with 7k+ filers).
   const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool, undefined, { maxQuarters: 8 }),
+    loadInstitutionHoldings(pool, undefined, { maxQuarters: 4 }),
     loadSharesOutstanding(pool),
   ]);
 
@@ -505,13 +507,17 @@ export async function computeConvictionScores(
         .filter(Boolean)
     ),
   ];
+  // Drop raw holdings ASAP — maps above retain what scoring needs.
+  holdings.length = 0;
+
   const enrichment = await loadStockEnrichment(pool, tickers);
 
   const allRows: ConvictionScoreRow[] = [];
-  // Need at least 2 quarters for accumulation; still score from Q2 onward
-  for (let i = 0; i < quarters.length; i++) {
+  // Score only the latest pair (UI default + QoQ). Earlier quarters stay in
+  // `history` for streak math but are not materialized as full signal rows.
+  const scoreFromIdx = Math.max(1, quarters.length - 2);
+  for (let i = scoreFromIdx; i < quarters.length; i++) {
     const q = quarters[i]!;
-    if (i === 0) continue; // need prior quarter for accumulation
     const drafts = computeQuarterDrafts({
       history,
       weightIndex,
@@ -534,13 +540,21 @@ export async function computeConvictionScores(
     ? withHistory.filter((r) => r.quarter === currentQuarter && !r.insufficientData)
     : [];
 
+  const keepQuarters = new Set(
+    [currentQuarter, previousQuarterLabel].filter((q): q is string => Boolean(q))
+  );
+  const slimSignals = withHistory
+    .filter((r) => keepQuarters.has(r.quarter) && !r.insufficientData)
+    .map((r) => ({
+      ...r,
+      history: r.history.filter((h) => keepQuarters.has(h.quarter)),
+    }));
+
   const sectors = [
-    ...new Set(withHistory.map((s) => s.sector).filter((s): s is string => !!s)),
+    ...new Set(slimSignals.map((s) => s.sector).filter((s): s is string => !!s)),
   ].sort((a, b) => a.localeCompare(b));
 
-  const pairQuarters = [
-    ...new Set(withHistory.map((s) => s.quarter).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b));
+  const pairQuarters = [...keepQuarters].sort((a, b) => a.localeCompare(b));
 
   return {
     version: 1,
@@ -551,6 +565,6 @@ export async function computeConvictionScores(
     thresholds,
     summary: buildSummary(latest, currentQuarter, previousQuarterLabel),
     sectors,
-    signals: withHistory,
+    signals: slimSignals,
   };
 }
