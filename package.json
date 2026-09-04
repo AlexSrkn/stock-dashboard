@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:performance": "tsx --test src/institution/performance/performanceEngine.test.ts",
     "test:smart-money": "tsx --test src/smartMoney/compositeScore.test.ts src/smartMoney/aggregate.test.ts",
-    "performance:warm-cache": "tsx scripts/warm-performance-cache.ts",
+    "performance:warm-cache": "node --max-old-space-size=3072 --import tsx scripts/warm-performance-cache.ts",
     "smart-money:warm-cache": "tsx scripts/warm-smart-money-cache.ts",
     "insider-clusters:warm-cache": "tsx scripts/warm-insider-cluster-cache.ts",
     "insiders:warm-conviction-buys": "tsx scripts/warm-conviction-buys-cache.ts",
