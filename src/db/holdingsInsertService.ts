@@ -28,9 +28,12 @@ export class HoldingsInsertService {
 
     try {
       // Pool default is often 120s; ingest needs longer (SEC parse + large holdings + lock wait).
+      // Clear any leftover session lock_timeout from a prior ensureSchema on this pooled client.
+      await client.query("SET lock_timeout = 0");
       await client.query(`SET statement_timeout = ${INGEST_STATEMENT_TIMEOUT_MS}`);
       await client.query("BEGIN");
       await client.query(`SET LOCAL statement_timeout = ${INGEST_STATEMENT_TIMEOUT_MS}`);
+      await client.query("SET LOCAL lock_timeout = 0");
 
       const filingResult = await client.query<{ id: string }>(
         INSERT_FILING_SQL,
@@ -111,7 +114,6 @@ export class HoldingsInsertService {
     const client = await this.pool.connect();
     try {
       await client.query("SET statement_timeout = 0");
-      await client.query("SET lock_timeout = '15s'");
 
       const ready = await client.query<{ ok: boolean }>(`
         SELECT (
@@ -129,10 +131,19 @@ export class HoldingsInsertService {
       `);
       if (ready.rows[0]?.ok) return;
 
+      // Only take exclusive locks when migrate is actually needed.
+      await client.query("SET lock_timeout = '15s'");
       const { loadHoldingsSchemaSql, loadHoldingsMigrateV2Sql } = await import("./schema.js");
       await client.query(loadHoldingsSchemaSql());
       await client.query(loadHoldingsMigrateV2Sql());
     } finally {
+      // Pooled clients retain session GUCs — never leave a short lock_timeout behind.
+      try {
+        await client.query("SET lock_timeout = 0");
+        await client.query("SET statement_timeout = 0");
+      } catch {
+        /* ignore */
+      }
       client.release();
     }
   }
