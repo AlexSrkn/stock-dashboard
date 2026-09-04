@@ -21463,7 +21463,10 @@ async function loadActiveSymbolPanels(forSymbol) {
   const stock = getDisplayStock();
   activeCurrency = stock?.currency || activeCurrency;
 
-  const [secFilRes, ownRes, secRes, insiderRes, intelRes, classRes] = await Promise.allSettled([
+  // Ownership intelligence can be slow on mega-caps — do not block overview /
+  // holders / SEC panels on it (unrelated to the TradingView exchange race).
+  const intelPromise = apiJson(`/api/stocks/${encodeURIComponent(sym)}/ownership-intelligence`);
+  const [secFilRes, ownRes, secRes, insiderRes, classRes] = await Promise.allSettled([
     fetchFilingsFundamentals(sym),
     fetchTopHolders(sym),
     fetchSecFilings(sym, 30),
@@ -21472,7 +21475,6 @@ async function loadActiveSymbolPanels(forSymbol) {
       codes: "P,S",
       sort: "date",
     }),
-    apiJson(`/api/stocks/${encodeURIComponent(sym)}/ownership-intelligence`),
     fetchStockClassification(sym),
   ]);
 
@@ -21498,13 +21500,6 @@ async function loadActiveSymbolPanels(forSymbol) {
   } else {
     setOverviewDataSource("SEC Company Facts (error)");
     renderStockOverview(null);
-  }
-
-  if (intelRes.status === "fulfilled") {
-    renderOwnershipIntelligencePanel(intelRes.value);
-  } else {
-    const msg = String(intelRes.reason?.message || intelRes.reason);
-    renderOwnershipIntelligencePanel(null, msg);
   }
 
   if (classRes.status === "fulfilled") {
@@ -21592,6 +21587,17 @@ async function loadActiveSymbolPanels(forSymbol) {
   if (isStalePanelLoad(loadSeq, sym)) return;
 
   void loadStockInsiderCluster(sym);
+
+  void intelPromise.then(
+    (payload) => {
+      if (isStalePanelLoad(loadSeq, sym)) return;
+      renderOwnershipIntelligencePanel(payload);
+    },
+    (err) => {
+      if (isStalePanelLoad(loadSeq, sym)) return;
+      renderOwnershipIntelligencePanel(null, String(err?.message || err));
+    }
+  );
 }
 
 async function selectStock(index) {
