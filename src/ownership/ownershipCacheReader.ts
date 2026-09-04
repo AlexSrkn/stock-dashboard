@@ -20,6 +20,7 @@ export interface OwnershipCacheSnapshot {
   ownershipTrend: string | null;
   currentShares: number;
   previousShares: number;
+  primaryCusip: string | null;
 }
 
 interface CacheRow {
@@ -31,6 +32,7 @@ interface CacheRow {
   previous_shares: number | null;
   shares_outstanding: number | null;
   current_quarter: string | null;
+  primary_cusip: string | null;
 }
 
 interface HoldingRow {
@@ -101,6 +103,7 @@ export async function loadOwnershipCacheSnapshot(
     ownershipTrend: row.ownership_trend ? String(row.ownership_trend) : null,
     currentShares: Number(row.current_shares) || 0,
     previousShares: Number(row.previous_shares) || 0,
+    primaryCusip: row.primary_cusip ? String(row.primary_cusip).trim() : null,
   };
 }
 

@@ -23,6 +23,8 @@ import {
 import { resolveStockIdentifiers } from "./resolveStock.js";
 import {
   loadOwnershipCacheSnapshot,
+  fetchCachedTopHolders,
+  fetchPreviousHoldersForCiks,
 } from "./ownershipCacheReader.js";
 import {
   canonicalFundName,
@@ -305,11 +307,52 @@ export async function getTopHolders(
   ticker: string,
   options: OwnershipQueryOptions = {}
 ): Promise<{ meta: OwnershipQueryMeta; holders: FundHoldingAggregate[] }> {
+  const sym = String(ticker || "").trim().toUpperCase();
+  const limit = Math.min(200, Math.max(1, options.limit ?? 100));
+  const snapshot = await loadOwnershipCacheSnapshot(pool, sym).catch(() => null);
+
+  // Fast path: ownership_holding is pre-aggregated. Avoid full sec_holding
+  // quarter-pair scans (mega-caps were 40–60s+ after bulk 13F ingest).
+  if (snapshot?.currentQuarter) {
+    const cusips = snapshot.primaryCusip ? [snapshot.primaryCusip] : [];
+    let holders = await fetchCachedTopHolders(
+      pool,
+      sym,
+      snapshot.sharesOutstanding,
+      null,
+      limit
+    );
+    if (snapshot.previousQuarter && cusips.length && holders.length) {
+      const ciks = holders.map((h) => h.filerCik).filter((c): c is string => Boolean(c));
+      const previous = await fetchPreviousHoldersForCiks(
+        pool,
+        cusips,
+        snapshot.previousQuarter,
+        ciks,
+        snapshot.sharesOutstanding,
+        null
+      );
+      holders = attachQuarterOverQuarterChange(holders, previous);
+    }
+    reloadTrackedInstitutions();
+    const meta: OwnershipQueryMeta = {
+      ticker: sym,
+      cusips,
+      issuerHint: null,
+      currentQuarter: snapshot.currentQuarter,
+      previousQuarter: snapshot.previousQuarter,
+      trackedFundCount: TRACKED_INSTITUTIONAL_MANAGERS.length,
+      impliedSharesOutstanding: snapshot.sharesOutstanding,
+      stockPrice: null,
+      currency: "USD",
+    };
+    return { meta, holders };
+  }
+
   const meta = await loadOwnershipMeta(pool, ticker);
   if (!meta.currentQuarter) {
     return { meta, holders: [] };
   }
-  const limit = Math.min(200, Math.max(1, options.limit ?? 100));
 
   const { current, previous } = await fetchQuarterPairMap(
     pool,
