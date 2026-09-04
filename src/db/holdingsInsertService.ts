@@ -102,13 +102,33 @@ export class HoldingsInsertService {
     }
   }
 
-  /** Apply schema DDL from `sql/sec_holding_schema.sql`. */
+  /**
+   * Apply schema DDL from `sql/sec_holding_schema.sql` + migrate v2.
+   * No-ops when v2 columns already exist so routine ingest does not take
+   * AccessExclusiveLock on a busy production `sec_holding` table.
+   */
   async ensureSchema(): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query("SET statement_timeout = 0");
-      // Fail fast if another session holds AccessExclusiveLock (e.g. long ALTER).
       await client.query("SET lock_timeout = '15s'");
+
+      const ready = await client.query<{ ok: boolean }>(`
+        SELECT (
+          EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'sec_filing'
+              AND column_name = 'total_value'
+          )
+          AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'sec_holding'
+              AND column_name = 'option_type'
+          )
+        ) AS ok
+      `);
+      if (ready.rows[0]?.ok) return;
+
       const { loadHoldingsSchemaSql, loadHoldingsMigrateV2Sql } = await import("./schema.js");
       await client.query(loadHoldingsSchemaSql());
       await client.query(loadHoldingsMigrateV2Sql());

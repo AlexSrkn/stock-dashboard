@@ -29,6 +29,7 @@ function parseArgs(argv: string[]) {
   let singleCik: string | null = null;
 
   let filingLimit = DEFAULT_FILING_LIMIT;
+  let skipSchema = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -40,14 +41,16 @@ function parseArgs(argv: string[]) {
       filingLimit = Math.max(1, Math.min(40, Number(argv[++i]) || DEFAULT_FILING_LIMIT));
     } else if (arg === "--cik" && argv[i + 1]) {
       singleCik = String(argv[++i]).replace(/\D/g, "");
+    } else if (arg === "--skip-schema") {
+      skipSchema = true;
     }
   }
 
-  return { from, limit, singleCik, filingLimit };
+  return { from, limit, singleCik, filingLimit, skipSchema };
 }
 
 async function main() {
-  const { from, limit, singleCik, filingLimit } = parseArgs(process.argv.slice(2));
+  const { from, limit, singleCik, filingLimit, skipSchema } = parseArgs(process.argv.slice(2));
 
   let managers = [...TRACKED_INSTITUTIONAL_MANAGERS];
   if (singleCik) {
@@ -80,7 +83,10 @@ async function main() {
     error?: string;
   }> = [];
 
-  let schemaReady = false;
+  let schemaReady = skipSchema;
+  if (skipSchema) {
+    console.log("Skipping ensureSchema (--skip-schema).");
+  }
 
   for (let i = 0; i < managers.length; i++) {
     const manager = managers[i];
