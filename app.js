@@ -12798,7 +12798,7 @@ function renderInsiderActivityTable() {
 
   if (!rows.length) {
     body.innerHTML =
-      `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">No insider transactions match this filter. Run <code class="inline-code">npm run db:ingest-insider-form4 -- TICKER</code> to load Form 4 data.</td></tr>`;
+      `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">No recent Insider Trades</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(renderInsiderTransactionRow).join("");
@@ -12865,7 +12865,7 @@ function renderCongressActivityTable() {
 
   if (!lastCongressTrades.length) {
     body.innerHTML =
-      '<tr><td colspan="5" class="trades-table__empty">No congressional purchases found for this stock. Run <code class="inline-code">npm run politicians:fetch-recent</code> to refresh PTR data.</td></tr>';
+      '<tr><td colspan="5" class="trades-table__empty">No recent Congress Trades</td></tr>';
     return;
   }
   body.innerHTML = lastCongressTrades.map(renderCongressActivityRow).join("");
