@@ -726,6 +726,13 @@ button.workspace-nav__subsection {
   font-size: 0.85rem;
 }
 
+.topbar-search__empty {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--muted, #6b7280);
+  list-style: none;
+}
+
 .topbar-search__name {
   grid-column: 2;
   font-size: 0.78rem;

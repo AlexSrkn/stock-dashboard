@@ -12471,14 +12471,20 @@ async function loadInstitutionPanel(tab, cik) {
 
 async function openInstitution(cik, tab = "holdings") {
   await ensureInstitutionsIndex();
-  activeInstitutionCik = bareInstitutionCik(cik);
+  const bare = bareInstitutionCik(cik);
+  const fund = trackedInstitutions.find((f) => bareInstitutionCik(f.cik) === bare);
+  if (!fund) {
+    setDashboardStatus(`No institution found for “${bare || cik}”`, true);
+    return false;
+  }
+  activeInstitutionCik = bare;
   activeInstitutionHubView = "directory";
   setExploreMode("institutions", { navigate: false });
   setInstitutionTab(tab, { updateUrl: true });
   const input = document.getElementById("top-search-input");
-  const fund = trackedInstitutions.find((f) => bareInstitutionCik(f.cik) === activeInstitutionCik);
-  if (input && fund?.name) input.value = fund.name;
+  if (input && fund.name) input.value = fund.name;
   closeTopSearch();
+  return true;
 }
 
 async function openInstitutionFromRoute(route) {
@@ -12636,11 +12642,11 @@ function makePreviewStockStub(symbol) {
 async function openStockFromRoute(route) {
   const sym = normalizeSymbol(route.symbol);
   if (!sym) return;
-  setViewingSymbol(sym);
   const idx = watchlist.findIndex((w) => normalizeSymbol(w.symbol) === sym);
   closeStocksOverlays();
   setStockTab(route.tab, { updateUrl: false });
   if (idx >= 0) {
+    setViewingSymbol(sym);
     previewStock = null;
     activeIndex = idx;
     activeCurrency = watchlist[idx].currency || "USD";
@@ -12650,6 +12656,20 @@ async function openStockFromRoute(route) {
     await loadActiveSymbolPanels(sym);
     return;
   }
+  const exact = await resolveExactStock(sym);
+  if (!exact) {
+    setDashboardStatus(`No stock found for “${sym}”`, true);
+    previewStock = null;
+    activeIndex = -1;
+    setViewingSymbol("");
+    renderEmptyMain(true);
+    renderHeader();
+    if (window.location.pathname !== "/stocks") {
+      history.replaceState({ explore: "stocks" }, "", "/stocks");
+    }
+    return;
+  }
+  setViewingSymbol(sym);
   previewStock = makePreviewStockStub(sym);
   activeIndex = -1;
   resetStockPanelUi(sym);
@@ -12665,6 +12685,10 @@ async function openStockFromRoute(route) {
     setDashboardStatus("");
   } catch (err) {
     setDashboardStatus(err instanceof Error ? err.message : String(err), true);
+    previewStock = null;
+    setViewingSymbol("");
+    renderEmptyMain(true);
+    renderHeader();
   }
 }
 
@@ -19139,25 +19163,33 @@ async function fetchQuote(_symbol) {
   };
 }
 
+/** Resolve a ticker only when it exists exactly in the stock directory. */
+async function resolveExactStock(symbol) {
+  const sym = normalizeSymbol(symbol);
+  if (!sym) return null;
+  try {
+    const results = await searchStocks(sym);
+    return (
+      results.find((r) => String(r.symbol || "").toUpperCase() === sym) || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function fetchWatchlistEntry(symbol) {
   const sym = String(symbol || "").trim().toUpperCase();
-  let name = sym;
-  try {
-    const data = await apiJson("/api/stocks/search", { q: sym, limit: 8 });
-    const results = Array.isArray(data?.results) ? data.results : [];
-    const exact = results.find((r) => String(r.symbol || "").toUpperCase() === sym);
-    const hit = exact || results[0];
-    name = hit?.name || hit?.description || sym;
-  } catch {
-    /* keep ticker as name */
+  const exact = await resolveExactStock(sym);
+  if (!exact) {
+    throw new Error(`${sym} was not found`);
   }
   return {
     symbol: sym,
-    name,
+    name: exact.name || exact.description || sym,
     price: null,
     changePct: 0,
     currency: "USD",
-    exchange: "",
+    exchange: exact.exchange || "",
     notifications: [],
     signals: [],
     latestActivity: null,
@@ -19556,8 +19588,8 @@ function renderTopCombinedSearchResults(stockResults, institutionResults, query)
   const instSlice = (Array.isArray(institutionResults) ? institutionResults : []).slice(0, instLimit);
 
   if (!stockSlice.length && !instSlice.length) {
-    ul.innerHTML = "";
-    ul.hidden = true;
+    ul.hidden = false;
+    ul.innerHTML = `<li class="topbar-search__empty" role="status">No matching stocks or institutions</li>`;
     return;
   }
 
@@ -19620,6 +19652,13 @@ async function openStockPreview(symbol) {
   const sym = normalizeSymbol(symbol);
   if (!sym) return;
   const req = ++openStockPreviewSeq;
+  const exact = await resolveExactStock(sym);
+  if (req !== openStockPreviewSeq) return;
+  if (!exact) {
+    setDashboardStatus(`No stock found for “${sym}”`, true);
+    renderTopCombinedSearchResults([], [], sym);
+    return;
+  }
   setViewingSymbol(sym);
   closeStocksOverlays();
   // Always land on Overview when searching a stock from another tab/section.
@@ -19651,7 +19690,10 @@ async function openStockPreview(symbol) {
     if (req !== openStockPreviewSeq || getViewingSymbol() !== sym) return;
     const msg = e instanceof Error ? e.message : String(e);
     setDashboardStatus(`Could not load ${sym}: ${msg}`, true);
+    previewStock = null;
+    setViewingSymbol("");
     renderEmptyMain(true);
+    renderHeader();
   }
 }
 
@@ -22595,11 +22637,14 @@ function setupTopSearch() {
       collapseMobileTopSearch();
     }
     if (e.key === "Enter") {
+      e.preventDefault();
       const q = input.value.trim();
       if (!q) return;
       void (async () => {
         const { stockResults, institutionResults } = await runTopCombinedSearch(q);
+        renderTopCombinedSearchResults(stockResults, institutionResults, q);
         const qUpper = q.toUpperCase();
+        const qLower = q.toLowerCase();
         const exactStock = stockResults.find(
           (r) => String(r.symbol || "").toUpperCase() === qUpper
         );
@@ -22607,12 +22652,23 @@ function setupTopSearch() {
           void openStockPreview(exactStock.symbol);
           return;
         }
+        const exactInst = institutionResults.find((f) => {
+          const name = String(f.name || "").toLowerCase();
+          const cik = bareInstitutionCik(f.cik);
+          return name === qLower || cik === q.replace(/^0+/, "") || cik === qUpper.replace(/^0+/, "");
+        });
+        if (exactInst?.cik) {
+          void openInstitution(exactInst.cik, "holdings");
+          return;
+        }
+        // Enter only opens a real hit from the result list — never invent a blank page.
         if (stockResults[0]?.symbol) {
           void openStockPreview(stockResults[0].symbol);
           return;
         }
         if (institutionResults[0]?.cik) {
           void openInstitution(institutionResults[0].cik, "holdings");
+          return;
         }
       })();
     }
