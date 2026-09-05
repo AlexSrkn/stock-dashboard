@@ -1996,25 +1996,8 @@ function updateExploreNav() {
 function updateTopSearchForMode() {
   const input = document.getElementById("top-search-input");
   const label = document.getElementById("top-search-label");
-  if (activeExploreMode === "institutions") {
-    if (input) input.placeholder = "Search institutions…";
-    if (label) label.textContent = "Search institutions";
-  } else if (activeExploreMode === "insiders") {
-    if (input) input.placeholder = "Search insiders…";
-    if (label) label.textContent = "Search insiders";
-  } else if (activeExploreMode === "politicians") {
-    if (input) input.placeholder = "Search politicians…";
-    if (label) label.textContent = "Search politicians";
-  } else if (activeExploreMode === "signals") {
-    if (input) input.placeholder = "Search signals…";
-    if (label) label.textContent = "Search signals";
-  } else if (activeExploreMode === "tools") {
-    if (input) input.placeholder = "Search tools…";
-    if (label) label.textContent = "Search tools";
-  } else {
-    if (input) input.placeholder = "Search stocks…";
-    if (label) label.textContent = "Search stocks";
-  }
+  if (input) input.placeholder = "Search stocks & institutions…";
+  if (label) label.textContent = "Search stocks and institutions";
 }
 
 function showMainEntityView() {
@@ -12564,7 +12547,14 @@ function searchInstitutions(query) {
     .filter((f) => {
       const name = String(f.name || "").toLowerCase();
       const cik = bareInstitutionCik(f.cik);
-      return name.includes(q) || cik.includes(q.replace(/^0+/, ""));
+      const typeLabel = institutionTypeLabel(f.type).toLowerCase();
+      const typeKey = String(f.type || "").toLowerCase().replace(/_/g, " ");
+      return (
+        name.includes(q) ||
+        cik.includes(q.replace(/^0+/, "")) ||
+        typeLabel.includes(q) ||
+        typeKey.includes(q)
+      );
     })
     .slice(0, 25);
 }
@@ -19541,16 +19531,37 @@ function collapseMobileTopSearch() {
   wrap.classList.remove("is-expanded");
 }
 
-function renderTopSearchResults(results) {
+/**
+ * Unified top-bar results: stocks (ticker first) + institutions (type first).
+ * Exact ticker matches rise to the top; then other stocks; then institutions.
+ */
+function renderTopCombinedSearchResults(stockResults, institutionResults, query) {
   const ul = document.getElementById("top-search-results");
   if (!ul) return;
-  if (!results.length) {
+
+  const q = String(query || "").trim().toUpperCase();
+  const stocks = Array.isArray(stockResults) ? [...stockResults] : [];
+  stocks.sort((a, b) => {
+    const sa = String(a.symbol || "").toUpperCase();
+    const sb = String(b.symbol || "").toUpperCase();
+    const ea = sa === q ? 0 : sa.startsWith(q) ? 1 : 2;
+    const eb = sb === q ? 0 : sb.startsWith(q) ? 1 : 2;
+    if (ea !== eb) return ea - eb;
+    return sa.localeCompare(sb);
+  });
+
+  const stockLimit = 12;
+  const instLimit = 12;
+  const stockSlice = stocks.slice(0, stockLimit);
+  const instSlice = (Array.isArray(institutionResults) ? institutionResults : []).slice(0, instLimit);
+
+  if (!stockSlice.length && !instSlice.length) {
     ul.innerHTML = "";
     ul.hidden = true;
     return;
   }
-  ul.hidden = false;
-  ul.innerHTML = results
+
+  const stockHtml = stockSlice
     .map((r) => {
       const sym = String(r.symbol || "");
       return `
@@ -19559,48 +19570,50 @@ function renderTopSearchResults(results) {
         <span class="topbar-search__sym">${escapeHtml(sym)}</span>
         <span class="topbar-search__name">${escapeHtml(r.description || r.name || sym)}${r.exchange ? ` · ${escapeHtml(r.exchange)}` : ""}</span>
       </button>
-    </li>
-  `;
+    </li>`;
     })
     .join("");
 
-  ul.querySelectorAll(".topbar-search__result").forEach((btn) => {
+  const instHtml = instSlice
+    .map((f) => {
+      const cik = bareInstitutionCik(f.cik);
+      const typeLabel = institutionTypeLabel(f.type);
+      return `
+    <li>
+      <button type="button" class="topbar-search__result" data-institution-cik="${escapeHtml(cik)}" role="option">
+        <span class="topbar-search__sym">${escapeHtml(typeLabel)}</span>
+        <span class="topbar-search__name">${escapeHtml(f.name)} · CIK ${escapeHtml(cik)}</span>
+      </button>
+    </li>`;
+    })
+    .join("");
+
+  ul.hidden = false;
+  ul.innerHTML = stockHtml + instHtml;
+
+  ul.querySelectorAll(".topbar-search__result[data-symbol]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const sym = btn.dataset.symbol;
       if (sym) void openStockPreview(sym);
     });
   });
-}
-
-function renderTopInstitutionSearchResults(results) {
-  const ul = document.getElementById("top-search-results");
-  if (!ul) return;
-  if (!results.length) {
-    ul.innerHTML = "";
-    ul.hidden = true;
-    return;
-  }
-  ul.hidden = false;
-  ul.innerHTML = results
-    .map((f) => {
-      const cik = bareInstitutionCik(f.cik);
-      return `
-    <li>
-      <button type="button" class="topbar-search__result" data-institution-cik="${escapeHtml(cik)}" role="option">
-        <span class="topbar-search__sym">${escapeHtml(f.type || "13F")}</span>
-        <span class="topbar-search__name">${escapeHtml(f.name)} · CIK ${escapeHtml(cik)}</span>
-      </button>
-    </li>
-  `;
-    })
-    .join("");
-
-  ul.querySelectorAll("[data-institution-cik]").forEach((btn) => {
+  ul.querySelectorAll(".topbar-search__result[data-institution-cik]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const cik = btn.getAttribute("data-institution-cik");
       if (cik) void openInstitution(cik, "holdings");
     });
   });
+}
+
+async function runTopCombinedSearch(query) {
+  const [stockResults, institutionResults] = await Promise.all([
+    searchStocks(query).catch(() => []),
+    (async () => {
+      await ensureInstitutionsIndex();
+      return searchInstitutions(query);
+    })().catch(() => []),
+  ]);
+  return { stockResults, institutionResults };
 }
 
 async function openStockPreview(symbol) {
@@ -21427,11 +21440,14 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
   script.src = TRADINGVIEW_WIDGET_SRC;
   script.async = true;
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
+  // Keep details/hotlist/calendar off — when any open, TV paints a ~¼-width
+  // grey right panel inside the iframe. Always hide the left drawing toolbar
+  // on this dashboard embed (mobile already did; desktop was the intermittent case).
   script.innerHTML = JSON.stringify({
     allow_symbol_change: false,
     calendar: false,
     details: false,
-    hide_side_toolbar: isMobile,
+    hide_side_toolbar: true,
     hide_top_toolbar: false,
     hide_legend: false,
     hide_volume: false,
@@ -22560,16 +22576,9 @@ function setupTopSearch() {
     topSearchDebounceTimer = setTimeout(() => {
       void (async () => {
         try {
-          if (activeExploreMode === "institutions") {
-            await ensureInstitutionsIndex();
-            const results = searchInstitutions(q);
-            if (reqId !== topSearchRequestId) return;
-            renderTopInstitutionSearchResults(results);
-          } else {
-            const results = await searchStocks(q);
-            if (reqId !== topSearchRequestId) return;
-            renderTopSearchResults(results);
-          }
+          const { stockResults, institutionResults } = await runTopCombinedSearch(q);
+          if (reqId !== topSearchRequestId) return;
+          renderTopCombinedSearchResults(stockResults, institutionResults, q);
         } catch {
           if (reqId !== topSearchRequestId) return;
           closeTopSearch();
@@ -22588,15 +22597,24 @@ function setupTopSearch() {
     if (e.key === "Enter") {
       const q = input.value.trim();
       if (!q) return;
-      if (activeExploreMode === "institutions") {
-        void (async () => {
-          await ensureInstitutionsIndex();
-          const hits = searchInstitutions(q);
-          if (hits[0]) void openInstitution(hits[0].cik, "holdings");
-        })();
-      } else {
-        void openStockPreview(q);
-      }
+      void (async () => {
+        const { stockResults, institutionResults } = await runTopCombinedSearch(q);
+        const qUpper = q.toUpperCase();
+        const exactStock = stockResults.find(
+          (r) => String(r.symbol || "").toUpperCase() === qUpper
+        );
+        if (exactStock?.symbol) {
+          void openStockPreview(exactStock.symbol);
+          return;
+        }
+        if (stockResults[0]?.symbol) {
+          void openStockPreview(stockResults[0].symbol);
+          return;
+        }
+        if (institutionResults[0]?.cik) {
+          void openInstitution(institutionResults[0].cik, "holdings");
+        }
+      })();
     }
   });
 
