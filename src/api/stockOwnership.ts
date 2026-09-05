@@ -68,7 +68,9 @@ export async function tryHandleStockOwnership(
       limit: parseLimit(url),
       quarters: parseQuarters(url),
     });
-    json(res, 200, payload);
+    // Top holders include 13F dollar overlays — avoid long browser caches of stale null values.
+    const cacheSeconds = endpoint === "top-holders" ? 15 : 120;
+    json(res, 200, payload, cacheSeconds);
   } catch (err) {
     if (err instanceof OwnershipResolveError) {
       json(res, err.statusCode, { error: "ownership_resolve_error", message: err.message });

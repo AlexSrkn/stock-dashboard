@@ -983,13 +983,22 @@ function resolveOwnershipStockPrice() {
 }
 
 function resolveOwnershipRowValueUsd(h) {
-  const direct = Number(h.valueUsd);
-  if (Number.isFinite(direct)) return direct;
+  // Never treat null/undefined as 0 — Number(null) === 0 caused $0.00 for missing 13F values.
+  if (h.valueUsd != null && h.valueUsd !== "") {
+    const direct = Number(h.valueUsd);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+  }
   const px = resolveOwnershipStockPrice();
   const shares = Number(h.shares);
-  if (px != null && Number.isFinite(shares)) return shares * px;
-  const legacyThousands = Number(h.valueUsdThousands);
-  if (Number.isFinite(legacyThousands)) return legacyThousands * 1000;
+  if (px != null && Number.isFinite(shares) && shares > 0) return shares * px;
+  if (h.valueUsd != null && h.valueUsd !== "") {
+    const direct = Number(h.valueUsd);
+    if (Number.isFinite(direct)) return direct;
+  }
+  if (h.valueUsdThousands != null && h.valueUsdThousands !== "") {
+    const legacyThousands = Number(h.valueUsdThousands);
+    if (Number.isFinite(legacyThousands)) return legacyThousands * 1000;
+  }
   return null;
 }
 
@@ -1144,11 +1153,13 @@ function institutionStockLinkHtml(ticker, issuerName) {
 
 function renderOwnershipRow(h) {
   const fund = institutionFundLinkHtml(h.fundName, h.filerCik);
+  // Prefer the enriched/API 13F value (same dollars as Institution Holdings).
+  const valueUsd = h.valueUsd != null ? Number(h.valueUsd) : resolveOwnershipRowValueUsd(h);
   return `
     <tr>
       <td>${fund}</td>
       <td class="mono num">${escapeHtml(formatShareCount(h.shares))}</td>
-      <td class="mono num">${escapeHtml(formatHoldingValueUsd(resolveOwnershipRowValueUsd(h), lastOwnershipCurrency))}</td>
+      <td class="mono num">${escapeHtml(formatHoldingValueUsd(valueUsd, lastOwnershipCurrency))}</td>
       <td class="mono num">${escapeHtml(formatPercentValue(h.pctOutstanding, false))}</td>
       ${renderOwnershipChangeCell(h)}
       ${renderOwnershipValueAddedCell(h)}

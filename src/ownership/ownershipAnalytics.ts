@@ -320,7 +320,9 @@ export async function getTopHolders(
       sym,
       snapshot.sharesOutstanding,
       null,
-      limit
+      limit,
+      // ownership_holding has no 13F value column — overlay from sec_holding.
+      cusips.length ? { cusips, quarter: snapshot.currentQuarter } : undefined
     );
     if (snapshot.previousQuarter && cusips.length && holders.length) {
       const ciks = holders.map((h) => h.filerCik).filter((c): c is string => Boolean(c));
