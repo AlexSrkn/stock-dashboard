@@ -21702,9 +21702,10 @@ function closeDrawerIfMobile() {
   clearMobileOverlays({ topbarNav: false });
 }
 
-/** Force-clear mobile menu / watchlist dimmers (classes + [hidden] + inline display). */
+/** Force-clear mobile menu / sidebar dimmers (classes + [hidden] + inline display). */
 function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
   if (watchlist) {
+    document.getElementById("sidebar-drawer")?.classList.remove("is-open");
     document.getElementById("watchlist-panel")?.classList.remove("is-open");
     document.body.classList.remove("watchlist-drawer-open");
     document.querySelectorAll(".watchlist-toggle").forEach((btn) => {
@@ -21732,14 +21733,26 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
   }
 }
 
+function setSidebarDrawerTab(tab) {
+  const drawer = document.getElementById("sidebar-drawer");
+  if (!drawer) return;
+  const next = tab === "pulse" ? "pulse" : "watchlist";
+  drawer.dataset.drawerTab = next;
+  drawer.querySelectorAll(".sidebar-drawer__tab").forEach((btn) => {
+    const active = btn.getAttribute("data-drawer-tab") === next;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  });
+}
+
 function setupDrawer() {
-  const aside = document.getElementById("watchlist-panel");
+  const drawer = document.getElementById("sidebar-drawer");
   const toggles = [...document.querySelectorAll(".watchlist-toggle")];
   const scrim = document.getElementById("drawer-scrim");
-  if (!aside || !toggles.length) return;
+  if (!drawer || !toggles.length) return;
 
   function setOpen(open) {
-    aside.classList.toggle("is-open", open);
+    drawer.classList.toggle("is-open", open);
     document.body.classList.toggle("watchlist-drawer-open", open);
     for (const toggle of toggles) {
       toggle.setAttribute("aria-expanded", String(open));
@@ -21749,17 +21762,26 @@ function setupDrawer() {
 
   for (const toggle of toggles) {
     toggle.addEventListener("click", () => {
-      setOpen(!aside.classList.contains("is-open"));
+      const opening = !drawer.classList.contains("is-open");
+      if (opening) setSidebarDrawerTab("watchlist");
+      setOpen(opening);
     });
   }
+
+  drawer.querySelectorAll(".sidebar-drawer__tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.getAttribute("data-drawer-tab");
+      if (tab) setSidebarDrawerTab(tab);
+    });
+  });
 
   if (scrim) scrim.addEventListener("click", () => setOpen(false));
 
   document.addEventListener("click", (e) => {
     if (!window.matchMedia("(max-width: 960px)").matches) return;
-    if (!aside.classList.contains("is-open")) return;
+    if (!drawer.classList.contains("is-open")) return;
     const t = e.target;
-    if (aside.contains(t) || toggles.some((btn) => btn.contains(t)) || (scrim && scrim.contains(t))) {
+    if (drawer.contains(t) || toggles.some((btn) => btn.contains(t)) || (scrim && scrim.contains(t))) {
       return;
     }
     setOpen(false);
