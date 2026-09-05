@@ -745,7 +745,7 @@ http
     })();
   })
   .listen(PORT, () => {
-    console.log(`TradeAtlant: http://localhost:${PORT}`);
+    console.log(`InvestAtlant: http://localhost:${PORT}`);
     console.log("Market data: SEC + TradingView (Yahoo Finance removed)");
     console.log("Ownership API: /api/stocks/:ticker/{top-holders,ownership-changes,new-positions,sold-out,institutional-options,institutional-transactions}");
     console.log("Stocks activity API: /api/stocks/recently-active, /api/stocks/most-accumulated, /api/stocks/ownership-changes, /api/stocks/holder-overlap, /api/stocks/ownership-history");

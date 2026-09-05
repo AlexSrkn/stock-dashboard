@@ -16,7 +16,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WRAPPER="$ROOT/scripts/cron/run-fundamentals-scrape.sh"
 BOOT_LOG="$ROOT/data/logs/cron-fundamentals-scrape.log"
-MARKER="# TradeAtlant fundamentals-scrape"
+MARKER="# InvestAtlant fundamentals-scrape"
 TIME="04:00"
 TZ_NAME="Europe/Berlin"
 WINDOW="q2-10q-2026"

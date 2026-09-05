@@ -1250,11 +1250,11 @@ function isContactPath(pathname) {
 }
 
 const LEGAL_PAGES = {
-  cookies: { path: "/legal/cookies", viewId: "view-legal-cookies", title: "Cookie Policy — TradeAtlant" },
-  privacy: { path: "/legal/privacy", viewId: "view-legal-privacy", title: "Privacy Policy — TradeAtlant" },
-  terms: { path: "/legal/terms", viewId: "view-legal-terms", title: "Terms of Service — TradeAtlant" },
-  disclaimer: { path: "/legal/disclaimer", viewId: "view-legal-disclaimer", title: "Disclaimer — TradeAtlant" },
-  impressum: { path: "/legal/impressum", viewId: "view-legal-impressum", title: "Impressum — TradeAtlant" },
+  cookies: { path: "/legal/cookies", viewId: "view-legal-cookies", title: "Cookie Policy — InvestAtlant" },
+  privacy: { path: "/legal/privacy", viewId: "view-legal-privacy", title: "Privacy Policy — InvestAtlant" },
+  terms: { path: "/legal/terms", viewId: "view-legal-terms", title: "Terms of Service — InvestAtlant" },
+  disclaimer: { path: "/legal/disclaimer", viewId: "view-legal-disclaimer", title: "Disclaimer — InvestAtlant" },
+  impressum: { path: "/legal/impressum", viewId: "view-legal-impressum", title: "Impressum — InvestAtlant" },
 };
 
 function parseLegalPageKey(pathname) {
@@ -1265,14 +1265,14 @@ function parseLegalPageKey(pathname) {
   return null;
 }
 
-const LANDING_PAGE_TITLE = "TradeAtlant — Stock & institutional research";
-const PREMIUM_PAGE_TITLE = "Premium — TradeAtlant";
-const FAQ_PAGE_TITLE = "FAQ — TradeAtlant";
-const METHODOLOGY_PAGE_TITLE = "Methodology — TradeAtlant";
-const DATA_SOURCES_PAGE_TITLE = "Data Sources — TradeAtlant";
-const ABOUT_PAGE_TITLE = "About — TradeAtlant";
-const CONTACT_PAGE_TITLE = "Contact — TradeAtlant";
-const APP_PAGE_TITLE = "TradeAtlant";
+const LANDING_PAGE_TITLE = "InvestAtlant — Stock & institutional research";
+const PREMIUM_PAGE_TITLE = "Premium — InvestAtlant";
+const FAQ_PAGE_TITLE = "FAQ — InvestAtlant";
+const METHODOLOGY_PAGE_TITLE = "Methodology — InvestAtlant";
+const DATA_SOURCES_PAGE_TITLE = "Data Sources — InvestAtlant";
+const ABOUT_PAGE_TITLE = "About — InvestAtlant";
+const CONTACT_PAGE_TITLE = "Contact — InvestAtlant";
+const APP_PAGE_TITLE = "InvestAtlant";
 
 function hidePremiumView() {
   const premium = document.getElementById("view-premium");
@@ -18566,9 +18566,15 @@ function setupInstitutionalDiscoveryHub() {
 async function loadSmartMoneyHub() {
   const body = document.getElementById("smart-money-hub-body");
   const meta = document.getElementById("smart-money-hub-meta");
+  const highestEl = document.getElementById("smart-money-highest");
+  const bullishEl = document.getElementById("smart-money-bullish");
+  const countEl = document.getElementById("smart-money-count");
   if (!body) return;
   body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">Loading smart money scores…</td></tr>`;
   if (meta) meta.textContent = "Loading…";
+  if (highestEl) highestEl.textContent = "—";
+  if (bullishEl) bullishEl.textContent = "—";
+  if (countEl) countEl.textContent = "—";
   try {
     const data = await apiJson("/api/smart-money/scores", { limit: 100 });
     const rows = Array.isArray(data?.scores) ? data.scores : [];
@@ -18577,8 +18583,15 @@ async function loadSmartMoneyHub() {
       if (meta) meta.textContent = "Requires institutional, insider, and Congress data on the same ticker";
       return;
     }
+    const total = Number(data.count ?? rows.length);
+    const scores = rows.map((row) => Number(row.smartMoneyConvictionScore)).filter(Number.isFinite);
+    const highest = scores.length ? Math.max(...scores) : null;
+    const bullish = scores.filter((s) => s >= 65).length;
+    if (highestEl) highestEl.textContent = highest != null ? highest.toFixed(1) : "—";
+    if (bullishEl) bullishEl.textContent = String(bullish);
+    if (countEl) countEl.textContent = String(total);
     if (meta) {
-      meta.textContent = `Top ${rows.length} of ${data.count ?? rows.length} tickers · 0–100 conviction`;
+      meta.textContent = `Top ${rows.length} of ${total} · 0–100 conviction`;
     }
     body.innerHTML = rows
       .map(
@@ -22541,13 +22554,13 @@ function setupContactForm() {
     }
 
     const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n");
-    const mailto = `mailto:contact@tradeatlant.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailto = `mailto:contact@investatlant.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto;
 
     if (note) {
       note.hidden = false;
       note.textContent =
-        "Opening your email app to send the message. If nothing opens, email contact@tradeatlant.com directly.";
+        "Opening your email app to send the message. If nothing opens, email contact@investatlant.com directly.";
     }
   });
 }

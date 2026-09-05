@@ -192,28 +192,28 @@ export function showAuthRoute() {
 
   if (path === "/register") {
     showScreen("register");
-    document.title = "Create account — TradeAtlant";
+    document.title = "Create account — InvestAtlant";
     qs(auth, "#auth-register-name")?.focus();
   } else if (path === "/check-email") {
     showScreen("check-email");
-    document.title = "Check your email — TradeAtlant";
+    document.title = "Check your email — InvestAtlant";
     const email = params.get("email") || pendingVerifyEmail();
     const el = qs(auth, "#auth-check-email-address");
     if (el) el.textContent = email || "your inbox";
     if (email) setPendingVerifyEmail(email);
   } else if (path === "/forgot-password") {
     showScreen("forgot");
-    document.title = "Reset password — TradeAtlant";
+    document.title = "Reset password — InvestAtlant";
     qs(auth, "#auth-forgot-email")?.focus();
   } else if (path === "/reset-password") {
     showScreen("reset");
-    document.title = "Choose a new password — TradeAtlant";
+    document.title = "Choose a new password — InvestAtlant";
     const tokenInput = qs(auth, "#auth-reset-token");
     if (tokenInput) tokenInput.value = params.get("token") || "";
     qs(auth, "#auth-reset-password")?.focus();
   } else {
     showScreen("login");
-    document.title = "Log in — TradeAtlant";
+    document.title = "Log in — InvestAtlant";
     if (params.get("verified") === "1") {
       setMsg(qs(auth, "#auth-login-success"), "Email verified. You can log in now.", true);
     }

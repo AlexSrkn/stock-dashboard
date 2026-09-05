@@ -15,7 +15,7 @@ export interface SendAuthEmailInput {
 function fromAddress(): string {
   return (
     process.env.AUTH_EMAIL_FROM?.trim() ||
-    "TradeAtlant <onboarding@resend.dev>"
+    "InvestAtlant <onboarding@resend.dev>"
   );
 }
 
@@ -27,11 +27,11 @@ function buildContent(input: SendAuthEmailInput): { subject: string; html: strin
   const greeting = input.name ? `Hi ${input.name},` : "Hi,";
   if (input.kind === "verify") {
     return {
-      subject: "Verify your TradeAtlant email",
-      text: `${greeting}\n\nConfirm your email to finish creating your TradeAtlant account:\n${input.actionUrl}\n\nThis link expires in 48 hours. If you didn't sign up, you can ignore this email.\n`,
+      subject: "Verify your InvestAtlant email",
+      text: `${greeting}\n\nConfirm your email to finish creating your InvestAtlant account:\n${input.actionUrl}\n\nThis link expires in 48 hours. If you didn't sign up, you can ignore this email.\n`,
       html: `
         <div style="font-family:DM Sans,Segoe UI,sans-serif;line-height:1.5;color:#0c1017;max-width:520px;margin:0 auto;padding:24px">
-          <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0f766e;font-weight:700">TradeAtlant</p>
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0f766e;font-weight:700">InvestAtlant</p>
           <h1 style="margin:0 0 12px;font-size:22px;letter-spacing:-.02em">Verify your email</h1>
           <p style="margin:0 0 16px;color:#334155">${greeting}</p>
           <p style="margin:0 0 20px;color:#334155">Confirm your email to finish creating your account.</p>
@@ -47,11 +47,11 @@ function buildContent(input: SendAuthEmailInput): { subject: string; html: strin
   }
 
   return {
-    subject: "Reset your TradeAtlant password",
-    text: `${greeting}\n\nReset your TradeAtlant password using this link:\n${input.actionUrl}\n\nThis link expires in 1 hour. If you didn't request a reset, you can ignore this email.\n`,
+    subject: "Reset your InvestAtlant password",
+    text: `${greeting}\n\nReset your InvestAtlant password using this link:\n${input.actionUrl}\n\nThis link expires in 1 hour. If you didn't request a reset, you can ignore this email.\n`,
     html: `
       <div style="font-family:DM Sans,Segoe UI,sans-serif;line-height:1.5;color:#0c1017;max-width:520px;margin:0 auto;padding:24px">
-        <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0f766e;font-weight:700">TradeAtlant</p>
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#0f766e;font-weight:700">InvestAtlant</p>
         <h1 style="margin:0 0 12px;font-size:22px;letter-spacing:-.02em">Reset your password</h1>
         <p style="margin:0 0 16px;color:#334155">${greeting}</p>
         <p style="margin:0 0 20px;color:#334155">Click below to choose a new password.</p>

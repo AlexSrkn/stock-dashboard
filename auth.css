@@ -1,4 +1,4 @@
-/* Dedicated auth screens — matches TradeAtlant tokens */
+/* Dedicated auth screens — matches InvestAtlant tokens */
 
 .auth-page {
   min-height: calc(100dvh - var(--topbar-height) - 2rem);

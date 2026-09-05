@@ -9,13 +9,13 @@
 # Default window mode q3-2026: every night at 03:00 Europe/Berlin from 1 Oct through 16 Nov
 # (Q3 13F filing season). Outside that range, no cron entries fire.
 #
-# Preserves other crontab entries (including TradeAtlant daily-scrape).
+# Preserves other crontab entries (including InvestAtlant daily-scrape).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WRAPPER="$ROOT/scripts/cron/run-13f-scrape.sh"
 BOOT_LOG="$ROOT/data/logs/cron-13f-scrape.log"
-MARKER="# TradeAtlant 13f-scrape"
+MARKER="# InvestAtlant 13f-scrape"
 TIME="03:00"
 TZ_NAME="Europe/Berlin"
 # daily | q3-2026 (Oct 1–Nov 16) | q2-2026 (Jun 30–Aug 14) | custom via --cron-spec later

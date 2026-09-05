@@ -6,13 +6,13 @@
 #   bash scripts/cron/install-daily-scrape-cron.sh --time 02:00 --tz Europe/Berlin
 #
 # Default: every day at 02:00 in Europe/Berlin (CEST/CET).
-# Preserves other crontab entries (including TradeAtlant 13f-scrape).
+# Preserves other crontab entries (including InvestAtlant 13f-scrape).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WRAPPER="$ROOT/scripts/cron/run-daily-scrape.sh"
 BOOT_LOG="$ROOT/data/logs/cron-daily-scrape.log"
-MARKER="# TradeAtlant daily-scrape"
+MARKER="# InvestAtlant daily-scrape"
 TIME="02:00"
 TZ_NAME="Europe/Berlin"
 

@@ -5366,6 +5366,26 @@ body.is-legal-page #view-contact {
   height: 100%;
 }
 
+.tradingview-chart .tradingview-widget-container,
+.tradingview-chart .tradingview-widget-container__widget {
+  width: 100% !important;
+  height: 100% !important;
+  background: #0c1017;
+}
+
+.tradingview-chart .tradingview-widget-container__widget {
+  /* Copyright row is ~24px; keep the iframe filling the rest. */
+  height: calc(100% - 24px) !important;
+}
+
+.tradingview-chart iframe {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  background: #0c1017;
+}
+
 .tradingview-widget-placeholder {
   display: flex;
   align-items: center;
@@ -6510,10 +6530,6 @@ body.chart-fullscreen-active {
 }
 
 .insider-clusters-page {
-  margin-top: 0;
-}
-
-.smart-money-hub {
   margin-top: 0;
 }
 
