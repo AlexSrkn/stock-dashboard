@@ -1048,8 +1048,22 @@ a.topbar-login__link {
   background: rgba(62, 230, 176, 0.1);
 }
 
-.mobile-dock__icon {
+.mobile-dock__icon,
+.mobile-dock__plus,
+.watchlist-toggle__plus {
   flex-shrink: 0;
+}
+
+.mobile-dock__plus,
+.watchlist-toggle__plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 /* Site footer */
@@ -7486,13 +7500,13 @@ body.chart-fullscreen-active {
     grid-template-columns: 1fr;
   }
 
-  /* Sidebar is drawer-only on mobile — don't keep watchlist/pulse in page flow */
+  /* Sidebar is drawer-only on mobile */
   .layout-sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-height: none;
     margin: 0;
     overflow: visible;
     pointer-events: none;
@@ -7500,14 +7514,15 @@ body.chart-fullscreen-active {
   }
 
   .sidebar-scroll {
-    display: contents;
+    display: block;
     height: auto;
     overflow: visible;
     gap: 0;
+    padding: 0;
   }
 
   .sidebar-drawer {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     position: fixed;
     top: 0;
@@ -7522,7 +7537,7 @@ body.chart-fullscreen-active {
     border-radius: 0;
     border-right: 1px solid var(--sidebar-panel-border);
     background: var(--bg-deep);
-    transform: translateX(-105%);
+    transform: translate3d(-105%, 0, 0);
     transition: transform 0.25s ease, visibility 0.25s ease;
     overflow: hidden;
     visibility: hidden;
@@ -7530,19 +7545,20 @@ body.chart-fullscreen-active {
   }
 
   .sidebar-drawer.is-open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     visibility: visible;
     pointer-events: auto;
   }
 
   .sidebar-drawer__tabs {
-    display: grid;
+    display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 0.35rem;
-    flex-shrink: 0;
+    flex: 0 0 auto;
     padding: 1.15rem 0.75rem 0.55rem;
     border-bottom: 1px solid var(--sidebar-panel-border);
     background: var(--bg-deep);
+    z-index: 2;
   }
 
   .sidebar-drawer__tab {
@@ -7558,6 +7574,7 @@ body.chart-fullscreen-active {
     text-transform: uppercase;
     padding: 0.55rem 0.5rem;
     cursor: pointer;
+    touch-action: manipulation;
   }
 
   .sidebar-drawer__tab.is-active {
@@ -7569,30 +7586,41 @@ body.chart-fullscreen-active {
   .sidebar-card--watchlist,
   .sidebar-card--pulse {
     min-height: 0;
-    flex: 1;
+    flex: 1 1 auto;
     border: none;
     border-radius: 0;
     box-shadow: none;
     background: transparent;
-    overflow: hidden;
   }
 
-  .sidebar-drawer[data-drawer-tab="watchlist"] [data-drawer-pane="pulse"],
+  .sidebar-drawer[data-drawer-tab="watchlist"] [data-drawer-pane="pulse"] {
+    display: none !important;
+  }
+
   .sidebar-drawer[data-drawer-tab="pulse"] [data-drawer-pane="watchlist"] {
     display: none !important;
   }
 
-  .sidebar-drawer[data-drawer-tab="watchlist"] [data-drawer-pane="watchlist"],
-  .sidebar-drawer[data-drawer-tab="pulse"] [data-drawer-pane="pulse"] {
-    display: flex;
+  .sidebar-drawer[data-drawer-tab="watchlist"] [data-drawer-pane="watchlist"] {
+    display: flex !important;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
 
-  .sidebar-card--pulse {
-    padding: 0 0 0.85rem;
+  .sidebar-drawer[data-drawer-tab="pulse"] [data-drawer-pane="pulse"] {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 0.85rem;
+  }
+
+  .sidebar-drawer[data-drawer-tab="pulse"] .panel-head--compact {
+    display: none;
   }
 
   .watchlist-toggle {
@@ -7608,6 +7636,9 @@ body.chart-fullscreen-active {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   .watchlist__list {
@@ -7827,13 +7858,21 @@ body.chart-fullscreen-active {
     bottom: 0;
     z-index: 70;
     justify-content: center;
-    padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+    align-items: center;
+    padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
     pointer-events: none;
-    background: linear-gradient(to top, rgba(7, 10, 15, 0.92), rgba(7, 10, 15, 0));
+    background: rgba(7, 10, 15, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    transform: translateZ(0);
   }
 
   .mobile-dock__btn {
     pointer-events: auto;
+    touch-action: manipulation;
+    min-width: 10.5rem;
+    min-height: 2.75rem;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 
   body.is-auth .mobile-dock,

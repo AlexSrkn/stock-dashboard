@@ -21769,7 +21769,9 @@ function setupDrawer() {
   }
 
   drawer.querySelectorAll(".sidebar-drawer__tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const tab = btn.getAttribute("data-drawer-tab");
       if (tab) setSidebarDrawerTab(tab);
     });
