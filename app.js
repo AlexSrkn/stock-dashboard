@@ -143,10 +143,11 @@ function resetStockPanelUi(sym) {
 
   renderStockClassificationLabel(null);
   // Only mount TradingView once we know the exchange (or have it cached).
-  // Mounting as NASDAQ:TICKER first causes a brief "symbol doesn't exist" flash.
+  // Do not force-remount — recreating the iframe is what intermittently
+  // flashes TradingView’s grey right panel.
   if (symbol && tradingViewExchangeBySymbol.has(symbol)) {
-    renderTradingViewWidget(symbol, { force: true });
-    renderTradingViewSymbolInfo(symbol, { force: true });
+    renderTradingViewWidget(symbol);
+    renderTradingViewSymbolInfo(symbol);
   } else {
     showTradingViewChartPlaceholder();
     showTradingViewSymbolInfoPlaceholder();
@@ -21546,6 +21547,11 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
   });
   container.appendChild(script);
   host.appendChild(container);
+  // One gentle layout pass after iframe insert — helps autosize without the
+  // aggressive multi-resize that previously forced the right panel open.
+  requestAnimationFrame(() => {
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 350);
+  });
 }
 
 async function loadActiveSymbolPanels(forSymbol) {
@@ -21644,16 +21650,18 @@ async function loadActiveSymbolPanels(forSymbol) {
     const sub = name.length > 72 ? `${name.slice(0, 69)}…` : name;
     setSecSubtitle(sub ? `CIK ${p.cik} · ${sub}` : `CIK ${p.cik} · data.sec.gov submissions`);
     // Pin TradingView to the SEC-listed US equity exchange (avoids broker CFDs).
-    rememberTradingViewExchange(sym, p.exchange);
-    renderTradingViewWidget(sym, { force: true, fallbackExchange: "NASDAQ" });
-    renderTradingViewSymbolInfo(sym, { force: true, fallbackExchange: "NASDAQ" });
+    // Remount only when the exchange prefix actually changed — force-remounting
+    // the same chart is the main intermittent grey-panel trigger.
+    const exchangeChanged = rememberTradingViewExchange(sym, p.exchange);
+    renderTradingViewWidget(sym, { force: exchangeChanged, fallbackExchange: "NASDAQ" });
+    renderTradingViewSymbolInfo(sym, { force: exchangeChanged, fallbackExchange: "NASDAQ" });
   } else {
     lastSecFilings = [];
     secErr = String(secRes.reason?.message || secRes.reason);
     setSecSubtitle("SEC submissions (error)");
     // SEC failed — still show a chart rather than leave the placeholder forever.
-    renderTradingViewWidget(sym, { force: true, fallbackExchange: "NASDAQ" });
-    renderTradingViewSymbolInfo(sym, { force: true, fallbackExchange: "NASDAQ" });
+    renderTradingViewWidget(sym, { fallbackExchange: "NASDAQ" });
+    renderTradingViewSymbolInfo(sym, { fallbackExchange: "NASDAQ" });
   }
 
   if (insiderRes.status === "fulfilled") {
