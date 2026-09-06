@@ -5,14 +5,24 @@ import { getStocksRepository } from "../../stocks/stocksRepository.js";
 import { fetchCompanyFacts } from "./companyFacts.js";
 import { discoverFinancialFilings } from "./discoverFilings.js";
 import { pickDerivedLatest } from "./derivedMetrics.js";
-import { extractFinancialsFromCompanyFacts } from "./extractFacts.js";
+import {
+  buildFinancialsFromPeriods,
+  extractFinancialsFromCompanyFacts,
+} from "./extractFacts.js";
 import { tryPersistFinancials } from "./financialsRepository.js";
 import { parse8kEarningsReleases } from "./parse8kEarnings.js";
 import {
   rankFinancialSixKFilings,
   shouldSupplementFromSixK,
 } from "./foreignFiler.js";
-import { supplementQuarterlyFromLatestSixK } from "./sixK/extractSixKFinancials.js";
+import {
+  supplementQuarterlyFromLatestSixK,
+  supplementQuarterlyFromLatestTenQ,
+} from "./sixK/extractSixKFinancials.js";
+import {
+  rankTenQFilingsForSupplement,
+  shouldSupplementFromTenQ,
+} from "./tenQSupplement.js";
 import type { FilingsFundamentalsResponse } from "./types.js";
 
 export interface GetFilingsFundamentalsOptions {
@@ -136,9 +146,22 @@ export async function getFilingsFundamentals(
       { maxFilings: 3, annualRows: extracted.annual }
     );
   }
+  // Domestic issuers: when Company Facts lag a filed 10-Q (e.g. POOL Q2 2026),
+  // parse that filing's XBRL instance directly.
+  if (shouldSupplementFromTenQ(quarterlyRows, filings["10-Q"])) {
+    quarterlyRows = await supplementQuarterlyFromLatestTenQ(
+      filingsCik,
+      rankTenQFilingsForSupplement(filings["10-Q"]),
+      quarterlyRows,
+      { maxFilings: 2, annualRows: extracted.annual }
+    );
+  }
 
-  const annual = extracted.annual.slice(0, options.annualPeriodLimit ?? 5);
-  const quarterly = quarterlyRows.slice(0, options.quarterlyPeriodLimit ?? 8);
+  const annualLimit = options.annualPeriodLimit ?? 5;
+  const quarterlyLimit = options.quarterlyPeriodLimit ?? 8;
+  const rebuilt = buildFinancialsFromPeriods(extracted.annual, quarterlyRows);
+  const annual = rebuilt.annual.slice(0, annualLimit);
+  const quarterly = rebuilt.quarterly.slice(0, quarterlyLimit);
   const earningsReleases = parse8kEarningsReleases(companyFacts, filings["8-K"]);
 
   const sic = submissions.sic ? String(submissions.sic).trim() : null;
@@ -160,12 +183,15 @@ export async function getFilingsFundamentals(
   const stored = await getStocksRepository().getByTicker(sym);
 
   const derived = pickDerivedLatest(annual, quarterly);
+  const supplemented =
+    quarterlyRows !== extracted.quarterly ||
+    quarterly[0]?.end !== extracted.quarterly[0]?.end;
 
   const response: FilingsFundamentalsResponse = {
     ticker: sym,
     cik: formatSecCik(factsCik),
     entityName: submissions.name || companyFacts.entityName || "",
-    source: "sec-company-facts",
+    source: supplemented ? "sec-company-facts+filing-xbrl" : "sec-company-facts",
     fundamentalsSourceTicker: sourceTicker,
     classification: stored
       ? {
@@ -177,33 +203,24 @@ export async function getFilingsFundamentals(
       : sector || industry || sic
         ? { sector, industry, sic, sicDescription }
         : null,
-    latest: extracted.latest,
+    latest: rebuilt.latest,
     annual,
     quarterly,
     statements: {
       incomeStatement: {
-        ...extracted.statements.incomeStatement,
-        annual: extracted.statements.incomeStatement.annual.slice(0, options.annualPeriodLimit ?? 5),
-        quarterly: extracted.statements.incomeStatement.quarterly.slice(
-          0,
-          options.quarterlyPeriodLimit ?? 8
-        ),
+        ...rebuilt.statements.incomeStatement,
+        annual: rebuilt.statements.incomeStatement.annual.slice(0, annualLimit),
+        quarterly: rebuilt.statements.incomeStatement.quarterly.slice(0, quarterlyLimit),
       },
       balanceSheet: {
-        ...extracted.statements.balanceSheet,
-        annual: extracted.statements.balanceSheet.annual.slice(0, options.annualPeriodLimit ?? 5),
-        quarterly: extracted.statements.balanceSheet.quarterly.slice(
-          0,
-          options.quarterlyPeriodLimit ?? 8
-        ),
+        ...rebuilt.statements.balanceSheet,
+        annual: rebuilt.statements.balanceSheet.annual.slice(0, annualLimit),
+        quarterly: rebuilt.statements.balanceSheet.quarterly.slice(0, quarterlyLimit),
       },
       cashFlow: {
-        ...extracted.statements.cashFlow,
-        annual: extracted.statements.cashFlow.annual.slice(0, options.annualPeriodLimit ?? 5),
-        quarterly: extracted.statements.cashFlow.quarterly.slice(
-          0,
-          options.quarterlyPeriodLimit ?? 8
-        ),
+        ...rebuilt.statements.cashFlow,
+        annual: rebuilt.statements.cashFlow.annual.slice(0, annualLimit),
+        quarterly: rebuilt.statements.cashFlow.quarterly.slice(0, quarterlyLimit),
       },
     },
     derivedLatest: derived.values,

@@ -803,7 +803,11 @@ export function extractLatestMetrics(
   return latestRow ? buildLatestFromRows([latestRow]) : {};
 }
 
-export function extractFinancialsFromCompanyFacts(facts: SecCompanyFacts): {
+/** Rebuild latest + statement bundles after quarterly rows are supplemented. */
+export function buildFinancialsFromPeriods(
+  annual: FinancialPeriodRow[],
+  quarterly: FinancialPeriodRow[]
+): {
   latest: Partial<Record<FinancialMetricKey, ExtractedMetricValue>>;
   annual: FinancialPeriodRow[];
   quarterly: FinancialPeriodRow[];
@@ -813,7 +817,6 @@ export function extractFinancialsFromCompanyFacts(facts: SecCompanyFacts): {
     cashFlow: StatementBundle;
   };
 } {
-  const { annual, quarterly } = extractFinancialPeriods(facts);
   const latestRow =
     pickLatestRowForStatement(annual, quarterly, "income") ??
     pickLatestRowForStatement(annual, quarterly, "balance") ??
@@ -830,6 +833,20 @@ export function extractFinancialsFromCompanyFacts(facts: SecCompanyFacts): {
       cashFlow: buildStatementBundle(annual, quarterly, "cashflow"),
     },
   };
+}
+
+export function extractFinancialsFromCompanyFacts(facts: SecCompanyFacts): {
+  latest: Partial<Record<FinancialMetricKey, ExtractedMetricValue>>;
+  annual: FinancialPeriodRow[];
+  quarterly: FinancialPeriodRow[];
+  statements: {
+    incomeStatement: StatementBundle;
+    balanceSheet: StatementBundle;
+    cashFlow: StatementBundle;
+  };
+} {
+  const { annual, quarterly } = extractFinancialPeriods(facts);
+  return buildFinancialsFromPeriods(annual, quarterly);
 }
 
 /** Exported for 8-K earnings parsing and tests. */

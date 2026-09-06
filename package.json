@@ -62,7 +62,7 @@
     "import:stocks": "tsx scripts/importSecTickers.ts",
     "test:insider-clusters": "tsx --test src/insiderCluster/clusterEngine.test.ts",
     "test:institution-activity": "tsx --test src/institution/institutionActivity.test.ts src/format/money.test.js",
-    "test:filings-fundamentals": "tsx --test src/sec/financials/extractFacts.test.ts src/sec/financials/appleFinancials.integration.test.ts src/sec/financials/periodRows.test.ts src/sec/financials/debtResolve.test.ts src/sec/financials/returnMetrics.test.ts src/sec/financials/fiscalYear.test.ts src/sec/financials/revenueYoY.test.ts src/sec/financials/instantPeriod.test.ts",
+    "test:filings-fundamentals": "tsx --test src/sec/financials/extractFacts.test.ts src/sec/financials/appleFinancials.integration.test.ts src/sec/financials/periodRows.test.ts src/sec/financials/debtResolve.test.ts src/sec/financials/returnMetrics.test.ts src/sec/financials/fiscalYear.test.ts src/sec/financials/revenueYoY.test.ts src/sec/financials/instantPeriod.test.ts src/sec/financials/tenQSupplement.test.ts src/sec/financials/sixK/sixK.test.ts",
     "sec:test-filings-fundamentals": "tsx scripts/test-filings-fundamentals.ts",
     "sec:download": "tsx scripts/download-sec-submissions.ts",
     "sec:13f": "tsx scripts/fetch-13f.ts",

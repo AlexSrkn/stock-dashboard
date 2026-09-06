@@ -236,7 +236,7 @@ export interface FilingsFundamentalsResponse {
   ticker: string;
   cik: string;
   entityName: string;
-  source: "sec-company-facts";
+  source: "sec-company-facts" | "sec-company-facts+filing-xbrl";
   /**
    * When this listing has no SEC companyfacts (common for dual-listed siblings),
    * fundamentals were loaded from this related ticker (e.g. RTNTF → RIO).
