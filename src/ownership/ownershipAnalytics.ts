@@ -152,8 +152,17 @@ function trackedDisplayName(row: TrackedFundAggRow): string {
   return canonicalFundName(String(row.filer_cik), String(row.fund_name));
 }
 
-/** Fallback when ownership_cache has no SO (common for foreign ADRs like RIO). */
-async function loadSharesOutstandingFromFinancials(
+/** Dual-class tickers share one SEC shares-outstanding figure (company-level). */
+const SHARES_OUTSTANDING_SIBLINGS: Record<string, string[]> = {
+  GOOGL: ["GOOG"],
+  GOOG: ["GOOGL"],
+  "BRK.A": ["BRK.B", "BRK-B"],
+  "BRK.B": ["BRK.A", "BRK-A"],
+  "BRK-A": ["BRK.B", "BRK-B"],
+  "BRK-B": ["BRK.A", "BRK-A"],
+};
+
+async function loadSharesOutstandingForTicker(
   pool: pg.Pool,
   ticker: string
 ): Promise<number | null> {
@@ -171,6 +180,30 @@ async function loadSharesOutstandingFromFinancials(
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Fallback when ownership_cache has no SO (ADRs, dual-class gaps like GOOG). */
+async function loadSharesOutstandingFromFinancials(
+  pool: pg.Pool,
+  ticker: string
+): Promise<number | null> {
+  const sym = ticker.trim().toUpperCase();
+  const direct = await loadSharesOutstandingForTicker(pool, sym);
+  if (direct != null) return direct;
+  for (const sibling of SHARES_OUTSTANDING_SIBLINGS[sym] ?? []) {
+    const so = await loadSharesOutstandingForTicker(pool, sibling);
+    if (so != null) return so;
+  }
+  return null;
+}
+
+async function resolveSharesOutstanding(
+  pool: pg.Pool,
+  ticker: string,
+  cached: number | null | undefined
+): Promise<number | null> {
+  if (cached != null && Number.isFinite(cached) && cached > 0) return cached;
+  return loadSharesOutstandingFromFinancials(pool, ticker);
+}
+
 export async function loadOwnershipMeta(
   pool: pg.Pool,
   ticker: string
@@ -184,10 +217,11 @@ export async function loadOwnershipMeta(
       : loadRecentQuarters(pool, stock.cusips, 2),
     fetchStockPrice(stock.ticker),
   ]);
-  let sharesOutstanding = cacheSnapshot?.sharesOutstanding ?? null;
-  if (!(sharesOutstanding != null && Number.isFinite(sharesOutstanding) && sharesOutstanding > 0)) {
-    sharesOutstanding = await loadSharesOutstandingFromFinancials(pool, stock.ticker);
-  }
+  const sharesOutstanding = await resolveSharesOutstanding(
+    pool,
+    stock.ticker,
+    cacheSnapshot?.sharesOutstanding
+  );
   return {
     ticker: stock.ticker,
     cusips: stock.cusips,
@@ -315,10 +349,17 @@ export async function getTopHolders(
   // quarter-pair scans (mega-caps were 40–60s+ after bulk 13F ingest).
   if (snapshot?.currentQuarter) {
     const cusips = snapshot.primaryCusip ? [snapshot.primaryCusip] : [];
+    // ownership_cache.shares_outstanding can be null even when SEC financials
+    // have it (stale cache / dual-class ticker with SO stored on the sibling).
+    const sharesOutstanding = await resolveSharesOutstanding(
+      pool,
+      sym,
+      snapshot.sharesOutstanding
+    );
     let holders = await fetchCachedTopHolders(
       pool,
       sym,
-      snapshot.sharesOutstanding,
+      sharesOutstanding,
       null,
       limit,
       // ownership_holding has no 13F value column — overlay from sec_holding.
@@ -331,7 +372,7 @@ export async function getTopHolders(
         cusips,
         snapshot.previousQuarter,
         ciks,
-        snapshot.sharesOutstanding,
+        sharesOutstanding,
         null
       );
       holders = attachQuarterOverQuarterChange(holders, previous);
@@ -344,7 +385,7 @@ export async function getTopHolders(
       currentQuarter: snapshot.currentQuarter,
       previousQuarter: snapshot.previousQuarter,
       trackedFundCount: TRACKED_INSTITUTIONAL_MANAGERS.length,
-      impliedSharesOutstanding: snapshot.sharesOutstanding,
+      impliedSharesOutstanding: sharesOutstanding,
       stockPrice: null,
       currency: "USD",
     };

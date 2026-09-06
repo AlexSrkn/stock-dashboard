@@ -955,12 +955,12 @@ function setOverviewDataSource(text) {
   if (el) el.textContent = text;
 }
 
-function setOwnershipSubtitle(_text) {
+function setOwnershipSubtitle(text) {
   const el = document.getElementById("ownership-subtitle");
-  if (el) {
-    el.textContent = "";
-    el.hidden = true;
-  }
+  if (!el) return;
+  const value = String(text || "").trim();
+  el.textContent = value;
+  el.hidden = !value;
 }
 
 function formatHoldingValueUsd(usd, currency = activeCurrency) {
@@ -21603,6 +21603,7 @@ async function loadActiveSymbolPanels(forSymbol) {
     lastOwnershipQuarterMeta = {
       currentQuarter: p.meta?.currentQuarter,
       previousQuarter: p.meta?.previousQuarter ?? null,
+      impliedSharesOutstanding: p.meta?.impliedSharesOutstanding ?? null,
     };
     const hint = p.meta?.issuerHint;
     const tracked = p.meta?.trackedFundCount;

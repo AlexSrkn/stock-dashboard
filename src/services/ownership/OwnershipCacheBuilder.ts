@@ -92,6 +92,16 @@ function computeTrend(current: number, previous: number): OwnershipTrend {
   return "neutral";
 }
 
+/** Dual-class tickers share one company-level shares-outstanding figure. */
+const SHARES_OUTSTANDING_SIBLINGS: Record<string, string[]> = {
+  GOOGL: ["GOOG"],
+  GOOG: ["GOOGL"],
+  "BRK.A": ["BRK.B", "BRK-B"],
+  "BRK.B": ["BRK.A", "BRK-A"],
+  "BRK-A": ["BRK.B", "BRK-B"],
+  "BRK-B": ["BRK.A", "BRK-A"],
+};
+
 async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   const res = await pool.query<{ ticker: string; so: number | string | null }>(
@@ -106,6 +116,16 @@ async function loadSharesOutstanding(pool: pg.Pool): Promise<Map<string, number>
   for (const row of res.rows) {
     const so = Number(row.so);
     if (Number.isFinite(so) && so > 0) map.set(row.ticker, so);
+  }
+  for (const [ticker, siblings] of Object.entries(SHARES_OUTSTANDING_SIBLINGS)) {
+    if (map.has(ticker)) continue;
+    for (const sibling of siblings) {
+      const so = map.get(sibling);
+      if (so != null) {
+        map.set(ticker, so);
+        break;
+      }
+    }
   }
   return map;
 }
