@@ -1059,11 +1059,21 @@ a.topbar-login__link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.watchlist-toggle__plus {
   width: 1.15rem;
   height: 1.15rem;
   font-size: 1.15rem;
-  font-weight: 600;
-  line-height: 1;
+}
+
+.mobile-dock__plus {
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 1.65rem;
+  font-weight: 500;
 }
 
 /* Site footer */
@@ -7851,28 +7861,41 @@ body.chart-fullscreen-active {
   }
 
   .mobile-dock {
-    display: flex;
+    display: block;
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    right: max(0.85rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+    left: auto;
     z-index: 70;
-    justify-content: center;
-    align-items: center;
-    padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    padding: 0;
+    margin: 0;
     pointer-events: none;
-    background: rgba(7, 10, 15, 0.96);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: none;
+    border: none;
     transform: translateZ(0);
   }
 
   .mobile-dock__btn {
     pointer-events: auto;
     touch-action: manipulation;
-    min-width: 10.5rem;
-    min-height: 2.75rem;
-    box-shadow: none;
-    backdrop-filter: none;
+    width: 3.1rem;
+    height: 3.1rem;
+    min-width: 3.1rem;
+    min-height: 3.1rem;
+    padding: 0;
+    gap: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(18, 24, 34, 0.94);
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .mobile-dock__btn.is-active,
+  .mobile-dock__btn[aria-expanded="true"] {
+    border-color: rgba(62, 230, 176, 0.45);
+    color: var(--accent);
+    background: rgba(18, 28, 26, 0.96);
   }
 
   body.is-auth .mobile-dock,
@@ -7883,12 +7906,12 @@ body.chart-fullscreen-active {
   }
 
   body:not(.is-auth):not(.is-landing) .site-footer {
-    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Room for the dock above content */
+  /* Room for the floating + control */
   body:not(.is-auth):not(.is-landing) .app {
-    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .topbar-search {
