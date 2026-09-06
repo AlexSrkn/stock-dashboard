@@ -5408,11 +5408,6 @@ body.is-legal-page #view-contact {
   background: #0c1017;
 }
 
-.tradingview-chart .tradingview-widget-container__widget {
-  /* Copyright row is ~24px; keep the iframe filling the rest. */
-  height: calc(100% - 24px) !important;
-}
-
 .tradingview-chart iframe {
   display: block;
   width: 100% !important;
@@ -5432,17 +5427,9 @@ body.is-legal-page #view-contact {
   box-sizing: border-box;
 }
 
+/* Copyright row was subtracting height and could leave a grey strip; hide it. */
 .tradingview-chart .tradingview-widget-copyright {
-  font: 0.72rem var(--font);
-  line-height: 24px;
-  text-align: center;
-  color: var(--muted);
-}
-
-.tradingview-chart .tradingview-widget-copyright a,
-.tradingview-chart .tradingview-widget-copyright .blue-text {
-  color: var(--muted);
-  text-decoration: none;
+  display: none;
 }
 
 .chart-card--fullscreen .chart-wrap--tradingview {

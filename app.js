@@ -21459,6 +21459,7 @@ function renderTradingViewSymbolInfo(symbol, { force = false, fallbackExchange =
   container.appendChild(script);
 
   host.appendChild(container);
+  scheduleTradingViewChartResize();
 }
 
 /**
@@ -21488,29 +21489,22 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
 
   const widget = document.createElement("div");
   widget.className = "tradingview-widget-container__widget";
-  widget.style.height = "calc(100% - 24px)";
+  widget.style.height = "100%";
   widget.style.width = "100%";
   container.appendChild(widget);
-
-  const copyright = document.createElement("div");
-  copyright.className = "tradingview-widget-copyright";
-  copyright.innerHTML = `<a href="https://www.tradingview.com/symbols/${encodeURIComponent(
-    tvSymbol
-  )}/" rel="noopener nofollow" target="_blank"><span class="blue-text">${escapeHtml(
-    tvSymbol
-  )} chart</span></a><span class="trademark"> by TradingView</span>`;
-  container.appendChild(copyright);
 
   const script = document.createElement("script");
   script.type = "text/javascript";
   script.src = TRADINGVIEW_WIDGET_SRC;
   script.async = true;
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
-  // Keep details/hotlist/calendar off — when any open, TV paints a ~¼-width
-  // grey right panel inside the iframe. Always hide the left drawing toolbar
-  // on this dashboard embed (mobile already did; desktop was the intermittent case).
+  // Keep details/hotlist/calendar off — when any open, TV paints a ~⅓-width
+  // grey right panel inside the iframe. Always hide the left drawing toolbar.
+  // Omit empty watchlist (an empty array can still open the widget bar).
+  // After remount, TV sometimes fails to autosize until a window resize fires.
   script.innerHTML = JSON.stringify({
     allow_symbol_change: false,
+    autosize: true,
     calendar: false,
     details: false,
     hide_side_toolbar: true,
@@ -21520,22 +21514,35 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
     hotlist: false,
     interval: "D",
     locale: "en",
-    save_image: true,
+    save_image: false,
     style: "1",
     symbol: tvSymbol,
     theme: "dark",
     timezone: "Etc/UTC",
     backgroundColor: "#0c1017",
     gridColor: "rgba(255, 255, 255, 0.06)",
-    watchlist: [],
     withdateranges: !isMobile,
     compareSymbols: [],
     studies: [],
-    autosize: true,
+    support_host: "https://www.tradingview.com",
+    widgetbar_width: 0,
+    enabled_features: ["hide_left_toolbar_by_default"],
+    disabled_features: ["header_compare", "header_symbol_search"],
   });
   container.appendChild(script);
-
   host.appendChild(container);
+  scheduleTradingViewChartResize();
+}
+
+/** TradingView autosize often misses the first layout after a stock switch. */
+function scheduleTradingViewChartResize() {
+  const fire = () => window.dispatchEvent(new Event("resize"));
+  requestAnimationFrame(() => {
+    fire();
+    setTimeout(fire, 50);
+    setTimeout(fire, 250);
+    setTimeout(fire, 800);
+  });
 }
 
 async function loadActiveSymbolPanels(forSymbol) {
