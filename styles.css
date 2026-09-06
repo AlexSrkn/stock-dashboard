@@ -5266,10 +5266,9 @@ body.is-legal-page #view-contact {
 }
 
 /* TradingView Symbol Info widget (dark + transparent), shown above the chart.
-   The embed iframe has a fixed inner layout (~150px default). Long tickers
-   (GLIBK) wrap the title and push the large price below that, so we give
-   the iframe an explicit height instead of height:auto (which does nothing
-   on a cross-origin iframe). */
+   TradingView posts tv-widget-resize-iframe and sets iframe/container height
+   inline. Use min-height only — a fixed height with !important clips the
+   stats row (market cap, earnings) when the layout wraps on narrow screens. */
 .tv-symbol-info {
   width: 100%;
   max-width: 100%;
@@ -5280,14 +5279,16 @@ body.is-legal-page #view-contact {
 .tv-symbol-info .tradingview-widget-container,
 .tv-symbol-info .tradingview-widget-container__widget {
   width: 100%;
-  height: 220px;
+  min-height: 150px;
+  height: auto;
   background: transparent !important;
   overflow: visible;
 }
 .tv-symbol-info iframe {
   display: block;
   width: 100% !important;
-  height: 220px !important;
+  min-height: 150px;
+  /* height comes from TradingView inline style after resize-iframe */
   background: transparent !important;
   color-scheme: normal; /* prevent UA from painting an opaque iframe background */
 }
@@ -5322,7 +5323,8 @@ body.is-legal-page #view-contact {
   .tv-symbol-info .tradingview-widget-container,
   .tv-symbol-info .tradingview-widget-container__widget,
   .tv-symbol-info iframe {
-    height: 250px !important;
+    /* Floor for wrapped stats; TradingView may grow past this. */
+    min-height: 260px;
   }
 
   /* Copyright row steals vertical space and can push the price out of view. */
