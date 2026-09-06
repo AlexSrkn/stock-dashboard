@@ -5401,17 +5401,22 @@ body.is-legal-page #view-contact {
   height: 100%;
 }
 
-.tradingview-chart .tradingview-widget-container,
+.tradingview-chart .tradingview-widget-container {
+  width: 100%;
+  height: 100%;
+  background: #0c1017;
+}
+
 .tradingview-chart .tradingview-widget-container__widget {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  /* Match official TV embed: iframe sits above the copyright row. */
+  height: calc(100% - 32px);
   background: #0c1017;
 }
 
 .tradingview-chart iframe {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
   border: 0;
   background: #0c1017;
 }
@@ -5427,9 +5432,17 @@ body.is-legal-page #view-contact {
   box-sizing: border-box;
 }
 
-/* Copyright row was subtracting height and could leave a grey strip; hide it. */
 .tradingview-chart .tradingview-widget-copyright {
-  display: none;
+  font: 0.72rem var(--font);
+  line-height: 32px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.tradingview-chart .tradingview-widget-copyright a,
+.tradingview-chart .tradingview-widget-copyright .blue-text {
+  color: var(--muted);
+  text-decoration: none;
 }
 
 .chart-card--fullscreen .chart-wrap--tradingview {

@@ -21488,20 +21488,29 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
 
   const widget = document.createElement("div");
   widget.className = "tradingview-widget-container__widget";
-  widget.style.height = "100%";
+  // Official TV embed leaves room for the copyright row (~32px).
+  widget.style.height = "calc(100% - 32px)";
   widget.style.width = "100%";
   container.appendChild(widget);
+
+  const copyright = document.createElement("div");
+  copyright.className = "tradingview-widget-copyright";
+  copyright.innerHTML = `<a href="https://www.tradingview.com/symbols/${encodeURIComponent(
+    tvSymbol
+  )}/" rel="noopener nofollow" target="_blank"><span class="blue-text">${escapeHtml(
+    tvSymbol
+  )} chart</span></a><span class="trademark"> by TradingView</span>`;
+  container.appendChild(copyright);
 
   const script = document.createElement("script");
   script.type = "text/javascript";
   script.src = TRADINGVIEW_WIDGET_SRC;
   script.async = true;
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
-  // Right grey “dead zone” = TV widget bar (details/hotlist/calendar/watchlist).
-  // Keep those off. Do NOT pass widgetbar_width / enabled_features /
-  // disabled_features — those are Charting Library options and on the free
-  // embed they can force an empty grey side panel open permanently.
-  // Also omit watchlist entirely (empty [] can still open the bar).
+  // Grey ~¼ right dead zone = TV’s right widget bar (details/hotlist/etc).
+  // It can stick open via localStorage after a prior bad mount — so disable
+  // localStorage settings and explicitly kill the right toolbar featuresets.
+  // Omit watchlist (empty [] can still open the bar).
   script.innerHTML = JSON.stringify({
     allow_symbol_change: false,
     autosize: true,
@@ -21525,6 +21534,15 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
     compareSymbols: [],
     studies: [],
     support_host: "https://www.tradingview.com",
+    enabled_features: ["hide_right_toolbar", "hide_left_toolbar_by_default"],
+    disabled_features: [
+      "use_localstorage_for_settings",
+      "right_toolbar",
+      "show_right_widgets_panel_by_default",
+      "left_toolbar",
+      "header_compare",
+      "header_symbol_search",
+    ],
   });
   container.appendChild(script);
   host.appendChild(container);
