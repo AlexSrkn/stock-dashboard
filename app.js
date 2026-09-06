@@ -21459,7 +21459,6 @@ function renderTradingViewSymbolInfo(symbol, { force = false, fallbackExchange =
   container.appendChild(script);
 
   host.appendChild(container);
-  scheduleTradingViewChartResize();
 }
 
 /**
@@ -21498,10 +21497,11 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
   script.src = TRADINGVIEW_WIDGET_SRC;
   script.async = true;
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
-  // Keep details/hotlist/calendar off — when any open, TV paints a ~⅓-width
-  // grey right panel inside the iframe. Always hide the left drawing toolbar.
-  // Omit empty watchlist (an empty array can still open the widget bar).
-  // After remount, TV sometimes fails to autosize until a window resize fires.
+  // Right grey “dead zone” = TV widget bar (details/hotlist/calendar/watchlist).
+  // Keep those off. Do NOT pass widgetbar_width / enabled_features /
+  // disabled_features — those are Charting Library options and on the free
+  // embed they can force an empty grey side panel open permanently.
+  // Also omit watchlist entirely (empty [] can still open the bar).
   script.innerHTML = JSON.stringify({
     allow_symbol_change: false,
     autosize: true,
@@ -21525,24 +21525,9 @@ function renderTradingViewWidget(symbol, { force = false, fallbackExchange = nul
     compareSymbols: [],
     studies: [],
     support_host: "https://www.tradingview.com",
-    widgetbar_width: 0,
-    enabled_features: ["hide_left_toolbar_by_default"],
-    disabled_features: ["header_compare", "header_symbol_search"],
   });
   container.appendChild(script);
   host.appendChild(container);
-  scheduleTradingViewChartResize();
-}
-
-/** TradingView autosize often misses the first layout after a stock switch. */
-function scheduleTradingViewChartResize() {
-  const fire = () => window.dispatchEvent(new Event("resize"));
-  requestAnimationFrame(() => {
-    fire();
-    setTimeout(fire, 50);
-    setTimeout(fire, 250);
-    setTimeout(fire, 800);
-  });
 }
 
 async function loadActiveSymbolPanels(forSymbol) {
