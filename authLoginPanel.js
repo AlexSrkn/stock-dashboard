@@ -524,7 +524,7 @@ export function setupAuthLoginPanel() {
     }
   });
 
-  // SPA navigation for auth links (topbar + auth footers)
+  // SPA navigation for auth links (topbar + auth footers + mobile drawer)
   document.addEventListener("click", (e) => {
     const a = e.target.closest?.(
       'a[href="/login"], a[href="/register"], a[href="/forgot-password"], a[href="/check-email"], a[href="/reset-password"]'
@@ -533,6 +533,10 @@ export function setupAuthLoginPanel() {
     const href = a.getAttribute("href");
     if (!href || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
+    // Close the mobile sidebar so /login and /register are visible.
+    if (typeof window.closeMobileTopbarNav === "function") {
+      window.closeMobileTopbarNav();
+    }
     navigate(href);
   });
 }

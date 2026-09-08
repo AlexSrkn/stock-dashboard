@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=tv-grey-panel-4" />
+    <link rel="stylesheet" href="/styles.css?v=mobile-topbar-site-29" />
     <link rel="stylesheet" href="/auth.css?v=auth-pages-2" />
     <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
@@ -28,8 +28,8 @@
           aria-controls="workspace-nav"
           aria-label="Open menu"
         >
-          <svg class="topbar__menu-icon" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-            <path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          <svg class="topbar__menu-icon" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <path d="M2 6h18M2 11h18M2 16h18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
           </svg>
         </button>
 
@@ -50,6 +50,7 @@
                   data-explore="stocks"
                   aria-current="page"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Stocks</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -74,6 +75,7 @@
                   class="workspace-nav__btn explore-nav__btn"
                   data-explore="institutions"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Institutions</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -98,6 +100,7 @@
                   class="workspace-nav__btn explore-nav__btn"
                   data-explore="insiders"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Insiders</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -122,6 +125,7 @@
                   class="workspace-nav__btn explore-nav__btn"
                   data-explore="politicians"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Politicians</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -146,6 +150,7 @@
                   class="workspace-nav__btn explore-nav__btn"
                   data-explore="signals"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Signals</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -171,6 +176,7 @@
                   class="workspace-nav__btn explore-nav__btn"
                   data-explore="tools"
                   aria-haspopup="true"
+                  aria-expanded="false"
                 >
                   <span class="workspace-nav__label">Tools</span>
                   <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -220,6 +226,9 @@
             <div class="topbar-login__guest" id="topbar-login-guest">
               <a href="/login" class="btn btn--ghost topbar-login__trigger topbar-login__link" id="topbar-login-trigger">
                 Log in
+              </a>
+              <a href="/register" class="btn btn--ghost topbar-login__trigger topbar-login__link topbar-login__signup" id="topbar-signup-trigger">
+                Create Account
               </a>
             </div>
             <div class="topbar-login__user" id="topbar-login-user" hidden>
@@ -9464,6 +9473,6 @@
       </button>
     </nav>
 
-    <script type="module" src="/app.js?v=tv-grey-panel-4"></script>
+    <script type="module" src="/app.js?v=mobile-topbar-site-29"></script>
   </body>
 </html>

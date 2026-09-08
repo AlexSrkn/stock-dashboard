@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=tv-us-equity-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-auth-nav-1";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -1548,6 +1548,7 @@ function showLandingView(visible) {
     closeTopSearch();
     setDashboardStatus("");
   }
+  window.syncLandingMobileTopbar?.();
 }
 
 function navigateToLanding() {
@@ -19578,6 +19579,11 @@ function expandMobileTopSearch() {
   const wrap = document.querySelector(".topbar-search");
   const input = document.getElementById("top-search-input");
   if (!wrap || !window.matchMedia("(max-width: 900px)").matches) return;
+  // Landing drawer already shows a full search field — no icon-expand overlay.
+  if (wrap.closest("#topbar-drawer-utils")) {
+    input?.focus();
+    return;
+  }
   wrap.classList.add("is-expanded");
   input?.focus();
 }
@@ -21750,6 +21756,8 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
       backdrop.style.removeProperty("display");
     }
   }
+  // Keep search/login parked in the landing drawer or restored to the topbar.
+  window.syncLandingMobileTopbar?.();
 }
 
 function setSidebarDrawerTab(tab) {
@@ -22143,10 +22151,69 @@ function setupMobileTopbarNav() {
   const nav = document.getElementById("workspace-nav");
   const start = topbar?.querySelector(".topbar__start");
   const brand = start?.querySelector(".topbar__brand");
+  const actions = topbar?.querySelector(".topbar__actions");
   if (!topbar || !menuBtn || !nav) return;
 
+  const isMobileTopbar = () => window.matchMedia("(max-width: 900px)").matches;
+
+  const restoreTopbarActions = () => {
+    if (!actions) return;
+    const search = document.querySelector(".topbar-search");
+    const login = document.getElementById("topbar-login");
+    const watchlist = actions.querySelector(".watchlist-toggle--topbar");
+    if (search) {
+      if (watchlist) actions.insertBefore(search, watchlist);
+      else if (login?.parentElement === actions) actions.insertBefore(search, login);
+      else actions.appendChild(search);
+    }
+    if (login) {
+      if (watchlist) actions.insertBefore(login, watchlist);
+      else actions.appendChild(login);
+    }
+    document.getElementById("topbar-drawer-utils")?.remove();
+    document.getElementById("topbar-drawer-login")?.remove();
+  };
+
+  /** Mobile drawer order: search → sections → login under Tools. */
+  const placeMobileDrawerUtils = () => {
+    if (!isMobileTopbar()) {
+      restoreTopbarActions();
+      return;
+    }
+    const list = nav.querySelector(".workspace-nav__list");
+    let utils = document.getElementById("topbar-drawer-utils");
+    if (!utils) {
+      utils = document.createElement("div");
+      utils.id = "topbar-drawer-utils";
+      utils.className = "topbar-drawer-utils";
+    }
+    if (utils.parentElement !== nav || utils !== nav.firstElementChild) {
+      nav.insertBefore(utils, nav.firstChild);
+    }
+
+    let loginWrap = document.getElementById("topbar-drawer-login");
+    if (!loginWrap) {
+      loginWrap = document.createElement("div");
+      loginWrap.id = "topbar-drawer-login";
+      loginWrap.className = "topbar-drawer-login";
+    }
+    if (list) {
+      if (loginWrap.previousElementSibling !== list || loginWrap.parentElement !== nav) {
+        list.insertAdjacentElement("afterend", loginWrap);
+      }
+    } else if (loginWrap.parentElement !== nav) {
+      nav.appendChild(loginWrap);
+    }
+
+    const search = document.querySelector(".topbar-search");
+    const login = document.getElementById("topbar-login");
+    if (search && search.parentElement !== utils) utils.appendChild(search);
+    if (login && login.parentElement !== loginWrap) loginWrap.appendChild(login);
+    collapseMobileTopSearch();
+  };
+
   const placeNav = () => {
-    const mobile = window.matchMedia("(max-width: 900px)").matches;
+    const mobile = isMobileTopbar();
     if (mobile) {
       // Keep fixed drawer out of the topbar (backdrop-filter creates a fixed containing block).
       if (nav.parentElement !== topbar.parentElement || nav.previousElementSibling !== topbar) {
@@ -22155,6 +22222,7 @@ function setupMobileTopbarNav() {
     } else if (brand && nav.parentElement !== start) {
       brand.insertAdjacentElement("afterend", nav);
     }
+    placeMobileDrawerUtils();
   };
 
   const setOpen = (open) => {
@@ -22168,12 +22236,41 @@ function setupMobileTopbarNav() {
       backdrop.hidden = !open;
       backdrop.style.removeProperty("display");
     }
+    if (!open) {
+      closeTopSearch();
+      collapseMobileTopSearch();
+    } else {
+      // Always start collapsed; user expands a section manually.
+      clearMobileNavAccordion();
+    }
+  };
+
+  const clearMobileNavAccordion = () => {
+    nav.querySelectorAll(".workspace-nav__item.is-expanded").forEach((item) => {
+      item.classList.remove("is-expanded");
+      item.querySelector(".workspace-nav__btn")?.setAttribute("aria-expanded", "false");
+    });
+  };
+
+  /** Accordion: sections stay collapsed until the user taps a header. */
+  const toggleMobileNavSection = (toggleBtn) => {
+    if (!isMobileTopbar() || !toggleBtn) return;
+    const items = [...nav.querySelectorAll(".workspace-nav__item")];
+    const item = toggleBtn.closest(".workspace-nav__item");
+    const opening = item && !item.classList.contains("is-expanded");
+    items.forEach((el) => {
+      const on = opening && el === item;
+      el.classList.toggle("is-expanded", on);
+      el.querySelector(".workspace-nav__btn")?.setAttribute("aria-expanded", String(on));
+    });
   };
 
   const closeNav = () => setOpen(false);
 
   // Expose for other handlers (subsection clicks use stopPropagation).
   window.closeMobileTopbarNav = closeNav;
+  window.syncLandingMobileTopbar = placeMobileDrawerUtils;
+  window.syncMobileTopbarChrome = placeMobileDrawerUtils;
 
   placeNav();
 
@@ -22194,21 +22291,37 @@ function setupMobileTopbarNav() {
     closeNav();
   });
 
-  // Capture phase so we still close when subsection handlers call stopPropagation.
+  // Mobile: section name → default hub; rest of row / chevron → accordion only.
   nav.addEventListener(
     "click",
     (e) => {
+      const sectionBtn = e.target.closest?.(".workspace-nav__btn.explore-nav__btn");
+      if (sectionBtn && isMobileTopbar()) {
+        const onLabel = Boolean(e.target.closest?.(".workspace-nav__label"));
+        if (onLabel) {
+          // Let explore-nav open the default section screen, then close the drawer.
+          closeNav();
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toggleMobileNavSection(sectionBtn);
+        return;
+      }
       const target = e.target.closest?.(
-        ".explore-nav__btn, .workspace-nav__subsection, [data-explore], [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
+        ".workspace-nav__subsection, [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
       );
-      if (target && target !== menuBtn) closeNav();
+      if (target) closeNav();
     },
     true
   );
 
   window.addEventListener("resize", () => {
     placeNav();
-    if (window.matchMedia("(min-width: 901px)").matches) closeNav();
+    if (window.matchMedia("(min-width: 901px)").matches) {
+      closeNav();
+      clearMobileNavAccordion();
+    }
   });
 }
 
@@ -22660,15 +22773,16 @@ function setupTopSearch() {
 
   field?.addEventListener("click", (e) => {
     if (!window.matchMedia("(max-width: 900px)").matches) return;
+    if (wrap.closest("#topbar-drawer-utils")) return;
     if (wrap.classList.contains("is-expanded")) return;
     e.preventDefault();
     expandMobileTopSearch();
   });
 
   input.addEventListener("focus", () => {
-    if (window.matchMedia("(max-width: 900px)").matches) {
-      wrap?.classList.add("is-expanded");
-    }
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    if (wrap?.closest("#topbar-drawer-utils")) return;
+    wrap?.classList.add("is-expanded");
   });
 
   input.addEventListener("input", () => {
@@ -22676,7 +22790,10 @@ function setupTopSearch() {
     clearTimeout(topSearchDebounceTimer);
     if (!q) {
       closeTopSearch();
-      if (window.matchMedia("(max-width: 900px)").matches) {
+      if (
+        window.matchMedia("(max-width: 900px)").matches &&
+        !wrap?.closest("#topbar-drawer-utils")
+      ) {
         wrap?.classList.add("is-expanded");
       }
       return;
