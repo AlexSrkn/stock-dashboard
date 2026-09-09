@@ -7,8 +7,13 @@ import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
 import { loadOwnershipMeta, fetchQuarterPairMap } from "./ownershipAnalytics.js";
-import { loadOwnershipCacheSnapshot } from "./ownershipCacheReader.js";
+import {
+  loadOwnershipCacheSnapshot,
+  fetchCachedTopHolders,
+  fetchFilerSharesByCusipQuarter,
+} from "./ownershipCacheReader.js";
 import type { FundHoldingAggregate } from "./types.js";
+import { formatSecCik } from "../sec/http.js";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -20,6 +25,18 @@ function trendFromOwnershipCache(raw: string | null): ActivityTrend | null {
   if (t === "decreasing" || t === "bearish") return "bearish";
   if (t === "neutral") return "neutral";
   return null;
+}
+
+function holdersByCik(
+  map: Map<string, FundHoldingAggregate>
+): Map<string, FundHoldingAggregate> {
+  const out = new Map<string, FundHoldingAggregate>();
+  for (const h of map.values()) {
+    const key = h.filerCik ? formatSecCik(h.filerCik) : h.fundName;
+    if (!key) continue;
+    out.set(key, h);
+  }
+  return out;
 }
 
 function countHolders(map: Map<string, FundHoldingAggregate>): number {
@@ -35,9 +52,9 @@ function countNewPositions(
   previous: Map<string, FundHoldingAggregate>
 ): number {
   let n = 0;
-  for (const [fundName, cur] of current) {
+  for (const [key, cur] of current) {
     if (cur.shares <= 0) continue;
-    const prev = previous.get(fundName);
+    const prev = previous.get(key);
     if (!prev || prev.shares <= 0) n++;
   }
   return n;
@@ -198,6 +215,47 @@ export async function getOwnershipIntelligence(
         const netShares = round2(snapshot.currentShares - snapshot.previousShares);
         const buyShares = netShares > 0 ? netShares : 0;
         const sellShares = netShares < 0 ? Math.abs(netShares) : 0;
+
+        // QoQ holder deltas are not stored on ownership_cache — compute from
+        // current holdings + full prior-quarter filer set (not current-CIK-only).
+        let institutionCountChange: number | null = null;
+        let newPositions = 0;
+        let cusips = snapshot.primaryCusip ? [snapshot.primaryCusip] : [];
+        if (!cusips.length) {
+          const ownershipMeta = await loadOwnershipMeta(pool, sym).catch(() => null);
+          if (ownershipMeta?.cusips?.length) cusips = ownershipMeta.cusips;
+        }
+        if (cusips.length && snapshot.currentQuarter) {
+          try {
+            const currentHolders = await fetchCachedTopHolders(
+              pool,
+              sym,
+              snapshot.sharesOutstanding,
+              null,
+              Math.max(500, snapshot.institutionCount || 500)
+            );
+            const current = holdersByCik(new Map(currentHolders.map((h) => [h.fundName, h])));
+            const previousRaw =
+              snapshot.previousQuarter != null
+                ? await fetchFilerSharesByCusipQuarter(
+                    pool,
+                    cusips,
+                    snapshot.previousQuarter,
+                    snapshot.sharesOutstanding,
+                    null
+                  )
+                : new Map<string, FundHoldingAggregate>();
+            const previous = holdersByCik(previousRaw);
+            const currentCount = countHolders(current);
+            const previousCount = countHolders(previous);
+            institutionCountChange =
+              previousCount > 0 || currentCount > 0 ? currentCount - previousCount : null;
+            newPositions = countNewPositions(current, previous);
+          } catch {
+            /* keep null / 0 rather than failing the whole intelligence payload */
+          }
+        }
+
         return {
           meta: {
             currentQuarter: snapshot.currentQuarter,
@@ -213,8 +271,8 @@ export async function getOwnershipIntelligence(
               trendFromOwnershipCache(snapshot.ownershipTrend) ??
               classifyActivityTrend(netShares, buyShares, sellShares),
             ownershipPct: snapshot.institutionalOwnershipPct,
-            institutionCountChange: null as number | null,
-            newPositions: 0,
+            institutionCountChange,
+            newPositions,
             netShares,
             buyShares: round2(buyShares),
             sellShares: round2(sellShares),
@@ -244,14 +302,8 @@ export async function getOwnershipIntelligence(
         ownershipMeta.stockPrice,
         ownershipMeta.ticker
       );
-      const current = new Map<string, FundHoldingAggregate>();
-      for (const h of currentByName.values()) {
-        current.set(h.filerCik || h.fundName, h);
-      }
-      const previous = new Map<string, FundHoldingAggregate>();
-      for (const h of previousByName.values()) {
-        previous.set(h.filerCik || h.fundName, h);
-      }
+      const current = holdersByCik(currentByName);
+      const previous = holdersByCik(previousByName);
       const flow = computeShareFlow(current, previous);
       const currentCount = countHolders(current);
       const previousCount = countHolders(previous);

@@ -21354,13 +21354,32 @@ let lastTradingViewSymbolInfo = null;
 /** @type {Map<string, string>} ticker → TradingView exchange prefix (e.g. NASDAQ) */
 const tradingViewExchangeBySymbol = new Map();
 
+/**
+ * SEC submissions often label NYSE American as bare "NYSE", which breaks TradingView
+ * (e.g. GPUS → NYSE:GPUS empty; correct is AMEX:GPUS). Keep a small override list.
+ */
+const TRADINGVIEW_EXCHANGE_OVERRIDES = Object.freeze({
+  GPUS: "AMEX",
+});
+
 /** Map SEC / Yahoo-style exchange labels to TradingView prefixes. */
 function toTradingViewExchange(raw) {
   const upper = String(raw || "").trim().toUpperCase();
   if (!upper) return "";
   if (upper.includes("NASDAQ")) return "NASDAQ";
   if (upper.includes("NYSE ARCA") || upper === "ARCA") return "NYSEARCA";
-  if (upper.includes("NYSE AMERICAN") || upper === "AMEX" || upper.includes("AMERICAN")) return "AMEX";
+  // NYSE American / former AMEX — must run before bare "NYSE".
+  if (
+    upper.includes("NYSE AMERICAN") ||
+    upper.includes("NYSE MKT") ||
+    upper.includes("NYSEAMER") ||
+    upper.includes("NYSE AMER") ||
+    upper === "AMEX" ||
+    upper === "ASE" ||
+    upper.includes("AMERICAN")
+  ) {
+    return "AMEX";
+  }
   if (upper.includes("NYSE")) return "NYSE";
   if (upper.includes("OTC") || upper.includes("PINK")) return "OTC";
   if (upper === "BATS" || upper.includes("CBOE")) return "CBOE";
@@ -21369,8 +21388,9 @@ function toTradingViewExchange(raw) {
 
 function rememberTradingViewExchange(symbol, exchangeRaw) {
   const sym = normalizeSymbol(symbol);
-  const ex = toTradingViewExchange(exchangeRaw);
-  if (!sym || !ex) return false;
+  if (!sym) return false;
+  const ex = TRADINGVIEW_EXCHANGE_OVERRIDES[sym] || toTradingViewExchange(exchangeRaw);
+  if (!ex) return false;
   const prev = tradingViewExchangeBySymbol.get(sym);
   tradingViewExchangeBySymbol.set(sym, ex);
   return prev !== ex;
@@ -21389,7 +21409,11 @@ function toTradingViewSymbol(symbol, { fallbackExchange = null } = {}) {
   if (s.includes(":")) return s;
   // Class shares: Yahoo "BRK-B" → TradingView "BRK.B".
   if (/^[A-Z]+-[A-Z]$/.test(s)) s = s.replace("-", ".");
-  const exchange = tradingViewExchangeBySymbol.get(s) || fallbackExchange || "";
+  const exchange =
+    TRADINGVIEW_EXCHANGE_OVERRIDES[s] ||
+    tradingViewExchangeBySymbol.get(s) ||
+    fallbackExchange ||
+    "";
   if (!exchange) return "";
   return `${exchange}:${s}`;
 }
@@ -21815,7 +21839,7 @@ function setupDrawer() {
   if (scrim) scrim.addEventListener("click", () => setOpen(false));
 
   document.addEventListener("click", (e) => {
-    if (!window.matchMedia("(max-width: 960px)").matches) return;
+    if (!window.matchMedia("(max-width: 1100px)").matches) return;
     if (!drawer.classList.contains("is-open")) return;
     const t = e.target;
     if (drawer.contains(t) || toggles.some((btn) => btn.contains(t)) || (scrim && scrim.contains(t))) {

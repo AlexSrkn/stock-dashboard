@@ -335,7 +335,10 @@ async function buildSecFilingsResponse(symbol, limit) {
   const tickers = Array.isArray(sub.tickers) ? sub.tickers.map((t) => String(t || "").toUpperCase()) : [];
   const exchanges = Array.isArray(sub.exchanges) ? sub.exchanges.map((e) => String(e || "")) : [];
   const tickerIdx = tickers.findIndex((t) => t === sym);
-  const exchangeRaw = tickerIdx >= 0 ? exchanges[tickerIdx] || "" : exchanges[0] || "";
+  let exchangeRaw = tickerIdx >= 0 ? exchanges[tickerIdx] || "" : exchanges[0] || "";
+  // SEC often labels NYSE American as bare "NYSE" (breaks TradingView for e.g. GPUS).
+  const SEC_TV_EXCHANGE_OVERRIDES = { GPUS: "NYSE American" };
+  if (SEC_TV_EXCHANGE_OVERRIDES[sym]) exchangeRaw = SEC_TV_EXCHANGE_OVERRIDES[sym];
   return {
     ticker: sym,
     cik: cik10,
