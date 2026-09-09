@@ -236,12 +236,31 @@ export function parseRecentlyActiveFilters(url: URL): RecentlyActiveFilters {
   };
 }
 
-let eventCache: { loadedAt: number; events: NormalizedEvent[] } | null = null;
+let eventCache: {
+  loadedAt: number;
+  politiciansMtime: number;
+  events: NormalizedEvent[];
+} | null = null;
 let eventInflight: Promise<NormalizedEvent[]> | null = null;
+
+function politiciansRecentMtimeMs(): number {
+  try {
+    return statSync(POLITICIANS_RECENT_PATH).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
 
 async function loadBaseRecentlyActiveEvents(pool: pg.Pool): Promise<NormalizedEvent[]> {
   const now = Date.now();
-  if (eventCache && now - eventCache.loadedAt < EVENT_CACHE_MS) return eventCache.events;
+  const politiciansMtime = politiciansRecentMtimeMs();
+  if (
+    eventCache &&
+    now - eventCache.loadedAt < EVENT_CACHE_MS &&
+    eventCache.politiciansMtime === politiciansMtime
+  ) {
+    return eventCache.events;
+  }
   if (eventInflight) return eventInflight;
 
   eventInflight = (async () => {
@@ -258,7 +277,7 @@ async function loadBaseRecentlyActiveEvents(pool: pg.Pool): Promise<NormalizedEv
       const stockName = names.get(event.ticker);
       if (stockName) event.companyName = stockName;
     }
-    eventCache = { loadedAt: Date.now(), events };
+    eventCache = { loadedAt: Date.now(), politiciansMtime, events };
     return events;
   })().finally(() => {
     eventInflight = null;

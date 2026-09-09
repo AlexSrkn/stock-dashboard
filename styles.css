@@ -65,6 +65,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
+  flex-wrap: nowrap;
   min-height: var(--topbar-height);
   margin: -1rem -1.25rem 1.25rem;
   padding: 0 1.25rem;
@@ -75,6 +76,48 @@ body {
   top: 0;
   z-index: 80;
   overflow: visible;
+}
+
+/* Desktop: single-row topbar — login/register must not change its height. */
+@media (min-width: 1101px) {
+  .topbar {
+    height: var(--topbar-height);
+    min-height: var(--topbar-height);
+    max-height: var(--topbar-height);
+    box-sizing: border-box;
+  }
+
+  .topbar__menu-btn {
+    display: none !important;
+  }
+
+  .topbar__start,
+  .topbar__actions,
+  .topbar__brand,
+  .topbar .workspace-nav,
+  .topbar .workspace-nav__list {
+    height: var(--topbar-control-height);
+    max-height: var(--topbar-control-height);
+  }
+
+  /*
+   * Mobile JS parks #workspace-nav as a sibling of .topbar. On desktop that sibling
+   * would become a second in-flow row (the "extended topbar"). Keep it out of flow;
+   * placeNav() moves it back inside .topbar__start.
+   */
+  .topbar + .workspace-nav,
+  .topbar ~ .workspace-nav {
+    position: fixed !important;
+    top: var(--topbar-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none !important;
+    z-index: 130;
+    margin: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+  }
 }
 
 .topbar__start {
@@ -840,8 +883,11 @@ a.topbar-login__link {
   align-items: center;
 }
 
-.topbar-login__signup {
-  display: none;
+/* Desktop topbar: Log in only. Create Account lives in the mobile drawer.
+   Needs higher specificity than `a.topbar-login__link` / `.topbar__actions .btn--ghost`. */
+.topbar__actions .topbar-login__signup,
+a.topbar-login__link.topbar-login__signup {
+  display: none !important;
 }
 
 .topbar-login__trigger--user {
@@ -7694,7 +7740,8 @@ body.chart-fullscreen-active {
   }
 }
 
-@media (max-width: 900px) {
+/* Tablet + phone: drawer topbar (covers iPad landscape ~1024px where desktop nav+search overlap). */
+@media (max-width: 1100px) {
   .topbar {
     gap: 0.75rem;
     z-index: 120;
@@ -8099,8 +8146,9 @@ body.chart-fullscreen-active {
     gap: calc(0.55rem + 1vh);
   }
 
-  .topbar-drawer-login .topbar-login__signup {
-    display: inline-flex;
+  .topbar-drawer-login .topbar-login__signup,
+  .topbar-drawer-login a.topbar-login__link.topbar-login__signup {
+    display: inline-flex !important;
   }
 
   .topbar-drawer-login .topbar-login__trigger {

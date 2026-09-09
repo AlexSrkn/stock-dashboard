@@ -155,6 +155,15 @@ function setPendingVerifyEmail(email) {
 }
 
 export function showAuthRoute() {
+  // Close drawers and restore desktop topbar chrome (nav must stay inside .topbar__start,
+  // otherwise it renders as a second row and looks like the topbar "extended").
+  if (typeof window.clearMobileOverlays === "function") {
+    window.clearMobileOverlays();
+  } else if (typeof window.closeMobileTopbarNav === "function") {
+    window.closeMobileTopbarNav();
+  }
+  window.syncMobileTopbarChrome?.();
+
   const landing = document.getElementById("view-landing");
   const shell = document.getElementById("app-shell");
   const auth = document.getElementById("view-auth");
@@ -176,7 +185,12 @@ export function showAuthRoute() {
   legalPages.forEach((page) => {
     page.hidden = true;
   });
-  if (auth) auth.hidden = false;
+  if (auth) {
+    auth.hidden = false;
+    auth.removeAttribute("hidden");
+    // Brand is redundant with the site topbar; keep it out of layout.
+    qs(auth, ".auth-page__brand")?.setAttribute("hidden", "");
+  }
   document.body.classList.add("is-auth");
   document.body.classList.remove("is-landing");
   document.body.classList.remove("is-premium");
@@ -190,10 +204,16 @@ export function showAuthRoute() {
   const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
   const params = new URLSearchParams(location.search);
 
+  const focusSoon = (sel) => {
+    requestAnimationFrame(() => {
+      qs(auth, sel)?.focus?.();
+    });
+  };
+
   if (path === "/register") {
     showScreen("register");
     document.title = "Create account — InvestAtlant";
-    qs(auth, "#auth-register-name")?.focus();
+    focusSoon("#auth-register-name");
   } else if (path === "/check-email") {
     showScreen("check-email");
     document.title = "Check your email — InvestAtlant";
@@ -204,20 +224,20 @@ export function showAuthRoute() {
   } else if (path === "/forgot-password") {
     showScreen("forgot");
     document.title = "Reset password — InvestAtlant";
-    qs(auth, "#auth-forgot-email")?.focus();
+    focusSoon("#auth-forgot-email");
   } else if (path === "/reset-password") {
     showScreen("reset");
     document.title = "Choose a new password — InvestAtlant";
     const tokenInput = qs(auth, "#auth-reset-token");
     if (tokenInput) tokenInput.value = params.get("token") || "";
-    qs(auth, "#auth-reset-password")?.focus();
+    focusSoon("#auth-reset-password");
   } else {
     showScreen("login");
     document.title = "Log in — InvestAtlant";
     if (params.get("verified") === "1") {
       setMsg(qs(auth, "#auth-login-success"), "Email verified. You can log in now.", true);
     }
-    qs(auth, "#auth-login-email")?.focus();
+    focusSoon("#auth-login-email");
   }
 }
 
@@ -232,7 +252,8 @@ export function hideAuthRoute() {
 
 function navigate(path) {
   history.pushState({ auth: true }, "", path);
-  showAuthRoute();
+  // Go through the app router so landing/shell/auth chrome stays consistent.
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 function renderTopbarUser() {
@@ -533,8 +554,11 @@ export function setupAuthLoginPanel() {
     const href = a.getAttribute("href");
     if (!href || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    // Close the mobile sidebar so /login and /register are visible.
-    if (typeof window.closeMobileTopbarNav === "function") {
+    e.stopPropagation();
+    // Close the mobile sidebar so /login and /register are visible (no extended topbar).
+    if (typeof window.clearMobileOverlays === "function") {
+      window.clearMobileOverlays();
+    } else if (typeof window.closeMobileTopbarNav === "function") {
       window.closeMobileTopbarNav();
     }
     navigate(href);

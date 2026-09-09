@@ -11,7 +11,19 @@ const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
 
 let tickerTitleCache: Map<string, string> | null = null;
 
+const RESOLVED_TICKER_CACHE_MAX = 2_000;
 const resolvedTickerCache = new Map<string, ResolvedStock>();
+
+function rememberResolvedStock(sym: string, resolved: ResolvedStock): ResolvedStock {
+  if (resolvedTickerCache.has(sym)) resolvedTickerCache.delete(sym);
+  resolvedTickerCache.set(sym, resolved);
+  while (resolvedTickerCache.size > RESOLVED_TICKER_CACHE_MAX) {
+    const oldest = resolvedTickerCache.keys().next().value;
+    if (oldest == null) break;
+    resolvedTickerCache.delete(oldest);
+  }
+  return resolved;
+}
 
 async function loadTickerTitles(): Promise<Map<string, string>> {
   if (tickerTitleCache) return tickerTitleCache;
@@ -185,8 +197,7 @@ export async function resolveStockIdentifiers(
 
   const fromCache = await resolveFromOwnershipCache(pool, sym);
   if (fromCache) {
-    resolvedTickerCache.set(sym, fromCache);
-    return fromCache;
+    return rememberResolvedStock(sym, fromCache);
   }
 
   const titles = await loadTickerTitles();
@@ -201,8 +212,7 @@ export async function resolveStockIdentifiers(
     );
   }
 
-  resolvedTickerCache.set(sym, resolved);
-  return resolved;
+  return rememberResolvedStock(sym, resolved);
 }
 
 /** Clear in-process resolution cache (tests / after ownership rebuild). */

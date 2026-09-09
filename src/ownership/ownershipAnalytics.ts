@@ -98,6 +98,8 @@ function sortByValueDesc(holders: FundHoldingAggregate[]): FundHoldingAggregate[
 }
 
 const QUARTER_PAIR_TTL_MS = 60_000;
+/** Cap in-process holder maps — expired entries used to accumulate forever (OOM). */
+const QUARTER_PAIR_CACHE_MAX = 48;
 const quarterPairCache = new Map<
   string,
   {
@@ -109,6 +111,17 @@ const quarterPairInflight = new Map<
   string,
   Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }>
 >();
+
+function pruneQuarterPairCache(now = Date.now()): void {
+  for (const [key, entry] of quarterPairCache) {
+    if (entry.expiresAt <= now) quarterPairCache.delete(key);
+  }
+  while (quarterPairCache.size > QUARTER_PAIR_CACHE_MAX) {
+    const oldest = quarterPairCache.keys().next().value;
+    if (oldest == null) break;
+    quarterPairCache.delete(oldest);
+  }
+}
 
 function holderByCikMap(holders: Iterable<FundHoldingAggregate>): Map<string, FundHoldingAggregate> {
   const out = new Map<string, FundHoldingAggregate>();
@@ -277,14 +290,16 @@ export async function fetchQuarterPairMap(
   ticker?: string,
   _options: { skipCache?: boolean } = {}
 ): Promise<{ current: Map<string, FundHoldingAggregate>; previous: Map<string, FundHoldingAggregate> }> {
+  // Do not key on live stockPrice — it changes every quote and used to create a new
+  // never-evicted cache entry per page view (multi-GB leak over long localhost uptimes).
   const cacheKey = [
     ticker || "",
     cusips.join(","),
     currentQuarter,
     previousQuarter || "",
     sharesOutstanding ?? "",
-    stockPrice ?? "",
   ].join("|");
+  pruneQuarterPairCache();
   const hit = quarterPairCache.get(cacheKey);
   if (hit && hit.expiresAt > Date.now()) return hit.value;
   if (quarterPairInflight.has(cacheKey)) return quarterPairInflight.get(cacheKey)!;
@@ -324,6 +339,7 @@ export async function fetchQuarterPairMap(
       : new Map();
 
     const value = { current, previous };
+    pruneQuarterPairCache();
     quarterPairCache.set(cacheKey, { expiresAt: Date.now() + QUARTER_PAIR_TTL_MS, value });
     return value;
   })();

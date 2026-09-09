@@ -1,12 +1,14 @@
 /* Dedicated auth screens — matches InvestAtlant tokens */
 
 .auth-page {
+  /* Sit under the site topbar — do NOT vertically center (that leaves a tall dark
+     band under the topbar that looks like the bar itself grew). */
   min-height: calc(100dvh - var(--topbar-height) - 2rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 1.5rem 1rem 3rem;
+  justify-content: flex-start;
+  padding: 2rem 1rem 3rem;
   animation: auth-fade-in 0.4s ease;
 }
 
@@ -27,12 +29,17 @@
   }
 }
 
-body.is-auth .app {
-  max-width: none;
+body.is-auth .topbar {
+  /* Keep the same separation from page content as the rest of the site. */
+  margin-bottom: 1.25rem;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
-body.is-auth .topbar {
-  margin-bottom: 0;
+/* Site topbar already has the brand — never show a second logo row under it. */
+body.is-auth .auth-page__brand,
+.auth-page .auth-page__brand {
+  display: none !important;
 }
 
 body.is-auth #app-shell,

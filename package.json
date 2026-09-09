@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx server.mjs",
+    "start": "node --max-old-space-size=6144 --import tsx server.mjs",
     "build": "tsc",
     "build:indicators": "tsc -p indicators/tsconfig.json",
     "typecheck": "tsc --noEmit",

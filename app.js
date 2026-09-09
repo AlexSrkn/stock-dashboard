@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-auth-nav-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-auth-nav-4";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -1537,13 +1537,16 @@ function showLegalView(key) {
 function showLandingView(visible) {
   const landing = document.getElementById("view-landing");
   const shell = document.getElementById("app-shell");
+  // Always leave auth screens when toggling landing/app. body.is-auth keeps
+  // #app-shell at display:none !important, so section nav from /login would
+  // otherwise update the URL without revealing the workspace.
+  hideAuthRoute();
   if (landing) landing.hidden = !visible;
   if (shell) shell.hidden = visible;
   if (visible) hideInfoViews();
   document.body.classList.toggle("is-landing", visible);
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
-    hideAuthRoute();
     clearMobileOverlays();
     closeTopSearch();
     setDashboardStatus("");
@@ -5716,9 +5719,11 @@ function setExploreMode(mode, { navigate = true } = {}) {
   if (!EXPLORE_MODES.includes(mode)) mode = "stocks";
   // Close mobile chrome so the dimmed scrim cannot stick after a section change.
   clearMobileOverlays();
-  // Hide any open info/legal pages so their body classes don't block #app-shell.
+  // Hide any open info/legal/auth pages so their body classes don't block #app-shell.
   hideInfoViews();
+  hideAuthRoute();
   showLandingView(false);
+  window.syncMobileTopbarChrome?.();
   activeExploreMode = mode;
   updateExploreNav();
   updateTopSearchForMode();
@@ -19578,7 +19583,7 @@ function closeTopSearch() {
 function expandMobileTopSearch() {
   const wrap = document.querySelector(".topbar-search");
   const input = document.getElementById("top-search-input");
-  if (!wrap || !window.matchMedia("(max-width: 900px)").matches) return;
+  if (!wrap || !window.matchMedia("(max-width: 1100px)").matches) return;
   // Landing drawer already shows a full search field — no icon-expand overlay.
   if (wrap.closest("#topbar-drawer-utils")) {
     input?.focus();
@@ -21760,6 +21765,9 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
   window.syncLandingMobileTopbar?.();
 }
 
+// Auth panel (and other modules) close the drawer before leaving for /login.
+window.clearMobileOverlays = clearMobileOverlays;
+
 function setSidebarDrawerTab(tab) {
   const drawer = document.getElementById("sidebar-drawer");
   if (!drawer) return;
@@ -21905,7 +21913,7 @@ async function handleRouteChange() {
     return;
   }
   if (route.mode === "auth") {
-    showLandingView(false);
+    // showAuthRoute hides landing/shell itself; avoid briefly revealing #app-shell.
     showAuthRoute();
     return;
   }
@@ -22154,7 +22162,7 @@ function setupMobileTopbarNav() {
   const actions = topbar?.querySelector(".topbar__actions");
   if (!topbar || !menuBtn || !nav) return;
 
-  const isMobileTopbar = () => window.matchMedia("(max-width: 900px)").matches;
+  const isMobileTopbar = () => window.matchMedia("(max-width: 1100px)").matches;
 
   const restoreTopbarActions = () => {
     if (!actions) return;
@@ -22214,13 +22222,28 @@ function setupMobileTopbarNav() {
 
   const placeNav = () => {
     const mobile = isMobileTopbar();
+    menuBtn.hidden = !mobile;
     if (mobile) {
       // Keep fixed drawer out of the topbar (backdrop-filter creates a fixed containing block).
       if (nav.parentElement !== topbar.parentElement || nav.previousElementSibling !== topbar) {
         topbar.insertAdjacentElement("afterend", nav);
       }
-    } else if (brand && nav.parentElement !== start) {
-      brand.insertAdjacentElement("afterend", nav);
+    } else if (start && nav.parentElement !== start) {
+      // Desktop: nav must live inside .topbar__start — a sibling renders as a second topbar row.
+      if (brand) brand.insertAdjacentElement("afterend", nav);
+      else start.appendChild(nav);
+      topbar.classList.remove("is-nav-open");
+      document.body.classList.remove("topbar-nav-open");
+      menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.setAttribute("aria-label", "Open menu");
+      if (backdrop) {
+        backdrop.hidden = true;
+        backdrop.style.removeProperty("display");
+      }
+      nav.querySelectorAll(".workspace-nav__item.is-expanded").forEach((item) => {
+        item.classList.remove("is-expanded");
+        item.querySelector(".workspace-nav__btn")?.setAttribute("aria-expanded", "false");
+      });
     }
     placeMobileDrawerUtils();
   };
@@ -22267,12 +22290,18 @@ function setupMobileTopbarNav() {
 
   const closeNav = () => setOpen(false);
 
+  const syncTopbarChrome = () => {
+    placeNav();
+    placeMobileDrawerUtils();
+  };
+
   // Expose for other handlers (subsection clicks use stopPropagation).
   window.closeMobileTopbarNav = closeNav;
-  window.syncLandingMobileTopbar = placeMobileDrawerUtils;
-  window.syncMobileTopbarChrome = placeMobileDrawerUtils;
+  window.syncLandingMobileTopbar = syncTopbarChrome;
+  window.syncMobileTopbarChrome = syncTopbarChrome;
 
   placeNav();
+  placeMobileDrawerUtils();
 
   menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -22318,7 +22347,7 @@ function setupMobileTopbarNav() {
 
   window.addEventListener("resize", () => {
     placeNav();
-    if (window.matchMedia("(min-width: 901px)").matches) {
+    if (window.matchMedia("(min-width: 1101px)").matches) {
       closeNav();
       clearMobileNavAccordion();
     }
@@ -22772,7 +22801,7 @@ function setupTopSearch() {
   if (!input) return;
 
   field?.addEventListener("click", (e) => {
-    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    if (!window.matchMedia("(max-width: 1100px)").matches) return;
     if (wrap.closest("#topbar-drawer-utils")) return;
     if (wrap.classList.contains("is-expanded")) return;
     e.preventDefault();
@@ -22780,7 +22809,7 @@ function setupTopSearch() {
   });
 
   input.addEventListener("focus", () => {
-    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    if (!window.matchMedia("(max-width: 1100px)").matches) return;
     if (wrap?.closest("#topbar-drawer-utils")) return;
     wrap?.classList.add("is-expanded");
   });
@@ -22791,7 +22820,7 @@ function setupTopSearch() {
     if (!q) {
       closeTopSearch();
       if (
-        window.matchMedia("(max-width: 900px)").matches &&
+        window.matchMedia("(max-width: 1100px)").matches &&
         !wrap?.closest("#topbar-drawer-utils")
       ) {
         wrap?.classList.add("is-expanded");
@@ -22867,7 +22896,7 @@ function setupTopSearch() {
   });
 
   window.addEventListener("resize", () => {
-    if (window.matchMedia("(min-width: 901px)").matches) {
+    if (window.matchMedia("(min-width: 1101px)").matches) {
       wrap?.classList.remove("is-expanded");
     }
   });
