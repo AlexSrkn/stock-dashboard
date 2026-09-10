@@ -47,22 +47,16 @@ export function savePerformanceSummariesToDisk(summaries: InstitutionPerformance
   fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), "utf8");
 }
 
-/** Synchronous startup load — no DB work on npm start. */
+/** Startup check only — full JSON is lazy-loaded on first request. */
 export function ensurePerformanceSummariesOnStartup(): void {
   try {
     if (!fs.existsSync(CACHE_FILE)) {
       console.log("Performance summaries cache missing — run: npm run performance:warm-cache");
       return;
     }
-    const raw = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")) as DiskPayload;
-    if (!raw?.summaries?.length || raw.version !== 2) {
-      console.log("Performance summaries cache empty or outdated — run: npm run performance:warm-cache");
-      return;
-    }
-    hydrateMemory(raw.summaries, Date.now());
-    const instCount = new Set(raw.summaries.map((s) => s.institutionId)).size;
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
     console.log(
-      `Performance summaries cache loaded (${instCount} institutions, ${raw.summaries.length} rows).`
+      `Performance summaries cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
     );
   } catch (err) {
     console.warn(

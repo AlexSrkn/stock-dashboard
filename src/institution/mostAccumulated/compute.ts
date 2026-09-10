@@ -192,11 +192,10 @@ function buildPeriodMaps(
       }
     }
 
-    const filingDates = [...recentFilingQuarters.values()];
-    const uniqueQuarters = sortQuarters(filingDates);
     return {
-      currentLabel: `Filings in last 30 days (${uniqueQuarters.join(", ") || "—"})`,
-      previousLabel: uniqueQuarters.map((q) => previousQuarter(q)).filter(Boolean).join(", ") || null,
+      // Keep labels short — listing every filing quarter bloats the page subtitle.
+      currentLabel: "Last 30 days",
+      previousLabel: null,
       available: true,
       unavailableReason: null,
       curByInstTicker,

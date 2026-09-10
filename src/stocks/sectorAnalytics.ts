@@ -1,11 +1,18 @@
 import type pg from "pg";
 import { getPool } from "../db/pool.js";
 import { getStocksRepository } from "./stocksRepository.js";
+import { latestHoldingQuarters } from "./latestHoldingQuarters.js";
+
+export interface SectorIndustrySummary {
+  industry: string;
+  stockCount: number;
+}
 
 export interface SectorSummaryRow {
   sector: string;
   stockCount: number;
   industries: string[];
+  industrySummaries: SectorIndustrySummary[];
 }
 
 export interface SectorOwnershipRow {
@@ -26,9 +33,24 @@ export interface SectorFlowRow {
 
 const COMMON_STOCK_FILTER = `
   (h.put_call IS NULL OR BTRIM(h.put_call) = '')
-  AND h.ticker IS NOT NULL
-  AND BTRIM(h.ticker) <> ''
 `.trim();
+
+/** Resolve ticker when sec_holding.ticker is blank (common after bulk 13F ingest). */
+const CUSIP_MAP_CTE = `
+cusip_map AS (
+  SELECT DISTINCT ON (primary_cusip)
+    primary_cusip,
+    UPPER(BTRIM(ticker)) AS ticker
+  FROM ownership_cache
+  WHERE primary_cusip IS NOT NULL
+    AND BTRIM(primary_cusip) <> ''
+    AND ticker IS NOT NULL
+    AND BTRIM(ticker) <> ''
+  ORDER BY primary_cusip, institution_count DESC NULLS LAST, ticker
+)
+`.trim();
+
+const RESOLVED_TICKER_EXPR = `COALESCE(NULLIF(UPPER(BTRIM(h.ticker)), ''), cm.ticker)`;
 
 export async function loadSectorSummaries(
   pool: pg.Pool = getPool()
@@ -38,39 +60,52 @@ export async function loadSectorSummaries(
     sector: string;
     stock_count: string;
     industries: string[] | null;
+    industry_summaries: { industry: string; stockCount: number }[] | null;
   }>(
-    `SELECT
-      sector,
-      COUNT(*)::text AS stock_count,
-      ARRAY_AGG(DISTINCT industry ORDER BY industry) FILTER (WHERE industry IS NOT NULL) AS industries
-     FROM stocks
-     WHERE sector IS NOT NULL AND BTRIM(sector) <> ''
+    `WITH industry_counts AS (
+       SELECT
+         sector,
+         industry,
+         COUNT(*)::int AS stock_count
+       FROM stocks
+       WHERE sector IS NOT NULL AND BTRIM(sector) <> ''
+         AND industry IS NOT NULL AND BTRIM(industry) <> ''
+       GROUP BY sector, industry
+     )
+     SELECT
+       sector,
+       SUM(stock_count)::text AS stock_count,
+       ARRAY_AGG(industry ORDER BY industry) AS industries,
+       json_agg(
+         json_build_object('industry', industry, 'stockCount', stock_count)
+         ORDER BY industry
+       ) AS industry_summaries
+     FROM industry_counts
      GROUP BY sector
      ORDER BY sector ASC`
   );
 
   return {
     computedAt: new Date().toISOString(),
-    sectors: res.rows.map((row) => ({
-      sector: row.sector,
-      stockCount: Number(row.stock_count),
-      industries: (row.industries || []).filter(Boolean),
-    })),
+    sectors: res.rows.map((row) => {
+      const industrySummaries = (row.industry_summaries || [])
+        .map((item) => ({
+          industry: String(item.industry || ""),
+          stockCount: Number(item.stockCount) || 0,
+        }))
+        .filter((item) => item.industry);
+      return {
+        sector: row.sector,
+        stockCount: Number(row.stock_count),
+        industries: (row.industries || []).filter(Boolean),
+        industrySummaries,
+      };
+    }),
   };
 }
 
 async function latestQuarters(pool: pg.Pool): Promise<{ current: string; previous: string | null }> {
-  const res = await pool.query<{ quarter: string }>(
-    `SELECT DISTINCT quarter
-     FROM sec_holding
-     WHERE quarter IS NOT NULL AND BTRIM(quarter) <> ''
-     ORDER BY quarter DESC
-     LIMIT 2`
-  );
-  return {
-    current: res.rows[0]?.quarter || "",
-    previous: res.rows[1]?.quarter || null,
-  };
+  return latestHoldingQuarters(pool);
 }
 
 export async function loadInstitutionalSectorOwnership(
@@ -89,15 +124,18 @@ export async function loadInstitutionalSectorOwnership(
     total_shares: string;
   }>(
     `
-    WITH holdings AS (
+    WITH ${CUSIP_MAP_CTE},
+    holdings AS (
       SELECT
-        UPPER(BTRIM(h.ticker)) AS ticker,
+        ${RESOLVED_TICKER_EXPR} AS ticker,
         SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS value_usd,
         SUM(h.shares)::float8 AS shares
       FROM sec_holding h
+      LEFT JOIN cusip_map cm ON cm.primary_cusip = h.cusip
       WHERE h.quarter = $1
         AND ${COMMON_STOCK_FILTER}
-      GROUP BY UPPER(BTRIM(h.ticker))
+        AND ${RESOLVED_TICKER_EXPR} IS NOT NULL
+      GROUP BY ${RESOLVED_TICKER_EXPR}
     )
     SELECT
       st.sector,
@@ -151,23 +189,30 @@ export async function loadInstitutionalSectorFlows(
     net_shares_change: string;
   }>(
     `
-    WITH cur AS (
+    WITH ${CUSIP_MAP_CTE},
+    cur AS (
       SELECT
-        UPPER(BTRIM(h.ticker)) AS ticker,
+        ${RESOLVED_TICKER_EXPR} AS ticker,
         SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS value_usd,
         SUM(h.shares)::float8 AS shares
       FROM sec_holding h
-      WHERE h.quarter = $1 AND ${COMMON_STOCK_FILTER}
-      GROUP BY UPPER(BTRIM(h.ticker))
+      LEFT JOIN cusip_map cm ON cm.primary_cusip = h.cusip
+      WHERE h.quarter = $1
+        AND ${COMMON_STOCK_FILTER}
+        AND ${RESOLVED_TICKER_EXPR} IS NOT NULL
+      GROUP BY ${RESOLVED_TICKER_EXPR}
     ),
     prev AS (
       SELECT
-        UPPER(BTRIM(h.ticker)) AS ticker,
+        ${RESOLVED_TICKER_EXPR} AS ticker,
         SUM(COALESCE(h.value, h.value_usd_thousands * 1000))::float8 AS value_usd,
         SUM(h.shares)::float8 AS shares
       FROM sec_holding h
-      WHERE h.quarter = $2 AND ${COMMON_STOCK_FILTER}
-      GROUP BY UPPER(BTRIM(h.ticker))
+      LEFT JOIN cusip_map cm ON cm.primary_cusip = h.cusip
+      WHERE h.quarter = $2
+        AND ${COMMON_STOCK_FILTER}
+        AND ${RESOLVED_TICKER_EXPR} IS NOT NULL
+      GROUP BY ${RESOLVED_TICKER_EXPR}
     ),
     merged AS (
       SELECT

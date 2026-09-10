@@ -39,14 +39,21 @@ export function saveMostAccumulatedToDisk(payload: MostAccumulatedPayload): void
 }
 
 export function ensureMostAccumulatedCacheOnStartup(): void {
-  const payload = loadMostAccumulatedFromDisk();
-  if (!payload) {
-    console.log("Most accumulated cache missing — run: npm run institutions:warm-most-accumulated");
-    return;
+  try {
+    if (!fs.existsSync(CACHE_FILE)) {
+      console.log("Most accumulated cache missing — run: npm run institutions:warm-most-accumulated");
+      return;
+    }
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
+    console.log(
+      `Most accumulated cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
+    );
+  } catch (err) {
+    console.warn(
+      "Most accumulated cache check failed:",
+      err instanceof Error ? err.message : String(err)
+    );
   }
-  memoryCache = { loadedAt: Date.now(), payload };
-  const quarterCount = payload.periods.quarter?.stocks?.length ?? 0;
-  console.log(`Most accumulated cache loaded (${quarterCount} tickers, quarter period).`);
 }
 
 export function getCachedMostAccumulated(): MostAccumulatedPayload | null {

@@ -7,6 +7,8 @@ import {
   SELECT_OWNERSHIP_HOLDINGS_BY_TICKER_SQL,
   SELECT_TRACKED_AGGREGATES_BY_FILER_FOR_CIKS_SQL,
   SELECT_FILER_SHARES_BY_CUSIP_QUARTER_SQL,
+  COUNT_FILERS_BY_CUSIP_QUARTER_SQL,
+  COUNT_NEW_POSITIONS_BY_CUSIP_QUARTERS_SQL,
 } from "./queries.js";
 import type { FundHoldingAggregate } from "./types.js";
 
@@ -241,4 +243,32 @@ export async function fetchFilerSharesByCusipQuarter(
     });
   }
   return out;
+}
+
+export async function countFilersByCusipQuarter(
+  pool: pg.Pool,
+  cusips: string[],
+  quarter: string
+): Promise<number> {
+  if (!cusips.length || !quarter) return 0;
+  const res = await pool.query<{ cnt: number }>(COUNT_FILERS_BY_CUSIP_QUARTER_SQL, [
+    cusips,
+    quarter,
+  ]);
+  return Number(res.rows[0]?.cnt) || 0;
+}
+
+export async function countNewPositionsByCusipQuarters(
+  pool: pg.Pool,
+  cusips: string[],
+  currentQuarter: string,
+  previousQuarter: string
+): Promise<number> {
+  if (!cusips.length || !currentQuarter || !previousQuarter) return 0;
+  const res = await pool.query<{ cnt: number }>(COUNT_NEW_POSITIONS_BY_CUSIP_QUARTERS_SQL, [
+    cusips,
+    currentQuarter,
+    previousQuarter,
+  ]);
+  return Number(res.rows[0]?.cnt) || 0;
 }

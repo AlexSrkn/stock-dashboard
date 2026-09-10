@@ -56,21 +56,17 @@ export function savePortfolioProxySnapshotsToDisk(snapshots: RawPortfolioSnapsho
   fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), "utf8");
 }
 
-/** Synchronous startup load — no DB work on npm start. */
+/** Startup check only — full JSON is lazy-loaded on first request. */
 export function ensurePortfolioProxyCacheOnStartup(): void {
   try {
     if (!fs.existsSync(CACHE_FILE)) {
       console.log("Portfolio proxy cache missing — run: npm run institutions:warm-portfolio-proxy");
       return;
     }
-    const snapshots = loadPortfolioProxySnapshotsFromDisk();
-    if (!snapshots?.length) {
-      console.log("Portfolio proxy cache empty — run: npm run institutions:warm-portfolio-proxy");
-      return;
-    }
-    hydrateMemory(snapshots, Date.now());
-    const instCount = new Set(snapshots.map((s) => s.institutionId)).size;
-    console.log(`Portfolio proxy cache loaded (${instCount} institutions, ${snapshots.length} snapshots).`);
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
+    console.log(
+      `Portfolio proxy cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
+    );
   } catch (err) {
     console.warn(
       "Portfolio proxy cache load failed:",

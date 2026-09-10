@@ -41,17 +41,24 @@ export function saveNewPositionsToDisk(payload: NewPositionsPayload): void {
 }
 
 export function ensureNewPositionsCacheOnStartup(): void {
-  const payload = loadNewPositionsFromDisk();
-  if (!payload) {
+  try {
+    if (!fs.existsSync(CACHE_FILE)) {
+      console.log(
+        "Institutional new positions cache missing — run: npm run institutions:warm-new-positions"
+      );
+      return;
+    }
+    // Do not hydrate at boot — this file is often 100MB+ on disk and much larger in heap.
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
     console.log(
-      "Institutional new positions cache missing — run: npm run institutions:warm-new-positions"
+      `Institutional new positions cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
     );
-    return;
+  } catch (err) {
+    console.warn(
+      "Institutional new positions cache check failed:",
+      err instanceof Error ? err.message : String(err)
+    );
   }
-  memoryCache = { loadedAt: Date.now(), payload };
-  console.log(
-    `Institutional new positions cache loaded (${payload.positions.length} positions, ${payload.summary.institutionsReporting} institutions).`
-  );
 }
 
 export function getCachedNewPositions(): NewPositionsPayload | null {

@@ -3,6 +3,7 @@ import https from "node:https";
 import dns from "node:dns";
 import fs from "node:fs";
 import path from "node:path";
+import v8 from "node:v8";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { getPool } from "./src/db/pool.ts";
@@ -59,6 +60,7 @@ import { ensureHiddenGemsCacheOnStartup } from "./src/signals/hiddenGems/cache.t
 import { ensureConvictionScoreCacheOnStartup } from "./src/signals/convictionScore/cache.ts";
 import { ensureInstitutionalDiscoveryCacheOnStartup } from "./src/signals/institutionalDiscovery/cache.ts";
 import { ensureInstitutionalAccumulationCacheOnStartup } from "./src/stocks/institutionalAccumulationCache.ts";
+import { warmSectorAnalyticsOnStartup } from "./src/stocks/warmSectorAnalytics.ts";
 import { ensureMostAccumulatedCacheOnStartup } from "./src/institution/mostAccumulated/cache.ts";
 import { ensureStocksMostAccumulatedCacheOnStartup } from "./src/stocks/mostAccumulated/cache.ts";
 import { ensureNewPositionsCacheOnStartup } from "./src/institution/newPositions/cache.ts";
@@ -727,6 +729,8 @@ http
         u.pathname.startsWith("/insiders/") ||
         u.pathname === "/politicians" ||
         u.pathname.startsWith("/politicians/") ||
+        u.pathname === "/sector" ||
+        u.pathname.startsWith("/sector/") ||
         u.pathname === "/signals" ||
         u.pathname.startsWith("/signals/") ||
         u.pathname === "/tools" ||
@@ -748,7 +752,14 @@ http
     })();
   })
   .listen(PORT, () => {
+    const heapLimitMb = Math.round(v8.getHeapStatistics().heap_size_limit / (1024 * 1024));
     console.log(`InvestAtlant: http://localhost:${PORT}`);
+    console.log(`Node heap limit: ~${heapLimitMb} MB (use npm start for 6144 MB)`);
+    if (heapLimitMb < 4000) {
+      console.warn(
+        "Low heap limit — if you hit OOM, start with: npm start (or NODE_OPTIONS=--max-old-space-size=6144)"
+      );
+    }
     console.log("Market data: SEC + TradingView (Yahoo Finance removed)");
     console.log("Ownership API: /api/stocks/:ticker/{top-holders,ownership-changes,new-positions,sold-out,institutional-options,institutional-transactions}");
     console.log("Stocks activity API: /api/stocks/recently-active, /api/stocks/most-accumulated, /api/stocks/ownership-changes, /api/stocks/holder-overlap, /api/stocks/ownership-history");
@@ -781,6 +792,7 @@ http
     ensureConvictionScoreCacheOnStartup();
     ensureInstitutionalDiscoveryCacheOnStartup();
     ensureInstitutionalAccumulationCacheOnStartup();
+    warmSectorAnalyticsOnStartup();
     ensureMostAccumulatedCacheOnStartup();
     ensureStocksMostAccumulatedCacheOnStartup();
     ensureNewPositionsCacheOnStartup();

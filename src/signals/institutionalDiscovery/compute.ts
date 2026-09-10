@@ -5,11 +5,13 @@ import {
   buildPortfolioSnapshots,
   indexPortfolioSnapshots,
 } from "../../institution/performance/portfolioWeights.js";
+import { SELECT_INSTITUTION_QUARTERS_BATCH_SQL } from "../../institution/performance/queries.js";
 import { sortQuarters } from "../../institution/performance/quarters.js";
 import { formatSecCik } from "../../sec/http.js";
+import { trackedInstitutionCiks } from "../../institution/mostAccumulated/queries.js";
 import {
   getTrackedInstitutionByCik,
-  TRACKED_INSTITUTIONAL_MANAGERS,
+  reloadTrackedInstitutions,
 } from "../../ownership/trackedInstitutions.js";
 import {
   SELECT_SHARES_OUTSTANDING_SQL,
@@ -36,6 +38,10 @@ import type {
 } from "./types.js";
 
 const MAX_INSTITUTION_LIST = 40;
+/** Match ownership-history / ownership-cache — keeps peak RSS manageable on a 4GB VPS. */
+const CIK_BATCH_SIZE = 50;
+const MAX_QUARTERS = 8;
+const MIN_TRACKED_CIKS = 100;
 
 interface HoldingState {
   shares: number;
@@ -114,6 +120,67 @@ function buildStockQuarterIndex(
     byInst.set(cik, prev);
   }
   return out;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function loadTrackedQuarters(
+  pool: pg.Pool,
+  ciks: string[],
+  maxQuarters: number
+): Promise<string[]> {
+  const quarters = new Set<string>();
+  for (const batch of chunkArray(ciks, CIK_BATCH_SIZE)) {
+    const res = await pool.query<{ quarter: string }>(SELECT_INSTITUTION_QUARTERS_BATCH_SQL, [batch]);
+    for (const row of res.rows) quarters.add(String(row.quarter));
+  }
+  return sortQuarters([...quarters]).slice(-maxQuarters);
+}
+
+function mergeStockQuarterIndex(target: StockQuarterHolders, source: StockQuarterHolders): void {
+  for (const [ticker, srcByQ] of source) {
+    let dstByQ = target.get(ticker);
+    if (!dstByQ) {
+      target.set(ticker, srcByQ);
+      continue;
+    }
+    for (const [quarter, srcByInst] of srcByQ) {
+      let dstByInst = dstByQ.get(quarter);
+      if (!dstByInst) {
+        dstByQ.set(quarter, srcByInst);
+        continue;
+      }
+      for (const [cik, st] of srcByInst) {
+        const prev = dstByInst.get(cik);
+        if (!prev) {
+          dstByInst.set(cik, { shares: st.shares, valueUsd: st.valueUsd });
+        } else {
+          prev.shares += st.shares;
+          prev.valueUsd += st.valueUsd;
+        }
+      }
+    }
+  }
+}
+
+function mergeWeightIndex(
+  target: ReturnType<typeof indexPortfolioSnapshots>,
+  source: ReturnType<typeof indexPortfolioSnapshots>
+): void {
+  for (const [institutionId, srcByQ] of source) {
+    let dstByQ = target.get(institutionId);
+    if (!dstByQ) {
+      target.set(institutionId, srcByQ);
+      continue;
+    }
+    for (const [quarter, snap] of srcByQ) {
+      dstByQ.set(quarter, snap);
+    }
+  }
 }
 
 function firstRecordedQuarter(
@@ -458,23 +525,51 @@ function buildSummary(
   };
 }
 
-/** Heavy compute from tracked 13F holdings — prefer warm cache. */
+/** Heavy compute from the full tracked 13F universe — prefer warm cache. */
 export async function computeInstitutionalDiscovery(
   pool: pg.Pool = getPool()
 ): Promise<InstitutionalDiscoveryCachePayload> {
-  void TRACKED_INSTITUTIONAL_MANAGERS; // ensure seed linked for name resolution
+  reloadTrackedInstitutions(true);
+  const ciks = trackedInstitutionCiks();
+  if (ciks.length < MIN_TRACKED_CIKS) {
+    throw new Error(
+      `Tracked universe too small (${ciks.length} CIKs). Copy/import data/13f-info/imported-tracked-managers.json first.`
+    );
+  }
 
-  const [holdings, sharesOutstanding] = await Promise.all([
-    loadInstitutionHoldings(pool, undefined, { maxQuarters: 8 }),
-    loadSharesOutstanding(pool),
-  ]);
+  const quarters = await loadTrackedQuarters(pool, ciks, MAX_QUARTERS);
+  if (quarters.length < 2) {
+    throw new Error(
+      "Need at least two 13F quarters of holdings for the tracked universe before computing discovery."
+    );
+  }
 
-  const quarters = sortQuarters([...new Set(holdings.map((h) => h.quarter).filter(Boolean))]);
+  const sharesOutstanding = await loadSharesOutstanding(pool);
+  const stockIndex: StockQuarterHolders = new Map();
+  const weightIndex: ReturnType<typeof indexPortfolioSnapshots> = new Map();
+
+  const batches = chunkArray(ciks, CIK_BATCH_SIZE);
+  let batchIndex = 0;
+  for (const batch of batches) {
+    batchIndex += 1;
+    if (batchIndex === 1 || batchIndex % 20 === 0 || batchIndex === batches.length) {
+      console.log(
+        `Institutional discovery holdings batch ${batchIndex}/${batches.length} (${batch.length} CIKs)…`
+      );
+    }
+    const holdings = await loadInstitutionHoldings(pool, batch, { quarters });
+    mergeStockQuarterIndex(stockIndex, buildStockQuarterIndex(holdings));
+    const batchWeights = indexPortfolioSnapshots(buildPortfolioSnapshots(holdings));
+    // Re-key to padded CIKs so draft lookups (formatSecCik) hit portfolio weights.
+    const paddedWeights: ReturnType<typeof indexPortfolioSnapshots> = new Map();
+    for (const [id, byQ] of batchWeights) {
+      paddedWeights.set(formatSecCik(id), byQ);
+    }
+    mergeWeightIndex(weightIndex, paddedWeights);
+  }
+
   const currentQuarter = quarters[quarters.length - 1] ?? "";
   const previousQuarter = quarters.length >= 2 ? quarters[quarters.length - 2]! : null;
-
-  const weightIndex = indexPortfolioSnapshots(buildPortfolioSnapshots(holdings));
-  const stockIndex = buildStockQuarterIndex(holdings);
 
   const tickers = [...stockIndex.keys()].sort((a, b) => a.localeCompare(b));
   const enrichment = await loadStockEnrichment(pool, tickers);
@@ -514,6 +609,13 @@ export async function computeInstitutionalDiscovery(
     ? withHistory.filter((r) => r.quarter === currentQuarter && !r.insufficientData)
     : [];
 
+  const maxHolders = latest.reduce((m, r) => Math.max(m, r.currentHolderCount ?? 0), 0);
+  if (maxHolders < 100) {
+    throw new Error(
+      `Refusing thin discovery universe: max currentHolderCount in ${currentQuarter || "latest"} is only ${maxHolders} across ${ciks.length} tracked CIKs (expected hundreds+). Check that sec_holding has filings for the imported tracked managers.`
+    );
+  }
+
   // Cache only the latest pair of quarters (UI default + QoQ). Keeping every
   // ticker×quarter row blew past ~500MB / 1.5GB heap on the production VPS.
   const keepQuarters = new Set(
@@ -531,6 +633,10 @@ export async function computeInstitutionalDiscovery(
   ].sort((a, b) => a.localeCompare(b));
 
   const pairQuarters = sortQuarters([...keepQuarters]);
+
+  console.log(
+    `Institutional discovery scored ${slimSignals.length} rows · max holders=${maxHolders} · tracked CIKs=${ciks.length}`
+  );
 
   return {
     version: 1,

@@ -9,8 +9,8 @@ import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
 import { loadOwnershipMeta, fetchQuarterPairMap } from "./ownershipAnalytics.js";
 import {
   loadOwnershipCacheSnapshot,
-  fetchCachedTopHolders,
-  fetchFilerSharesByCusipQuarter,
+  countFilersByCusipQuarter,
+  countNewPositionsByCusipQuarters,
 } from "./ownershipCacheReader.js";
 import type { FundHoldingAggregate } from "./types.js";
 import { formatSecCik } from "../sec/http.js";
@@ -216,8 +216,8 @@ export async function getOwnershipIntelligence(
         const buyShares = netShares > 0 ? netShares : 0;
         const sellShares = netShares < 0 ? Math.abs(netShares) : 0;
 
-        // QoQ holder deltas are not stored on ownership_cache — compute from
-        // current holdings + full prior-quarter filer set (not current-CIK-only).
+        // QoQ holder deltas are not on ownership_cache — SQL COUNTs only
+        // (avoid loading full holder Maps into the heap on every stock view).
         let institutionCountChange: number | null = null;
         let newPositions = 0;
         let cusips = snapshot.primaryCusip ? [snapshot.primaryCusip] : [];
@@ -227,30 +227,28 @@ export async function getOwnershipIntelligence(
         }
         if (cusips.length && snapshot.currentQuarter) {
           try {
-            const currentHolders = await fetchCachedTopHolders(
+            const currentCount = await countFilersByCusipQuarter(
               pool,
-              sym,
-              snapshot.sharesOutstanding,
-              null,
-              Math.max(500, snapshot.institutionCount || 500)
+              cusips,
+              snapshot.currentQuarter
             );
-            const current = holdersByCik(new Map(currentHolders.map((h) => [h.fundName, h])));
-            const previousRaw =
-              snapshot.previousQuarter != null
-                ? await fetchFilerSharesByCusipQuarter(
-                    pool,
-                    cusips,
-                    snapshot.previousQuarter,
-                    snapshot.sharesOutstanding,
-                    null
-                  )
-                : new Map<string, FundHoldingAggregate>();
-            const previous = holdersByCik(previousRaw);
-            const currentCount = countHolders(current);
-            const previousCount = countHolders(previous);
-            institutionCountChange =
-              previousCount > 0 || currentCount > 0 ? currentCount - previousCount : null;
-            newPositions = countNewPositions(current, previous);
+            if (snapshot.previousQuarter) {
+              const [previousCount, newPos] = await Promise.all([
+                countFilersByCusipQuarter(pool, cusips, snapshot.previousQuarter),
+                countNewPositionsByCusipQuarters(
+                  pool,
+                  cusips,
+                  snapshot.currentQuarter,
+                  snapshot.previousQuarter
+                ),
+              ]);
+              institutionCountChange =
+                previousCount > 0 || currentCount > 0 ? currentCount - previousCount : null;
+              newPositions = newPos;
+            } else if (currentCount > 0) {
+              institutionCountChange = null;
+              newPositions = 0;
+            }
           } catch {
             /* keep null / 0 rather than failing the whole intelligence payload */
           }

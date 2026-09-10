@@ -62,11 +62,9 @@ export function ensureDoubleSignalCacheOnStartup(): void {
         console.log(`Double signal cache missing (${windowDays}d) — run: npm run signals:warm-double-signal`);
         continue;
       }
-      const payload = loadDoubleSignalFromDisk(windowDays);
-      if (!payload?.signals?.length) continue;
-      hydrateMemory(windowDays, payload);
+      const mb = fs.statSync(file).size / (1024 * 1024);
       console.log(
-        `Double signal cache loaded (${windowDays}d, ${payload.signals.length} signals).`
+        `Double signal cache on disk (${windowDays}d, ${mb.toFixed(1)} MB) — lazy-loaded on first request.`
       );
     } catch (err) {
       console.warn(

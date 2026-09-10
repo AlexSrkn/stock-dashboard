@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=pulse-row-size-1" />
+    <link rel="stylesheet" href="/styles.css?v=hub-opacity-1" />
     <link rel="stylesheet" href="/auth.css?v=auth-topbar-width-1" />
     <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
   </head>
@@ -141,6 +141,30 @@
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="first-time-buyers">First-Time Buyers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="heavy-selling">Heavy Selling</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="sector-exposure">Sector exposure</button></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="workspace-nav__item">
+                <button
+                  type="button"
+                  class="workspace-nav__btn explore-nav__btn"
+                  data-explore="sector"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                >
+                  <span class="workspace-nav__label">Sectors</span>
+                  <svg class="workspace-nav__chevron" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                    <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div class="workspace-nav__dropdown" role="menu" aria-label="Sectors sections">
+                  <ul class="workspace-nav__subsections">
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-accumulation">Sector Accumulation</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="industry-accumulation">Industry Accumulation</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-buying">Sector Leaders</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-selling">Sector Selling</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-fundamentals">Sector Fundamentals</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="institutional-concentration">Institutional Concentration</button></li>
                   </ul>
                 </div>
               </li>
@@ -2344,7 +2368,7 @@
       <div id="app-shell">
       <p class="dashboard-status" id="dashboard-status" role="status" aria-live="polite"></p>
 
-      <button type="button" class="drawer-scrim" id="drawer-scrim" aria-label="Close sidebar" tabindex="-1"></button>
+      <button type="button" class="drawer-scrim" id="drawer-scrim" aria-label="Close sidebar" tabindex="-1" hidden></button>
 
       <div class="layout">
         <div class="layout-sidebar">
@@ -4566,12 +4590,6 @@
                   </select>
                 </div>
                 <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="new-positions-institution">Institution</label>
-                  <select id="new-positions-institution" class="institution-hub__toolbar-select">
-                    <option value="">All institutions</option>
-                  </select>
-                </div>
-                <div class="institution-hub__toolbar-field">
                   <label class="institution-hub__toolbar-label" for="new-positions-sector">Sector</label>
                   <select id="new-positions-sector" class="institution-hub__toolbar-select">
                     <option value="">All sectors</option>
@@ -4594,7 +4612,7 @@
                     type="search"
                     id="new-positions-search"
                     class="institution-hub__toolbar-input"
-                    placeholder="Ticker or company…"
+                    placeholder="Ticker, company, or institution…"
                     autocomplete="off"
                     spellcheck="false"
                   />
@@ -7092,6 +7110,472 @@
             </section>
           </div>
 
+          <div id="view-sector" hidden>
+            <section class="institution-hub sector-hub" id="sector-directory-hub" aria-labelledby="sector-hub-heading">
+              <header class="institution-hub__header">
+                <nav class="sector-hub__crumbs" id="sector-hub-crumbs" aria-label="Sector breadcrumb" hidden></nav>
+                <div class="sector-hub__title-row">
+                  <div>
+                    <h2 id="sector-hub-heading" class="institution-hub__title">Sector Overview</h2>
+                    <p class="institution-hub__subtitle" id="sector-hub-subtitle">
+                      Browse sectors, then industries, then stocks.
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn--ghost" id="sector-hub-back" hidden>← Back</button>
+                </div>
+              </header>
+
+              <div class="institution-most-accumulated__toolbar" id="sector-hub-toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="sector-hub-search">Search</label>
+                  <input
+                    type="search"
+                    id="sector-hub-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Filter by name…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <span class="institution-hub__count" id="sector-hub-count" aria-live="polite"></span>
+              </div>
+
+              <p class="institution-hub__loading muted small" id="sector-hub-loading" hidden>Loading…</p>
+
+              <div class="sector-hub__list" id="sector-hub-grid" role="list" hidden></div>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap" id="sector-hub-stocks-wrap" hidden>
+                <table class="trades-table institution-most-accumulated__table" id="sector-hub-stocks-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" class="table-sort-btn is-active" data-sector-stock-sort="ticker">Ticker</button></th>
+                      <th><button type="button" class="table-sort-btn" data-sector-stock-sort="companyName">Company</button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="sector-hub-stocks-body"></tbody>
+                </table>
+              </div>
+
+              <div class="institution-hub__empty" id="sector-hub-empty" hidden>
+                <p class="muted">No matches for the current filter.</p>
+              </div>
+            </section>
+
+            <section
+              class="institution-most-accumulated trades-card"
+              id="sector-accumulation-hub"
+              aria-labelledby="sector-accumulation-heading"
+              hidden
+            >
+              <header class="institution-most-accumulated__head">
+                <div>
+                  <h2 id="sector-accumulation-heading" class="institution-hub__title">
+                    Sector Accumulation
+                  </h2>
+                  <p class="institution-hub__subtitle muted small" id="sector-accumulation-subtitle">
+                    Institutional inflow by sector over the latest 13F quarter.
+                  </p>
+                </div>
+              </header>
+
+              <div class="institution-most-accumulated__summary" id="sector-accumulation-summary" hidden>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Top sector inflow</span>
+                  <span class="institution-most-accumulated__summary-value" id="sector-accumulation-top">—</span>
+                  <span class="institution-most-accumulated__summary-meta muted small" id="sector-accumulation-top-meta"></span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Institutions buying (sum)</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-accumulation-buyers">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Total net 13F inflow</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-accumulation-inflow">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Average % increase</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-accumulation-avg-pct">—</span>
+                </div>
+              </div>
+
+              <div class="institution-most-accumulated__toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="sector-accumulation-search">Search</label>
+                  <input
+                    type="search"
+                    id="sector-accumulation-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Sector…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <label class="institution-most-accumulated__checkbox">
+                  <input type="checkbox" id="sector-accumulation-positive-only" />
+                  Positive inflow only
+                </label>
+                <span class="institution-hub__count" id="sector-accumulation-count" aria-live="polite"></span>
+              </div>
+
+              <p class="institution-most-accumulated__loading muted small" id="sector-accumulation-loading" hidden>
+                Loading sector accumulation…
+              </p>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap">
+                <table class="trades-table institution-most-accumulated__table" id="sector-accumulation-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" class="table-sort-btn" data-sector-acc-sort="rank">Rank</button></th>
+                      <th><button type="button" class="table-sort-btn" data-sector-acc-sort="sector">Sector</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-acc-sort="institutionsBuying">Institutions buying</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn is-active" data-sector-acc-sort="netValueChangeUsd">Net 13F inflow</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-acc-sort="percentIncrease">% increase</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-acc-sort="tickerCount">Tickers</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-acc-sort="institutionsOwning">Institutions owning</button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="sector-accumulation-body"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section
+              class="institution-most-accumulated trades-card"
+              id="industry-accumulation-hub"
+              aria-labelledby="industry-accumulation-heading"
+              hidden
+            >
+              <header class="institution-most-accumulated__head">
+                <div>
+                  <h2 id="industry-accumulation-heading" class="institution-hub__title">
+                    Industry Accumulation
+                  </h2>
+                  <p class="institution-hub__subtitle muted small" id="industry-accumulation-subtitle">
+                    Institutional inflow by industry over the latest 13F quarter.
+                  </p>
+                </div>
+              </header>
+
+              <div class="institution-most-accumulated__summary" id="industry-accumulation-summary" hidden>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Top industry inflow</span>
+                  <span class="institution-most-accumulated__summary-value" id="industry-accumulation-top">—</span>
+                  <span class="institution-most-accumulated__summary-meta muted small" id="industry-accumulation-top-meta"></span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Institutions buying (sum)</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="industry-accumulation-buyers">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Total net 13F inflow</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="industry-accumulation-inflow">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Average % increase</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="industry-accumulation-avg-pct">—</span>
+                </div>
+              </div>
+
+              <div class="institution-most-accumulated__toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="industry-accumulation-search">Search</label>
+                  <input
+                    type="search"
+                    id="industry-accumulation-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Industry or sector…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="industry-accumulation-sector">Sector</label>
+                  <select id="industry-accumulation-sector" class="institution-hub__toolbar-select">
+                    <option value="">All sectors</option>
+                  </select>
+                </div>
+                <label class="institution-most-accumulated__checkbox">
+                  <input type="checkbox" id="industry-accumulation-positive-only" />
+                  Positive inflow only
+                </label>
+                <span class="institution-hub__count" id="industry-accumulation-count" aria-live="polite"></span>
+              </div>
+
+              <p class="institution-most-accumulated__loading muted small" id="industry-accumulation-loading" hidden>
+                Loading industry accumulation…
+              </p>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap">
+                <table class="trades-table institution-most-accumulated__table" id="industry-accumulation-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" class="table-sort-btn" data-industry-acc-sort="rank">Rank</button></th>
+                      <th><button type="button" class="table-sort-btn" data-industry-acc-sort="industry">Industry</button></th>
+                      <th><button type="button" class="table-sort-btn" data-industry-acc-sort="sector">Sector</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-industry-acc-sort="institutionsBuying">Institutions buying</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn is-active" data-industry-acc-sort="netValueChangeUsd">Net 13F inflow</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-industry-acc-sort="percentIncrease">% increase</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-industry-acc-sort="tickerCount">Tickers</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-industry-acc-sort="institutionsOwning">Institutions owning</button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="industry-accumulation-body"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section
+              class="institution-hub sector-hub"
+              id="sector-buying-hub"
+              aria-labelledby="sector-buying-heading"
+              hidden
+            >
+              <header class="institution-hub__header">
+                <h2 id="sector-buying-heading" class="institution-hub__title">Sector Leaders</h2>
+                <p class="institution-hub__subtitle" id="sector-buying-subtitle">
+                  Top 10 stocks per sector by total net buying (institutional 13F QoQ + congressional trades).
+                </p>
+              </header>
+
+              <section class="trades-card top-institution-entries-funds" aria-labelledby="sector-buying-sectors-heading">
+                <div class="panel-head panel-head--row">
+                  <h3 id="sector-buying-sectors-heading" class="institution-hub__section-label">Sectors</h3>
+                  <span class="muted small" id="sector-buying-sectors-meta">Loading…</span>
+                </div>
+                <div class="top-institution-entries-funds__list" id="sector-buying-sectors-list" role="listbox" aria-label="Sectors">
+                  <p class="muted small">Loading sectors…</p>
+                </div>
+              </section>
+
+              <section class="trades-card" aria-labelledby="sector-buying-table-heading">
+                <div class="panel-head panel-head--row">
+                  <h3 id="sector-buying-table-heading" class="institution-hub__section-label">Top stocks</h3>
+                  <span class="muted small" id="sector-buying-meta">Select a sector</span>
+                </div>
+                <div class="table-scroll">
+                  <table class="trades-table top-institution-entries-table" id="sector-buying-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th><button type="button" class="table-sort-btn" data-sector-buying-sort="ticker">Stock</button></th>
+                        <th><button type="button" class="table-sort-btn" data-sector-buying-sort="industry">Industry</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-buying-sort="netInstitutionalBuyingUsd">Net Institutional Buying</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-buying-sort="institutionsBuying">Institutions Buying</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-buying-sort="politicianBuyingUsd">Politicians Buying</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn is-active" data-sector-buying-sort="totalNetBuyingUsd">Total Net Buying</button></th>
+                      </tr>
+                    </thead>
+                    <tbody id="sector-buying-body">
+                      <tr><td colspan="7" class="trades-table__empty">Loading sector leaders…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+
+            <section
+              class="institution-hub sector-hub"
+              id="sector-selling-hub"
+              aria-labelledby="sector-selling-heading"
+              hidden
+            >
+              <header class="institution-hub__header">
+                <h2 id="sector-selling-heading" class="institution-hub__title">Sector Selling</h2>
+                <p class="institution-hub__subtitle" id="sector-selling-subtitle">
+                  Top 10 stocks per sector by net shares sold (share-based 13F QoQ exits + congressional net selling).
+                </p>
+              </header>
+
+              <section class="trades-card top-institution-entries-funds" aria-labelledby="sector-selling-sectors-heading">
+                <div class="panel-head panel-head--row">
+                  <h3 id="sector-selling-sectors-heading" class="institution-hub__section-label">Sectors</h3>
+                  <span class="muted small" id="sector-selling-sectors-meta">Loading…</span>
+                </div>
+                <div class="top-institution-entries-funds__list" id="sector-selling-sectors-list" role="listbox" aria-label="Sectors">
+                  <p class="muted small">Loading sectors…</p>
+                </div>
+              </section>
+
+              <section class="trades-card" aria-labelledby="sector-selling-table-heading">
+                <div class="panel-head panel-head--row">
+                  <h3 id="sector-selling-table-heading" class="institution-hub__section-label">Top exits</h3>
+                  <span class="muted small" id="sector-selling-meta">Select a sector</span>
+                </div>
+                <div class="table-scroll">
+                  <table class="trades-table top-institution-entries-table" id="sector-selling-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th><button type="button" class="table-sort-btn" data-sector-selling-sort="ticker">Stock</button></th>
+                        <th><button type="button" class="table-sort-btn" data-sector-selling-sort="industry">Industry</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-selling-sort="netSharesSold">Net Shares Sold</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-selling-sort="institutionsSelling">Institutions Selling</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-selling-sort="netInstitutionalSellingUsd">Net Institutional Selling</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn" data-sector-selling-sort="politicianSellingUsd">Politicians Selling</button></th>
+                        <th class="num"><button type="button" class="table-sort-btn is-active" data-sector-selling-sort="totalNetSellingUsd">Total Net Selling</button></th>
+                      </tr>
+                    </thead>
+                    <tbody id="sector-selling-body">
+                      <tr><td colspan="8" class="trades-table__empty">Loading sector selling…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+
+            <section
+              class="institution-hub sector-hub"
+              id="institutional-concentration-hub"
+              aria-labelledby="institutional-concentration-heading"
+              hidden
+            >
+              <header class="institution-hub__header">
+                <nav class="sector-hub__crumbs" id="inst-conc-crumbs" aria-label="Concentration breadcrumb" hidden></nav>
+                <div class="sector-hub__title-row">
+                  <div>
+                    <h2 id="institutional-concentration-heading" class="institution-hub__title">Institutional Concentration</h2>
+                    <p class="institution-hub__subtitle" id="institutional-concentration-subtitle">
+                      Institutions making concentrated sector and industry bets, ranked by share-based net accumulation QoQ.
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn--ghost" id="inst-conc-back" hidden>← Back</button>
+                </div>
+              </header>
+
+              <div class="institution-most-accumulated__summary" id="inst-conc-summary" hidden>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Top institution bet</span>
+                  <span class="institution-most-accumulated__summary-value" id="inst-conc-top">—</span>
+                  <span class="institution-most-accumulated__summary-meta muted small" id="inst-conc-top-meta"></span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Ranked bets</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="inst-conc-institutions">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Net accumulation (listed)</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="inst-conc-inflow">—</span>
+                </div>
+              </div>
+
+              <div class="institution-most-accumulated__toolbar" id="inst-conc-toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="inst-conc-search">Search</label>
+                  <input
+                    type="search"
+                    id="inst-conc-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Institution, sector, industry…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <button type="button" class="btn btn--ghost" id="inst-conc-show-all">Show all</button>
+                <span class="institution-hub__count" id="inst-conc-count" aria-live="polite"></span>
+              </div>
+
+              <p class="institution-most-accumulated__loading muted small" id="inst-conc-loading" hidden>
+                Loading institutional concentration…
+              </p>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap" id="inst-conc-table-wrap" hidden>
+                <table class="trades-table institution-most-accumulated__table" id="inst-conc-table">
+                  <thead id="inst-conc-thead"></thead>
+                  <tbody id="inst-conc-body"></tbody>
+                </table>
+              </div>
+
+              <div class="institution-hub__empty" id="inst-conc-empty" hidden>
+                <p class="muted">No matches for the current filter.</p>
+              </div>
+            </section>
+
+            <section
+              class="institution-most-accumulated trades-card"
+              id="sector-fundamentals-hub"
+              aria-labelledby="sector-fundamentals-heading"
+              hidden
+            >
+              <header class="institution-most-accumulated__head">
+                <nav class="sector-hub__crumbs" id="sector-fundamentals-crumbs" aria-label="Fundamentals breadcrumb" hidden></nav>
+                <div class="sector-hub__title-row">
+                  <div>
+                    <h2 id="sector-fundamentals-heading" class="institution-hub__title">
+                      Sector Fundamentals
+                    </h2>
+                    <p class="institution-hub__subtitle muted small" id="sector-fundamentals-subtitle">
+                      Compare sector and industry fundamentals from the latest two SEC quarterly periods (QoQ).
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn--ghost" id="sector-fundamentals-back" hidden>← Back</button>
+                </div>
+              </header>
+
+              <div class="institution-most-accumulated__summary" id="sector-fundamentals-summary" hidden>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Top revenue growth</span>
+                  <span class="institution-most-accumulated__summary-value" id="sector-fundamentals-top">—</span>
+                  <span class="institution-most-accumulated__summary-meta muted small" id="sector-fundamentals-top-meta"></span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Sectors</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-fundamentals-sectors">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Industries</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-fundamentals-industries">—</span>
+                </div>
+                <div class="institution-most-accumulated__summary-card">
+                  <span class="institution-most-accumulated__summary-label">Companies</span>
+                  <span class="institution-most-accumulated__summary-value mono" id="sector-fundamentals-companies">—</span>
+                </div>
+              </div>
+
+              <div class="institution-most-accumulated__toolbar">
+                <div class="institution-hub__toolbar-field">
+                  <label class="institution-hub__toolbar-label" for="sector-fundamentals-search">Search</label>
+                  <input
+                    type="search"
+                    id="sector-fundamentals-search"
+                    class="institution-hub__toolbar-input"
+                    placeholder="Sector or industry…"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <span class="institution-hub__count" id="sector-fundamentals-count" aria-live="polite"></span>
+              </div>
+
+              <p class="institution-most-accumulated__loading muted small" id="sector-fundamentals-loading" hidden>
+                Loading sector fundamentals…
+              </p>
+
+              <div class="table-scroll institution-most-accumulated__table-wrap">
+                <table class="trades-table institution-most-accumulated__table" id="sector-fundamentals-table">
+                  <thead>
+                    <tr>
+                      <th><button type="button" class="table-sort-btn" data-sector-fund-sort="rank">Rank</button></th>
+                      <th><button type="button" class="table-sort-btn" data-sector-fund-sort="name">Sector</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn is-active" data-sector-fund-sort="revenueGrowthQoq">Revenue Growth</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="epsGrowthQoq">EPS Growth</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="fcfGrowthQoq">FCF Growth</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="operatingMargin">Op. Margin</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="roic">ROIC</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="roe">ROE</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="debtEquity">Debt/Equity</button></th>
+                      <th class="num"><button type="button" class="table-sort-btn" data-sector-fund-sort="companyCount">Companies</button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="sector-fundamentals-body"></tbody>
+                </table>
+              </div>
+
+              <div class="institution-hub__empty" id="sector-fundamentals-empty" hidden>
+                <p class="muted">No matches for the current filter.</p>
+              </div>
+            </section>
+          </div>
+
           <div id="view-signals" hidden>
             <section class="institution-hub signals-hub" id="signals-directory-hub" aria-labelledby="signals-hub-heading">
               <header class="institution-hub__header">
@@ -7292,12 +7776,6 @@
                     <option value="90">90 days</option>
                     <option value="180">180 days</option>
                     <option value="365">1 year</option>
-                  </select>
-                </div>
-                <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="double-signal-institution">Institution</label>
-                  <select id="double-signal-institution" class="institution-hub__toolbar-select">
-                    <option value="">All institutions</option>
                   </select>
                 </div>
                 <div class="institution-hub__toolbar-field">
@@ -7503,12 +7981,6 @@
                     <option value="90">90 days</option>
                     <option value="180" selected>180 days</option>
                     <option value="365">1 year</option>
-                  </select>
-                </div>
-                <div class="institution-hub__toolbar-field">
-                  <label class="institution-hub__toolbar-label" for="triple-signal-institution">Institution</label>
-                  <select id="triple-signal-institution" class="institution-hub__toolbar-select">
-                    <option value="">All institutions</option>
                   </select>
                 </div>
                 <div class="institution-hub__toolbar-field">
@@ -9473,6 +9945,6 @@
       </button>
     </nav>
 
-    <script type="module" src="/app.js?v=tv-ownership-kpi-1"></script>
+    <script type="module" src="/app.js?v=sector-leaders-1"></script>
   </body>
 </html>

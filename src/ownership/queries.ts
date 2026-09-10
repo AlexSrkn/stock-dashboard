@@ -313,6 +313,101 @@ HAVING SUM(h.shares) > 0
 ORDER BY SUM(h.shares) DESC
 `.trim();
 
+/** Count distinct common-stock filers for a CUSIP set in one quarter (no row materialization). */
+export const COUNT_FILERS_BY_CUSIP_QUARTER_SQL = `
+WITH filers AS (
+  SELECT DISTINCT filer_cik
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = $2
+    ${sqlCommonStockOnly()}
+),
+latest_filings AS (
+  SELECT DISTINCT ON (s.filer_cik)
+    s.id AS filing_id,
+    s.filer_cik
+  FROM sec_filing s
+  INNER JOIN filers f ON f.filer_cik = s.filer_cik
+  WHERE s.quarter = $2
+  ORDER BY s.filer_cik, s.filing_date DESC, s.id DESC
+),
+held AS (
+  SELECT h.filer_cik
+  FROM sec_holding h
+  INNER JOIN latest_filings lf ON h.filing_id = lf.filing_id
+  WHERE h.cusip = ANY($1::bpchar[])
+    AND h.quarter = $2
+    ${sqlCommonStockOnly("h")}
+  GROUP BY h.filer_cik
+  HAVING SUM(h.shares) > 0
+)
+SELECT COUNT(*)::int AS cnt FROM held
+`.trim();
+
+/**
+ * New positions: filers with shares in current quarter ($2) who had none in previous ($3).
+ * Params: cusips, currentQuarter, previousQuarter.
+ */
+export const COUNT_NEW_POSITIONS_BY_CUSIP_QUARTERS_SQL = `
+WITH current_filers AS (
+  SELECT DISTINCT filer_cik
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = $2
+    ${sqlCommonStockOnly()}
+),
+current_latest AS (
+  SELECT DISTINCT ON (s.filer_cik)
+    s.id AS filing_id,
+    s.filer_cik
+  FROM sec_filing s
+  INNER JOIN current_filers f ON f.filer_cik = s.filer_cik
+  WHERE s.quarter = $2
+  ORDER BY s.filer_cik, s.filing_date DESC, s.id DESC
+),
+current_held AS (
+  SELECT h.filer_cik
+  FROM sec_holding h
+  INNER JOIN current_latest lf ON h.filing_id = lf.filing_id
+  WHERE h.cusip = ANY($1::bpchar[])
+    AND h.quarter = $2
+    ${sqlCommonStockOnly("h")}
+  GROUP BY h.filer_cik
+  HAVING SUM(h.shares) > 0
+),
+previous_filers AS (
+  SELECT DISTINCT filer_cik
+  FROM sec_holding
+  WHERE cusip = ANY($1::bpchar[])
+    AND quarter = $3
+    ${sqlCommonStockOnly()}
+),
+previous_latest AS (
+  SELECT DISTINCT ON (s.filer_cik)
+    s.id AS filing_id,
+    s.filer_cik
+  FROM sec_filing s
+  INNER JOIN previous_filers f ON f.filer_cik = s.filer_cik
+  WHERE s.quarter = $3
+  ORDER BY s.filer_cik, s.filing_date DESC, s.id DESC
+),
+previous_held AS (
+  SELECT h.filer_cik
+  FROM sec_holding h
+  INNER JOIN previous_latest lf ON h.filing_id = lf.filing_id
+  WHERE h.cusip = ANY($1::bpchar[])
+    AND h.quarter = $3
+    ${sqlCommonStockOnly("h")}
+  GROUP BY h.filer_cik
+  HAVING SUM(h.shares) > 0
+)
+SELECT COUNT(*)::int AS cnt
+FROM current_held c
+WHERE NOT EXISTS (
+  SELECT 1 FROM previous_held p WHERE p.filer_cik = c.filer_cik
+)
+`.trim();
+
 /** Resolve primary CUSIP via top cached holders' share counts (fast when sec_holding.ticker is unset). */
 export const SELECT_PRIMARY_CUSIP_BY_TOP_HOLDERS_SQL = `
 WITH oc AS (

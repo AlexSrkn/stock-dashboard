@@ -212,8 +212,91 @@ let stockCompareHoldersExpanded = false;
 
 const PULSE_PREVIEW_LIMIT = 5;
 const INSTITUTION_TABS = ["holdings", "activity", "options", "performance", "history"];
-const EXPLORE_MODES = ["stocks", "institutions", "insiders", "politicians", "signals", "tools"];
+const EXPLORE_MODES = ["stocks", "institutions", "insiders", "politicians", "sector", "signals", "tools"];
 let activeExploreMode = "stocks";
+/** @type {"overview" | "sector" | "industry"} */
+let sectorHubLevel = "overview";
+let sectorHubSectorSlug = null;
+let sectorHubIndustrySlug = null;
+let sectorHubLoading = false;
+let sectorHubBound = false;
+let sectorHubSearch = "";
+let sectorHubStockSortKey = "companyName";
+let sectorHubStockSortDir = "asc";
+/** @type {object | null} */
+let lastSectorOverviewPayload = null;
+/** @type {object | null} */
+let lastSectorDetailPayload = null;
+/** @type {object | null} */
+let lastIndustryDetailPayload = null;
+/** @type {"overview" | "sector-accumulation" | "industry-accumulation" | "sector-buying" | "sector-selling" | "sector-fundamentals" | "institutional-concentration"} */
+let activeSectorHubView = "overview";
+let sectorAccBound = false;
+let sectorAccLoading = false;
+let industryAccLoading = false;
+let sectorBuyingLoading = false;
+let sectorBuyingBound = false;
+let sectorSellingLoading = false;
+let sectorSellingBound = false;
+let sectorFundLoading = false;
+let sectorFundBound = false;
+let instConcLoading = false;
+let instConcBound = false;
+let instConcStocksLoading = false;
+let sectorAccSearch = "";
+let industryAccSearch = "";
+let industryAccSectorFilter = "";
+let sectorAccPositiveOnly = false;
+let industryAccPositiveOnly = false;
+let sectorAccSortKey = "netValueChangeUsd";
+let sectorAccSortDir = "desc";
+let industryAccSortKey = "netValueChangeUsd";
+let industryAccSortDir = "desc";
+let sectorBuyingSortKey = "totalNetBuyingUsd";
+let sectorBuyingSortDir = "desc";
+let sectorSellingSortKey = "totalNetSellingUsd";
+let sectorSellingSortDir = "desc";
+let sectorFundSortKey = "revenueGrowthQoq";
+let sectorFundSortDir = "desc";
+let sectorFundSearch = "";
+/** @type {"sectors" | "industries"} */
+let sectorFundLevel = "sectors";
+/** @type {string | null} */
+let sectorFundSectorSlug = null;
+/** @type {string | null} */
+let sectorBuyingSelectedSlug = null;
+/** @type {string | null} */
+let sectorSellingSelectedSlug = null;
+/** @type {object | null} */
+let lastSectorAccumulationPayload = null;
+/** @type {object | null} */
+let lastIndustryAccumulationPayload = null;
+/** @type {object | null} */
+let lastSectorBuyingPayload = null;
+/** @type {object | null} */
+let lastSectorSellingPayload = null;
+/** @type {object | null} */
+let lastSectorFundamentalsPayload = null;
+/** @type {object | null} */
+let lastInstConcPayload = null;
+/** @type {object | null} */
+let lastInstConcStocksPayload = null;
+/** @type {"institutions" | "stocks"} */
+let instConcLevel = "institutions";
+let instConcSectorSlug = null;
+let instConcIndustrySlug = null;
+let instConcInstitutionId = null;
+let instConcSearch = "";
+let instConcSortKey = "netPositionIncreaseUsd";
+let instConcSortDir = "desc";
+let instConcStockSortKey = "netPositionIncreaseUsd";
+let instConcStockSortDir = "desc";
+let instConcShowAll = false;
+const INST_CONC_PAGE_SIZE = 50;
+/** @type {Set<string>} */
+let instConcExpanded = new Set();
+/** @type {Map<string, { stocks?: object[], error?: unknown, loading?: boolean }>} */
+let instConcStocksCache = new Map();
 let activeInstitutionTab = "holdings";
 let activeInstitutionHubView = "directory";
 /** @type {ReturnType<typeof createInstitutionPerformanceProxyController> | null} */
@@ -276,7 +359,6 @@ let newPositionsFilterOptionsReady = false;
 let newPositionsSearchTimer = null;
 let newPositionsFilters = {
   quarter: "",
-  institution: "",
   sector: "",
   minValue: 0,
   search: "",
@@ -293,7 +375,6 @@ let doubleSignalPage = 1;
 const DOUBLE_SIGNAL_PAGE_SIZE = 50;
 let activeDoubleSignalTicker = null;
 let doubleSignalFilters = {
-  institution: "",
   insiderRole: "",
   sector: "",
   minInstValue: 0,
@@ -311,7 +392,6 @@ let tripleSignalPage = 1;
 const TRIPLE_SIGNAL_PAGE_SIZE = 50;
 let activeTripleSignalTicker = null;
 let tripleSignalFilters = {
-  institution: "",
   insiderRole: "",
   sector: "",
   minInstValue: 0,
@@ -1654,6 +1734,12 @@ async function enterAppFromLanding(mode) {
     void refreshSidebarMarketPanels();
     return;
   }
+  if (mode === "sector") {
+    setExploreMode("sector", { navigate: false });
+    navigateToSectorHub({ level: "overview" });
+    void refreshSidebarMarketPanels();
+    return;
+  }
   if (mode === "signals") {
     setExploreMode("signals", { navigate: false });
     navigateToSignalsHub();
@@ -1757,6 +1843,107 @@ function parseAppRoute(pathname) {
   }
   if (pathname === "/politicians" || pathname === "/politicians/trades") {
     return { mode: "politicians", hub: true, politicianHubView: "trades" };
+  }
+  if (pathname === "/sector/accumulation" || pathname === "/sector/accumulation/") {
+    return { mode: "sector", hub: true, sectorHubView: "sector-accumulation" };
+  }
+  if (pathname === "/sector/industry-accumulation" || pathname === "/sector/industry-accumulation/") {
+    return { mode: "sector", hub: true, sectorHubView: "industry-accumulation" };
+  }
+  if (pathname === "/sector/buying" || pathname === "/sector/buying/") {
+    return { mode: "sector", hub: true, sectorHubView: "sector-buying" };
+  }
+  if (pathname === "/sector/selling" || pathname === "/sector/selling/") {
+    return { mode: "sector", hub: true, sectorHubView: "sector-selling" };
+  }
+  if (pathname === "/sector/fundamentals" || pathname === "/sector/fundamentals/") {
+    return {
+      mode: "sector",
+      hub: true,
+      sectorHubView: "sector-fundamentals",
+      sectorFundLevel: "sectors",
+    };
+  }
+  const sectorFundMatch = pathname.match(/^\/sector\/fundamentals\/([^/]+)\/?$/);
+  if (sectorFundMatch) {
+    return {
+      mode: "sector",
+      hub: true,
+      sectorHubView: "sector-fundamentals",
+      sectorFundLevel: "industries",
+      sectorFundSectorSlug: decodeURIComponent(sectorFundMatch[1]),
+    };
+  }
+  const instConcMatch = pathname.match(
+    /^\/sector\/institutional-concentration(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?\/?$/
+  );
+  if (instConcMatch) {
+    const sectorSlug = instConcMatch[1] ? decodeURIComponent(instConcMatch[1]) : null;
+    const industrySlug = instConcMatch[2] ? decodeURIComponent(instConcMatch[2]) : null;
+    const institutionId = instConcMatch[3] ? decodeURIComponent(instConcMatch[3]) : null;
+    const level = sectorSlug && industrySlug && institutionId ? "stocks" : "institutions";
+    return {
+      mode: "sector",
+      hub: true,
+      sectorHubView: "institutional-concentration",
+      instConcLevel: level,
+      instConcSectorSlug: sectorSlug,
+      instConcIndustrySlug: industrySlug,
+      instConcInstitutionId: institutionId,
+    };
+  }
+  if (pathname === "/sector" || pathname === "/sector/") {
+    return { mode: "sector", hub: true, sectorLevel: "overview", sectorHubView: "overview" };
+  }
+  const sectorIndustry = pathname.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+  if (sectorIndustry) {
+    return {
+      mode: "sector",
+      hub: true,
+      sectorHubView: "overview",
+      sectorLevel: "industry",
+      sectorSlug: decodeURIComponent(sectorIndustry[1]),
+      industrySlug: decodeURIComponent(sectorIndustry[2]),
+    };
+  }
+  const sectorOnly = pathname.match(/^\/sector\/([^/]+)\/?$/);
+  if (sectorOnly) {
+    const slug = decodeURIComponent(sectorOnly[1]);
+    if (slug === "accumulation") {
+      return { mode: "sector", hub: true, sectorHubView: "sector-accumulation" };
+    }
+    if (slug === "industry-accumulation") {
+      return { mode: "sector", hub: true, sectorHubView: "industry-accumulation" };
+    }
+    if (slug === "buying") {
+      return { mode: "sector", hub: true, sectorHubView: "sector-buying" };
+    }
+    if (slug === "selling") {
+      return { mode: "sector", hub: true, sectorHubView: "sector-selling" };
+    }
+    if (slug === "fundamentals") {
+      return {
+        mode: "sector",
+        hub: true,
+        sectorHubView: "sector-fundamentals",
+        sectorFundLevel: "sectors",
+      };
+    }
+    if (slug === "institutional-concentration") {
+      return {
+        mode: "sector",
+        hub: true,
+        sectorHubView: "institutional-concentration",
+        instConcLevel: "institutions",
+      };
+    }
+    return {
+      mode: "sector",
+      hub: true,
+      sectorHubView: "overview",
+      sectorLevel: "sector",
+      sectorSlug: slug,
+    };
   }
   const insider = parseInsiderRoute(pathname);
   if (insider) return { mode: "insiders", insiderKey: insider.key };
@@ -2021,12 +2208,14 @@ function showMainEntityView() {
   const institutions = document.getElementById("view-institutions");
   const insiders = document.getElementById("view-insiders");
   const politicians = document.getElementById("view-politicians");
+  const sector = document.getElementById("view-sector");
   const signals = document.getElementById("view-signals");
   const tools = document.getElementById("view-tools");
   if (stocks) stocks.hidden = activeExploreMode !== "stocks";
   if (institutions) institutions.hidden = activeExploreMode !== "institutions";
   if (insiders) insiders.hidden = activeExploreMode !== "insiders";
   if (politicians) politicians.hidden = activeExploreMode !== "politicians";
+  if (sector) sector.hidden = activeExploreMode !== "sector";
   if (signals) signals.hidden = activeExploreMode !== "signals";
   if (tools) tools.hidden = activeExploreMode !== "tools";
 }
@@ -3568,21 +3757,30 @@ function formatHolderOverlapWeight(n) {
 
 function populateHolderOverlapFilterOptions(payload) {
   const sectorSelect = document.getElementById("stock-holder-overlap-sector");
-  if (sectorSelect && payload?.sectors) {
+  if (sectorSelect && Array.isArray(payload?.sectors) && payload.sectors.length) {
     const selected = stocksHolderOverlapSector;
-    sectorSelect.innerHTML =
-      `<option value="">All sectors</option>` +
-      payload.sectors.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    // Avoid wiping options on every re-render if the list is unchanged.
+    const current = [...sectorSelect.options].map((o) => o.value).filter(Boolean).join("\0");
+    const next = payload.sectors.join("\0");
+    if (current !== next) {
+      sectorSelect.innerHTML =
+        `<option value="">All sectors</option>` +
+        payload.sectors.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    }
     sectorSelect.value = selected;
   }
   const typeSelect = document.getElementById("stock-holder-overlap-itype");
-  if (typeSelect && payload?.institutionTypes) {
+  if (typeSelect && Array.isArray(payload?.institutionTypes) && payload.institutionTypes.length) {
     const selected = stocksHolderOverlapInstitutionType;
-    typeSelect.innerHTML =
-      `<option value="">All types</option>` +
-      payload.institutionTypes
-        .map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
-        .join("");
+    const current = [...typeSelect.options].map((o) => o.value).filter(Boolean).join("\0");
+    const next = payload.institutionTypes.join("\0");
+    if (current !== next) {
+      typeSelect.innerHTML =
+        `<option value="">All types</option>` +
+        payload.institutionTypes
+          .map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+          .join("");
+    }
     typeSelect.value = selected;
   }
 }
@@ -3763,7 +3961,14 @@ function renderStocksHolderOverlapPage() {
 async function loadStocksHolderOverlapPage() {
   if (!stocksHolderOverlapOpen) return;
   if (!stocksHolderOverlapTicker) {
-    lastStocksHolderOverlapPayload = null;
+    // Still load Sector / Institution type options from the API (no ticker required).
+    if (!lastStocksHolderOverlapPayload?.sectors?.length) {
+      try {
+        lastStocksHolderOverlapPayload = await apiJson("/api/stocks/holder-overlap");
+      } catch {
+        /* keep empty dropdowns */
+      }
+    }
     renderStocksHolderOverlapPage();
     return;
   }
@@ -5212,6 +5417,2238 @@ function signalsHubPath(view = activeSignalsHubView) {
   return "/signals/smart-money";
 }
 
+function sectorHubPath(sectorSlug = null, industrySlug = null) {
+  if (sectorSlug && industrySlug) {
+    return `/sector/${encodeURIComponent(sectorSlug)}/${encodeURIComponent(industrySlug)}`;
+  }
+  if (sectorSlug) return `/sector/${encodeURIComponent(sectorSlug)}`;
+  return "/sector";
+}
+
+function sectorOverviewSlugClient(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeSectorDirectoryPayload(raw) {
+  const sectors = (raw?.sectors || []).map((s) => {
+    const industrySummaries = Array.isArray(s.industrySummaries)
+      ? s.industrySummaries
+          .map((item) => ({
+            industry: String(item.industry || ""),
+            stockCount: Number(item.stockCount) || 0,
+          }))
+          .filter((item) => item.industry)
+      : (Array.isArray(s.industries) ? s.industries : [])
+          .filter(Boolean)
+          .map((industry) =>
+            typeof industry === "string"
+              ? { industry, stockCount: null }
+              : {
+                  industry: String(industry.industry || industry.name || ""),
+                  stockCount: Number(industry.stockCount ?? industry.count) || null,
+                }
+          )
+          .filter((item) => item.industry);
+    const industries = industrySummaries.map((item) => item.industry);
+    return {
+      sector: s.sector,
+      sectorSlug: s.sectorSlug || sectorOverviewSlugClient(s.sector),
+      industries,
+      industrySummaries,
+      companyCount: Number(s.stockCount ?? s.companyCount) || 0,
+      industryCount: industries.length || Number(s.industryCount) || 0,
+    };
+  });
+  return { ...(raw || {}), sectors };
+}
+
+function buildSectorDetailFromOverview(sectorSlug) {
+  const overview = lastSectorOverviewPayload;
+  const sector = (overview?.sectors || []).find((s) => s.sectorSlug === sectorSlug);
+  if (!sector) return null;
+  const summaries = Array.isArray(sector.industrySummaries) ? sector.industrySummaries : [];
+  return {
+    sector: sector.sector,
+    sectorSlug: sector.sectorSlug,
+    industries: summaries.map((item) => ({
+      sector: sector.sector,
+      sectorSlug: sector.sectorSlug,
+      industry: item.industry,
+      industrySlug: sectorOverviewSlugClient(item.industry),
+      companyCount: item.stockCount,
+    })),
+  };
+}
+
+function sortSectorRows(rows) {
+  return [...rows].sort((a, b) => {
+    const an = String(a.industry || a.sector || "");
+    const bn = String(b.industry || b.sector || "");
+    return an.localeCompare(bn);
+  });
+}
+
+function filterSectorCards(rows, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter((row) => {
+    const name = String(row.industry || row.sector || "").toLowerCase();
+    return name.includes(q);
+  });
+}
+
+function renderSectorCard(row, { kind }) {
+  const title = kind === "industry" ? row.industry : row.sector;
+  const countLabel =
+    kind === "industry"
+      ? row.companyCount != null
+        ? `${formatInteger(row.companyCount)} stock${Number(row.companyCount) === 1 ? "" : "s"}`
+        : "View stocks"
+      : `${formatInteger(row.industryCount || (row.industries || []).length)} industries · ${formatInteger(row.companyCount)} stocks`;
+  const href =
+    kind === "industry"
+      ? sectorHubPath(row.sectorSlug, row.industrySlug)
+      : sectorHubPath(row.sectorSlug);
+  return `<button type="button" class="sector-hub__row" role="listitem" data-sector-card-href="${escapeHtml(href)}">
+    <span class="sector-hub__row-main">
+      <h3 class="sector-hub__row-title">${escapeHtml(title)}</h3>
+      <span class="sector-hub__row-meta">${escapeHtml(countLabel)}</span>
+    </span>
+    <span class="sector-hub__row-arrow" aria-hidden="true">→</span>
+  </button>`;
+}
+
+function renderSectorCrumbs() {
+  const el = document.getElementById("sector-hub-crumbs");
+  if (!el) return;
+  if (sectorHubLevel === "overview") {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const sectorName = lastSectorDetailPayload?.sector || sectorHubSectorSlug || "Sector";
+  const industryName = lastIndustryDetailPayload?.industry || sectorHubIndustrySlug || "Industry";
+  const parts = [
+    `<button type="button" class="sector-hub__crumb" data-sector-nav="overview">Sectors</button>`,
+  ];
+  if (sectorHubLevel === "sector" || sectorHubLevel === "industry") {
+    parts.push(`<span class="sector-hub__crumb-sep">/</span>`);
+    if (sectorHubLevel === "industry") {
+      parts.push(
+        `<button type="button" class="sector-hub__crumb" data-sector-nav="sector" data-sector-slug="${escapeHtml(sectorHubSectorSlug || "")}">${escapeHtml(sectorName)}</button>`
+      );
+      parts.push(`<span class="sector-hub__crumb-sep">/</span>`);
+      parts.push(`<span>${escapeHtml(industryName)}</span>`);
+    } else {
+      parts.push(`<span>${escapeHtml(sectorName)}</span>`);
+    }
+  }
+  el.hidden = false;
+  el.innerHTML = parts.join("");
+}
+
+function sortSectorStocks(stocks) {
+  const key = sectorHubStockSortKey;
+  const dir = sectorHubStockSortDir === "asc" ? 1 : -1;
+  return [...stocks].sort((a, b) => {
+    const av = String(key === "ticker" ? a.ticker || "" : a.companyName || a.ticker || "");
+    const bv = String(key === "ticker" ? b.ticker || "" : b.companyName || b.ticker || "");
+    return av.localeCompare(bv) * dir;
+  });
+}
+
+function renderSectorStocksTable(stocks) {
+  const body = document.getElementById("sector-hub-stocks-body");
+  const wrap = document.getElementById("sector-hub-stocks-wrap");
+  if (!body || !wrap) return;
+  document.querySelectorAll("[data-sector-stock-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-sector-stock-sort");
+    const active = key === sectorHubStockSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.textContent = active ? `${label} ${sectorHubStockSortDir === "asc" ? "▲" : "▼"}` : label;
+  });
+  const rows = sortSectorStocks(stocks);
+  wrap.hidden = false;
+  body.innerHTML = rows
+    .map((row) => {
+      const label = escapeHtml(row.ticker || "—");
+      const name = escapeHtml(row.companyName || "—");
+      return `<tr>
+        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${label}</a></td>
+        <td>${name}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function renderSectorHub() {
+  setupSectorHub();
+  syncSectorHubVisibility();
+  if (activeSectorHubView !== "overview") return;
+  const heading = document.getElementById("sector-hub-heading");
+  const subtitle = document.getElementById("sector-hub-subtitle");
+  const loading = document.getElementById("sector-hub-loading");
+  const grid = document.getElementById("sector-hub-grid");
+  const empty = document.getElementById("sector-hub-empty");
+  const countEl = document.getElementById("sector-hub-count");
+  const backBtn = document.getElementById("sector-hub-back");
+  const stocksWrap = document.getElementById("sector-hub-stocks-wrap");
+
+  renderSectorCrumbs();
+  if (backBtn) backBtn.hidden = sectorHubLevel === "overview";
+  if (loading) loading.hidden = !sectorHubLoading;
+
+  if (sectorHubLoading) {
+    if (grid) {
+      grid.hidden = true;
+      grid.innerHTML = "";
+    }
+    if (stocksWrap) stocksWrap.hidden = true;
+    if (empty) empty.hidden = true;
+    if (countEl) countEl.textContent = "";
+    return;
+  }
+
+  if (sectorHubLevel === "overview") {
+    if (heading) heading.textContent = "Sector Overview";
+    if (subtitle) subtitle.textContent = "Browse sectors, then industries, then stocks.";
+    const allSectors = lastSectorOverviewPayload?.sectors || [];
+    const cards = sortSectorRows(filterSectorCards(allSectors, sectorHubSearch));
+    const totalIndustries = allSectors.reduce(
+      (sum, s) => sum + (Number(s.industryCount) || (s.industries || []).length || 0),
+      0
+    );
+    if (stocksWrap) stocksWrap.hidden = true;
+    if (countEl) {
+      const sectorTotal = allSectors.length;
+      countEl.textContent = sectorTotal
+        ? `${formatInteger(sectorTotal)} sector${sectorTotal === 1 ? "" : "s"} · ${formatInteger(totalIndustries)} industr${totalIndustries === 1 ? "y" : "ies"}`
+        : "";
+    }
+    if (!cards.length) {
+      if (grid) {
+        grid.hidden = true;
+        grid.innerHTML = "";
+      }
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (empty) empty.hidden = true;
+    if (grid) {
+      grid.hidden = false;
+      grid.innerHTML = cards.map((row) => renderSectorCard(row, { kind: "sector" })).join("");
+    }
+    return;
+  }
+
+  if (sectorHubLevel === "sector") {
+    const payload = lastSectorDetailPayload;
+    if (heading) heading.textContent = payload?.sector || "Sector";
+    if (subtitle) subtitle.textContent = `Industries in ${payload?.sector || "this sector"}.`;
+    const cards = sortSectorRows(filterSectorCards(payload?.industries || [], sectorHubSearch));
+    if (stocksWrap) stocksWrap.hidden = true;
+    if (countEl) countEl.textContent = cards.length ? `${cards.length} industries` : "";
+    if (!cards.length) {
+      if (grid) {
+        grid.hidden = true;
+        grid.innerHTML = "";
+      }
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (empty) empty.hidden = true;
+    if (grid) {
+      grid.hidden = false;
+      grid.innerHTML = cards.map((row) => renderSectorCard(row, { kind: "industry" })).join("");
+    }
+    return;
+  }
+
+  const payload = lastIndustryDetailPayload;
+  if (heading) heading.textContent = payload?.industry || "Industry";
+  if (subtitle) subtitle.textContent = `Stocks in ${payload?.industry || "this industry"}`.trim();
+  if (grid) {
+    grid.hidden = true;
+    grid.innerHTML = "";
+  }
+  if (empty) empty.hidden = true;
+  const stocks = payload?.stocks || [];
+  const q = sectorHubSearch.trim().toLowerCase();
+  const visible = q
+    ? stocks.filter((row) => {
+        const ticker = String(row.ticker || "").toLowerCase();
+        const name = String(row.companyName || "").toLowerCase();
+        return ticker.includes(q) || name.includes(q);
+      })
+    : stocks;
+  if (countEl) countEl.textContent = `${visible.length} stock${visible.length === 1 ? "" : "s"}`;
+  if (!visible.length) {
+    if (stocksWrap) stocksWrap.hidden = true;
+    if (empty) empty.hidden = false;
+    return;
+  }
+  renderSectorStocksTable(visible);
+}
+
+async function loadSectorHub() {
+  if (sectorHubLoading) {
+    renderSectorHub();
+    return;
+  }
+  sectorHubLoading = true;
+  renderSectorHub();
+  try {
+    if (!lastSectorOverviewPayload) {
+      lastSectorOverviewPayload = normalizeSectorDirectoryPayload(
+        await apiJson("/api/analytics/sectors")
+      );
+    }
+    if (sectorHubLevel === "overview") {
+      lastSectorDetailPayload = null;
+      lastIndustryDetailPayload = null;
+    } else if (sectorHubLevel === "sector") {
+      lastSectorDetailPayload = buildSectorDetailFromOverview(sectorHubSectorSlug);
+      lastIndustryDetailPayload = null;
+      if (!lastSectorDetailPayload) {
+        lastSectorOverviewPayload = normalizeSectorDirectoryPayload(
+          await apiJson("/api/analytics/sectors")
+        );
+        lastSectorDetailPayload = buildSectorDetailFromOverview(sectorHubSectorSlug);
+      }
+    } else {
+      if (!lastSectorDetailPayload || lastSectorDetailPayload.sectorSlug !== sectorHubSectorSlug) {
+        lastSectorDetailPayload = buildSectorDetailFromOverview(sectorHubSectorSlug);
+      }
+      lastIndustryDetailPayload = await apiJson(
+        `/api/analytics/sectors/${encodeURIComponent(sectorHubSectorSlug || "")}/industries/${encodeURIComponent(sectorHubIndustrySlug || "")}`
+      );
+    }
+  } catch (err) {
+    lastSectorOverviewPayload = lastSectorOverviewPayload || { sectors: [] };
+    if (sectorHubLevel === "sector") {
+      lastSectorDetailPayload = { industries: [], sector: sectorHubSectorSlug };
+    }
+    if (sectorHubLevel === "industry") {
+      lastIndustryDetailPayload = {
+        stocks: [],
+        industry: sectorHubIndustrySlug,
+        sector: sectorHubSectorSlug,
+      };
+    }
+    const loading = document.getElementById("sector-hub-loading");
+    if (loading) {
+      loading.hidden = false;
+      loading.textContent = err instanceof Error ? err.message : String(err);
+    }
+  } finally {
+    sectorHubLoading = false;
+    renderSectorHub();
+  }
+}
+
+function navigateToSectorHub(opts = {}) {
+  const level = opts.level || "overview";
+  const sectorSlug = opts.sectorSlug || null;
+  const industrySlug = opts.industrySlug || null;
+  activeSectorHubView = "overview";
+  sectorHubLevel = level;
+  sectorHubSectorSlug = sectorSlug;
+  sectorHubIndustrySlug = industrySlug;
+  const path = sectorHubPath(sectorSlug, industrySlug);
+  if (window.location.pathname !== path) {
+    history.pushState(
+      { explore: "sector", sectorHubView: "overview", sectorLevel: level, sectorSlug, industrySlug },
+      "",
+      path
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  syncSectorHubVisibility();
+  void loadSectorHub();
+}
+
+function setupSectorHub() {
+  if (sectorHubBound) return;
+  sectorHubBound = true;
+
+  document.getElementById("sector-hub-back")?.addEventListener("click", () => {
+    if (sectorHubLevel === "industry") {
+      navigateToSectorHub({ level: "sector", sectorSlug: sectorHubSectorSlug });
+      return;
+    }
+    navigateToSectorHub({ level: "overview" });
+  });
+
+  document.getElementById("sector-hub-search")?.addEventListener("input", (e) => {
+    sectorHubSearch = e.target?.value || "";
+    renderSectorHub();
+  });
+
+  document.getElementById("sector-hub-crumbs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-sector-nav]");
+    if (!btn) return;
+    const nav = btn.getAttribute("data-sector-nav");
+    if (nav === "overview") navigateToSectorHub({ level: "overview" });
+    if (nav === "sector") {
+      navigateToSectorHub({
+        level: "sector",
+        sectorSlug: btn.getAttribute("data-sector-slug") || sectorHubSectorSlug,
+      });
+    }
+  });
+
+  document.getElementById("sector-hub-grid")?.addEventListener("click", (e) => {
+    const card = e.target.closest?.("[data-sector-card-href]");
+    if (!card) return;
+    const href = card.getAttribute("data-sector-card-href") || "";
+    const industryMatch = href.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+    if (industryMatch) {
+      navigateToSectorHub({
+        level: "industry",
+        sectorSlug: decodeURIComponent(industryMatch[1]),
+        industrySlug: decodeURIComponent(industryMatch[2]),
+      });
+      return;
+    }
+    const sectorMatch = href.match(/^\/sector\/([^/]+)\/?$/);
+    if (sectorMatch) {
+      navigateToSectorHub({
+        level: "sector",
+        sectorSlug: decodeURIComponent(sectorMatch[1]),
+      });
+    }
+  });
+
+  document.getElementById("sector-hub-stocks-table")?.addEventListener("click", (e) => {
+    const sortBtn = e.target.closest?.("[data-sector-stock-sort]");
+    if (sortBtn) {
+      const key = sortBtn.getAttribute("data-sector-stock-sort");
+      if (!key) return;
+      if (sectorHubStockSortKey === key) {
+        sectorHubStockSortDir = sectorHubStockSortDir === "desc" ? "asc" : "desc";
+      } else {
+        sectorHubStockSortKey = key;
+        sectorHubStockSortDir = "asc";
+      }
+      renderSectorHub();
+      return;
+    }
+    const link = e.target.closest?.("[data-stock-symbol]");
+    if (link) {
+      e.preventDefault();
+      const sym = link.getAttribute("data-stock-symbol");
+      if (sym) void openStockPreview(sym);
+    }
+  });
+}
+
+
+function formatAccUsd(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  const sign = x < 0 ? "−" : x > 0 ? "+" : "";
+  return `${sign}$${formatLargeNumber(Math.abs(x))}`;
+}
+
+function formatAccPct(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  const sign = x > 0 ? "+" : x < 0 ? "−" : "";
+  return `${sign}${Math.abs(x).toFixed(1)}%`;
+}
+
+function accMetricClass(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x === 0) return "";
+  return x > 0 ? "change--up" : "change--down";
+}
+
+function syncSectorHubVisibility() {
+  const directory = document.getElementById("sector-directory-hub");
+  const sectorAcc = document.getElementById("sector-accumulation-hub");
+  const industryAcc = document.getElementById("industry-accumulation-hub");
+  const sectorBuying = document.getElementById("sector-buying-hub");
+  const sectorSelling = document.getElementById("sector-selling-hub");
+  const sectorFund = document.getElementById("sector-fundamentals-hub");
+  const instConc = document.getElementById("institutional-concentration-hub");
+  const showOverview = activeSectorHubView === "overview";
+  const showSectorAcc = activeSectorHubView === "sector-accumulation";
+  const showIndustryAcc = activeSectorHubView === "industry-accumulation";
+  const showSectorBuying = activeSectorHubView === "sector-buying";
+  const showSectorSelling = activeSectorHubView === "sector-selling";
+  const showSectorFund = activeSectorHubView === "sector-fundamentals";
+  const showInstConc = activeSectorHubView === "institutional-concentration";
+  if (directory) directory.hidden = !showOverview;
+  if (sectorAcc) sectorAcc.hidden = !showSectorAcc;
+  if (industryAcc) industryAcc.hidden = !showIndustryAcc;
+  if (sectorBuying) sectorBuying.hidden = !showSectorBuying;
+  if (sectorSelling) sectorSelling.hidden = !showSectorSelling;
+  if (sectorFund) sectorFund.hidden = !showSectorFund;
+  if (instConc) instConc.hidden = !showInstConc;
+  document.querySelectorAll("[data-sector-view]").forEach((btn) => {
+    const view = btn.getAttribute("data-sector-view");
+    const active = activeExploreMode === "sector" && view === activeSectorHubView;
+    btn.classList.toggle("is-active", active);
+  });
+}
+
+function updateSectorView() {
+  if (activeExploreMode !== "sector") return;
+  syncSectorHubVisibility();
+  if (activeSectorHubView === "overview") {
+    void loadSectorHub();
+    return;
+  }
+  if (activeSectorHubView === "sector-accumulation") {
+    void loadSectorAccumulationPage();
+    return;
+  }
+  if (activeSectorHubView === "industry-accumulation") {
+    void loadIndustryAccumulationPage();
+    return;
+  }
+  if (activeSectorHubView === "sector-buying") {
+    void loadSectorBuyingPage();
+    return;
+  }
+  if (activeSectorHubView === "sector-selling") {
+    void loadSectorSellingPage();
+    return;
+  }
+  if (activeSectorHubView === "sector-fundamentals") {
+    void loadSectorFundamentalsPage();
+    return;
+  }
+  if (activeSectorHubView === "institutional-concentration") {
+    void loadInstitutionalConcentrationPage();
+  }
+}
+
+function navigateToSectorAccumulation() {
+  activeSectorHubView = "sector-accumulation";
+  if (window.location.pathname !== "/sector/accumulation") {
+    history.pushState(
+      { explore: "sector", sectorHubView: "sector-accumulation" },
+      "",
+      "/sector/accumulation"
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function navigateToIndustryAccumulation() {
+  activeSectorHubView = "industry-accumulation";
+  if (window.location.pathname !== "/sector/industry-accumulation") {
+    history.pushState(
+      { explore: "sector", sectorHubView: "industry-accumulation" },
+      "",
+      "/sector/industry-accumulation"
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function navigateToSectorBuying() {
+  activeSectorHubView = "sector-buying";
+  if (window.location.pathname !== "/sector/buying") {
+    history.pushState(
+      { explore: "sector", sectorHubView: "sector-buying" },
+      "",
+      "/sector/buying"
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function navigateToSectorSelling() {
+  activeSectorHubView = "sector-selling";
+  if (window.location.pathname !== "/sector/selling") {
+    history.pushState(
+      { explore: "sector", sectorHubView: "sector-selling" },
+      "",
+      "/sector/selling"
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function sectorFundamentalsPath(sectorSlug = null) {
+  if (sectorSlug) return `/sector/fundamentals/${encodeURIComponent(sectorSlug)}`;
+  return "/sector/fundamentals";
+}
+
+function navigateToSectorFundamentals(opts = {}) {
+  const level = opts.level === "industries" ? "industries" : "sectors";
+  const sectorSlug = level === "industries" ? opts.sectorSlug || sectorFundSectorSlug : null;
+  sectorFundLevel = level;
+  sectorFundSectorSlug = sectorSlug;
+  activeSectorHubView = "sector-fundamentals";
+  const path = sectorFundamentalsPath(sectorSlug);
+  if (window.location.pathname !== path) {
+    history.pushState(
+      {
+        explore: "sector",
+        sectorHubView: "sector-fundamentals",
+        sectorFundLevel: level,
+        sectorFundSectorSlug: sectorSlug,
+      },
+      "",
+      path
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function instConcPath(sectorSlug = null, industrySlug = null, institutionId = null) {
+  let path = "/sector/institutional-concentration";
+  if (sectorSlug) path += `/${encodeURIComponent(sectorSlug)}`;
+  if (industrySlug) path += `/${encodeURIComponent(industrySlug)}`;
+  if (institutionId) path += `/${encodeURIComponent(institutionId)}`;
+  return path;
+}
+
+function navigateToInstitutionalConcentration(opts = {}) {
+  activeSectorHubView = "institutional-concentration";
+  instConcLevel = opts.level || "institutions";
+  instConcSectorSlug = opts.sectorSlug || null;
+  instConcIndustrySlug = opts.industrySlug || null;
+  instConcInstitutionId = opts.institutionId || null;
+  if (instConcLevel !== "stocks") lastInstConcStocksPayload = null;
+  const path = instConcPath(instConcSectorSlug, instConcIndustrySlug, instConcInstitutionId);
+  if (window.location.pathname !== path) {
+    history.pushState(
+      {
+        explore: "sector",
+        sectorHubView: "institutional-concentration",
+        instConcLevel,
+        instConcSectorSlug,
+        instConcIndustrySlug,
+        instConcInstitutionId,
+      },
+      "",
+      path
+    );
+  }
+  setExploreMode("sector", { navigate: false });
+  updateSectorView();
+}
+
+function sortAccRows(rows, key, dir) {
+  const mult = dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    if (key === "sector" || key === "industry") {
+      return String(a[key] || "").localeCompare(String(b[key] || "")) * mult;
+    }
+    if (key === "rank") {
+      return (Number(b.netValueChangeUsd) - Number(a.netValueChangeUsd)) * (dir === "asc" ? -1 : 1);
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    const an = Number.isFinite(av) ? av : dir === "asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    const bn = Number.isFinite(bv) ? bv : dir === "asc" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    if (an === bn) {
+      return String(a.industry || a.sector || "").localeCompare(String(b.industry || b.sector || ""));
+    }
+    return (an - bn) * mult;
+  });
+}
+
+function renderSectorAccumulationSummary(summary) {
+  const wrap = document.getElementById("sector-accumulation-summary");
+  if (!wrap) return;
+  if (!summary) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const top = document.getElementById("sector-accumulation-top");
+  const topMeta = document.getElementById("sector-accumulation-top-meta");
+  const buyers = document.getElementById("sector-accumulation-buyers");
+  const inflow = document.getElementById("sector-accumulation-inflow");
+  const avgPct = document.getElementById("sector-accumulation-avg-pct");
+  if (top) top.textContent = summary.topSector?.sector || "—";
+  if (topMeta) {
+    topMeta.textContent = summary.topSector
+      ? formatAccUsd(summary.topSector.netValueChangeUsd)
+      : "";
+    topMeta.className = `institution-most-accumulated__summary-meta muted small ${accMetricClass(
+      summary.topSector?.netValueChangeUsd
+    )}`;
+  }
+  if (buyers) buyers.textContent = formatInteger(summary.totalInstitutionsBuying || 0);
+  if (inflow) {
+    inflow.textContent = formatAccUsd(summary.totalNetValueChangeUsd);
+    inflow.className = `institution-most-accumulated__summary-value mono ${accMetricClass(
+      summary.totalNetValueChangeUsd
+    )}`;
+  }
+  if (avgPct) {
+    avgPct.textContent = formatAccPct(summary.averagePercentIncrease);
+    avgPct.className = `institution-most-accumulated__summary-value mono ${accMetricClass(
+      summary.averagePercentIncrease
+    )}`;
+  }
+}
+
+function renderSectorAccumulationTable() {
+  setupSectorAccumulationPages();
+  const body = document.getElementById("sector-accumulation-body");
+  const loading = document.getElementById("sector-accumulation-loading");
+  const subtitle = document.getElementById("sector-accumulation-subtitle");
+  const countEl = document.getElementById("sector-accumulation-count");
+  if (!body) return;
+
+  document.querySelectorAll("[data-sector-acc-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-sector-acc-sort");
+    const active = key === sectorAccSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.textContent = active ? `${label} ${sectorAccSortDir === "asc" ? "▲" : "▼"}` : label;
+  });
+
+  if (loading) loading.hidden = !sectorAccLoading;
+  if (sectorAccLoading) {
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">Loading sector accumulation…</td></tr>`;
+    return;
+  }
+
+  const payload = lastSectorAccumulationPayload;
+  if (!payload) {
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No sector accumulation data available.</td></tr>`;
+    renderSectorAccumulationSummary(null);
+    return;
+  }
+
+  const q = sectorAccSearch.trim().toLowerCase();
+  let rows = (payload.sectors || []).filter((row) => {
+    if (sectorAccPositiveOnly && !(Number(row.netValueChangeUsd) > 0)) return false;
+    if (!q) return true;
+    return String(row.sector || "").toLowerCase().includes(q);
+  });
+  rows = sortAccRows(rows, sectorAccSortKey, sectorAccSortDir);
+
+  const filteredSummary = {
+    topSector: rows[0]
+      ? { sector: rows[0].sector, netValueChangeUsd: rows[0].netValueChangeUsd }
+      : null,
+    totalInstitutionsBuying: rows.reduce((sum, r) => sum + (Number(r.institutionsBuying) || 0), 0),
+    totalNetValueChangeUsd: rows.reduce((sum, r) => sum + (Number(r.netValueChangeUsd) || 0), 0),
+    averagePercentIncrease: (() => {
+      const vals = rows.map((r) => r.percentIncrease).filter((v) => v != null && Number.isFinite(v));
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    })(),
+  };
+  renderSectorAccumulationSummary(filteredSummary);
+
+  if (subtitle) {
+    const cur = payload.currentQuarter || "—";
+    const prev = payload.previousQuarter || "—";
+    subtitle.textContent = `Institutional inflow by sector · ${prev} → ${cur} · QoQ 13F`;
+  }
+  if (countEl) {
+    countEl.textContent = rows.length
+      ? `${formatInteger(rows.length)} sector${rows.length === 1 ? "" : "s"}`
+      : "No matches";
+  }
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No sectors match the current filters.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows
+    .map((row, idx) => {
+      const href = sectorHubPath(row.sectorSlug);
+      return `<tr>
+        <td class="mono num">${idx + 1}</td>
+        <td><button type="button" class="sector-acc-name-btn" data-sector-acc-open="${escapeHtml(href)}">${escapeHtml(row.sector)}</button></td>
+        <td class="mono num">${formatInteger(row.institutionsBuying)}</td>
+        <td class="mono num ${accMetricClass(row.netValueChangeUsd)}">${escapeHtml(formatAccUsd(row.netValueChangeUsd))}</td>
+        <td class="mono num ${accMetricClass(row.percentIncrease)}">${escapeHtml(formatAccPct(row.percentIncrease))}</td>
+        <td class="mono num">${formatInteger(row.tickerCount)}</td>
+        <td class="mono num">${formatInteger(row.institutionsOwning)}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function renderIndustryAccumulationSummary(summary) {
+  const wrap = document.getElementById("industry-accumulation-summary");
+  if (!wrap) return;
+  if (!summary) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const top = document.getElementById("industry-accumulation-top");
+  const topMeta = document.getElementById("industry-accumulation-top-meta");
+  const buyers = document.getElementById("industry-accumulation-buyers");
+  const inflow = document.getElementById("industry-accumulation-inflow");
+  const avgPct = document.getElementById("industry-accumulation-avg-pct");
+  if (top) top.textContent = summary.topIndustry?.industry || "—";
+  if (topMeta) {
+    topMeta.textContent = summary.topIndustry
+      ? `${summary.topIndustry.sector} · ${formatAccUsd(summary.topIndustry.netValueChangeUsd)}`
+      : "";
+    topMeta.className = `institution-most-accumulated__summary-meta muted small ${accMetricClass(
+      summary.topIndustry?.netValueChangeUsd
+    )}`;
+  }
+  if (buyers) buyers.textContent = formatInteger(summary.totalInstitutionsBuying || 0);
+  if (inflow) {
+    inflow.textContent = formatAccUsd(summary.totalNetValueChangeUsd);
+    inflow.className = `institution-most-accumulated__summary-value mono ${accMetricClass(
+      summary.totalNetValueChangeUsd
+    )}`;
+  }
+  if (avgPct) {
+    avgPct.textContent = formatAccPct(summary.averagePercentIncrease);
+    avgPct.className = `institution-most-accumulated__summary-value mono ${accMetricClass(
+      summary.averagePercentIncrease
+    )}`;
+  }
+}
+
+function renderIndustryAccumulationSectorOptions(rows) {
+  const select = document.getElementById("industry-accumulation-sector");
+  if (!select) return;
+  const sectors = [...new Set((rows || []).map((r) => r.sector).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const current = industryAccSectorFilter;
+  select.innerHTML =
+    `<option value="">All sectors</option>` +
+    sectors.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  select.value = sectors.includes(current) ? current : "";
+  industryAccSectorFilter = select.value;
+}
+
+function renderIndustryAccumulationTable() {
+  setupSectorAccumulationPages();
+  const body = document.getElementById("industry-accumulation-body");
+  const loading = document.getElementById("industry-accumulation-loading");
+  const subtitle = document.getElementById("industry-accumulation-subtitle");
+  const countEl = document.getElementById("industry-accumulation-count");
+  if (!body) return;
+
+  document.querySelectorAll("[data-industry-acc-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-industry-acc-sort");
+    const active = key === industryAccSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.textContent = active ? `${label} ${industryAccSortDir === "asc" ? "▲" : "▼"}` : label;
+  });
+
+  if (loading) loading.hidden = !industryAccLoading;
+  if (industryAccLoading) {
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading industry accumulation…</td></tr>`;
+    return;
+  }
+
+  const payload = lastIndustryAccumulationPayload;
+  if (!payload) {
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No industry accumulation data available.</td></tr>`;
+    renderIndustryAccumulationSummary(null);
+    return;
+  }
+
+  renderIndustryAccumulationSectorOptions(payload.industries || []);
+  const q = industryAccSearch.trim().toLowerCase();
+  let rows = (payload.industries || []).filter((row) => {
+    if (industryAccPositiveOnly && !(Number(row.netValueChangeUsd) > 0)) return false;
+    if (industryAccSectorFilter && row.sector !== industryAccSectorFilter) return false;
+    if (!q) return true;
+    return (
+      String(row.industry || "").toLowerCase().includes(q) ||
+      String(row.sector || "").toLowerCase().includes(q)
+    );
+  });
+  rows = sortAccRows(rows, industryAccSortKey, industryAccSortDir);
+
+  const filteredSummary = {
+    topIndustry: rows[0]
+      ? {
+          industry: rows[0].industry,
+          sector: rows[0].sector,
+          netValueChangeUsd: rows[0].netValueChangeUsd,
+        }
+      : null,
+    totalInstitutionsBuying: rows.reduce((sum, r) => sum + (Number(r.institutionsBuying) || 0), 0),
+    totalNetValueChangeUsd: rows.reduce((sum, r) => sum + (Number(r.netValueChangeUsd) || 0), 0),
+    averagePercentIncrease: (() => {
+      const vals = rows.map((r) => r.percentIncrease).filter((v) => v != null && Number.isFinite(v));
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    })(),
+  };
+  renderIndustryAccumulationSummary(filteredSummary);
+
+  if (subtitle) {
+    const cur = payload.currentQuarter || "—";
+    const prev = payload.previousQuarter || "—";
+    subtitle.textContent = `Institutional inflow by industry · ${prev} → ${cur} · QoQ 13F`;
+  }
+  if (countEl) {
+    countEl.textContent = rows.length
+      ? `${formatInteger(rows.length)} industr${rows.length === 1 ? "y" : "ies"}`
+      : "No matches";
+  }
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No industries match the current filters.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows
+    .map((row, idx) => {
+      const href = sectorHubPath(row.sectorSlug, row.industrySlug);
+      return `<tr>
+        <td class="mono num">${idx + 1}</td>
+        <td><button type="button" class="sector-acc-name-btn" data-sector-acc-open="${escapeHtml(href)}">${escapeHtml(row.industry)}</button></td>
+        <td>${escapeHtml(row.sector)}</td>
+        <td class="mono num">${formatInteger(row.institutionsBuying)}</td>
+        <td class="mono num ${accMetricClass(row.netValueChangeUsd)}">${escapeHtml(formatAccUsd(row.netValueChangeUsd))}</td>
+        <td class="mono num ${accMetricClass(row.percentIncrease)}">${escapeHtml(formatAccPct(row.percentIncrease))}</td>
+        <td class="mono num">${formatInteger(row.tickerCount)}</td>
+        <td class="mono num">${formatInteger(row.institutionsOwning)}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadSectorAccumulationPage() {
+  setupSectorAccumulationPages();
+  syncSectorHubVisibility();
+  if (sectorAccLoading) {
+    renderSectorAccumulationTable();
+    return;
+  }
+  if (lastSectorAccumulationPayload) {
+    renderSectorAccumulationTable();
+    return;
+  }
+  sectorAccLoading = true;
+  renderSectorAccumulationTable();
+  try {
+    lastSectorAccumulationPayload = await apiJson("/api/analytics/sectors/accumulation");
+  } catch (err) {
+    lastSectorAccumulationPayload = null;
+    const loading = document.getElementById("sector-accumulation-loading");
+    if (loading) {
+      loading.hidden = false;
+      loading.textContent = err instanceof Error ? err.message : String(err);
+    }
+  } finally {
+    sectorAccLoading = false;
+    renderSectorAccumulationTable();
+  }
+}
+
+async function loadIndustryAccumulationPage() {
+  setupSectorAccumulationPages();
+  syncSectorHubVisibility();
+  if (industryAccLoading) {
+    renderIndustryAccumulationTable();
+    return;
+  }
+  if (lastIndustryAccumulationPayload) {
+    renderIndustryAccumulationTable();
+    return;
+  }
+  industryAccLoading = true;
+  renderIndustryAccumulationTable();
+  try {
+    lastIndustryAccumulationPayload = await apiJson("/api/analytics/industries/accumulation");
+  } catch (err) {
+    lastIndustryAccumulationPayload = null;
+    const loading = document.getElementById("industry-accumulation-loading");
+    if (loading) {
+      loading.hidden = false;
+      loading.textContent = err instanceof Error ? err.message : String(err);
+    }
+  } finally {
+    industryAccLoading = false;
+    renderIndustryAccumulationTable();
+  }
+}
+
+function updateSectorBuyingSortButtons() {
+  document.querySelectorAll("[data-sector-buying-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-sector-buying-sort");
+    const active = key === sectorBuyingSortKey;
+    btn.classList.toggle("is-active", active);
+    if (active) {
+      btn.setAttribute("aria-sort", sectorBuyingSortDir === "asc" ? "ascending" : "descending");
+    } else {
+      btn.removeAttribute("aria-sort");
+    }
+  });
+}
+
+function sortSectorBuyingStocks(rows) {
+  const mult = sectorBuyingSortDir === "asc" ? 1 : -1;
+  const key = sectorBuyingSortKey;
+  return [...rows].sort((a, b) => {
+    if (key === "ticker" || key === "industry") {
+      const av = key === "ticker" ? a.companyName || a.ticker : a.industry || "";
+      const bv = key === "ticker" ? b.companyName || b.ticker : b.industry || "";
+      return String(av).localeCompare(String(bv)) * mult || String(a.ticker).localeCompare(String(b.ticker));
+    }
+    if (key === "rank") {
+      return (Number(a.rank) - Number(b.rank)) * mult;
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    const an = Number.isFinite(av) ? av : 0;
+    const bn = Number.isFinite(bv) ? bv : 0;
+    if (an === bn) return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+    return (an - bn) * mult;
+  });
+}
+
+function renderSectorBuyingHub() {
+  const sectorsList = document.getElementById("sector-buying-sectors-list");
+  const sectorsMeta = document.getElementById("sector-buying-sectors-meta");
+  const body = document.getElementById("sector-buying-body");
+  const meta = document.getElementById("sector-buying-meta");
+  const heading = document.getElementById("sector-buying-table-heading");
+  const subtitle = document.getElementById("sector-buying-subtitle");
+  if (!body || !sectorsList) return;
+
+  updateSectorBuyingSortButtons();
+
+  if (sectorBuyingLoading && !lastSectorBuyingPayload) {
+    sectorsList.innerHTML = `<p class="muted small">Loading sectors…</p>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">Loading sector leaders…</td></tr>`;
+    if (sectorsMeta) sectorsMeta.textContent = "Loading…";
+    if (meta) meta.textContent = "Loading…";
+    return;
+  }
+
+  const data = lastSectorBuyingPayload;
+  if (!data) {
+    sectorsList.innerHTML = `<p class="muted small">No data loaded.</p>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No data loaded.</td></tr>`;
+    return;
+  }
+
+  const sectors = Array.isArray(data.sectors) ? data.sectors : [];
+  if (subtitle) {
+    const q = data.previousQuarter
+      ? `${data.previousQuarter} → ${data.currentQuarter}`
+      : data.currentQuarter || "—";
+    subtitle.textContent = `Top 10 stocks per sector by total net buying (13F QoQ ${q} + congressional ${data.politicianPeriodLabel || "last quarter"}).`;
+  }
+
+  if (!sectors.length) {
+    sectorsList.innerHTML = `<p class="muted small">No classified sectors available.</p>`;
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No sector leaders data.</td></tr>`;
+    if (sectorsMeta) sectorsMeta.textContent = "";
+    if (meta) meta.textContent = "";
+    return;
+  }
+
+  if (
+    !sectorBuyingSelectedSlug ||
+    !sectors.some((s) => s.sectorSlug === sectorBuyingSelectedSlug)
+  ) {
+    sectorBuyingSelectedSlug = sectors[0].sectorSlug;
+  }
+
+  const selected =
+    sectors.find((s) => s.sectorSlug === sectorBuyingSelectedSlug) || sectors[0];
+
+  if (sectorsMeta) {
+    sectorsMeta.textContent = `${sectors.length} sectors · ${data.currentQuarter || "—"}`;
+  }
+
+  sectorsList.innerHTML = sectors
+    .map((sec) => {
+      const active = sec.sectorSlug === selected.sectorSlug;
+      const count = Number(sec.stockCount) || 0;
+      return `<button type="button" class="top-institution-entries-fund${active ? " is-active" : ""}" role="option" aria-selected="${active}" data-sector-buying-slug="${escapeHtml(sec.sectorSlug)}">
+        <span class="top-institution-entries-fund__rank mono">#${sec.rank}</span>
+        <span class="top-institution-entries-fund__name">${escapeHtml(sec.sector)}</span>
+        <span class="top-institution-entries-fund__return mono ${accMetricClass(sec.totalNetBuyingUsd)}">${escapeHtml(formatAccUsd(sec.totalNetBuyingUsd))}</span>
+        <span class="top-institution-entries-fund__count">${count} stock${count === 1 ? "" : "s"}</span>
+      </button>`;
+    })
+    .join("");
+
+  const stocks = sortSectorBuyingStocks(Array.isArray(selected.stocks) ? selected.stocks : []);
+  if (heading) heading.textContent = `Top stocks · ${selected.sector}`;
+  if (meta) {
+    meta.textContent = `${stocks.length} of top ${stocks.length || 10} · Total ${formatAccUsd(selected.totalNetBuyingUsd)}`;
+  }
+
+  if (!stocks.length) {
+    body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">No buying activity for this sector in the current window.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = stocks
+    .map((row) => {
+      const label = row.companyName
+        ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+        : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span>`;
+      const sectorSlug = row.sectorSlug || sectorOverviewSlugClient(row.sector);
+      const industrySlug = row.industrySlug || (row.industry ? sectorOverviewSlugClient(row.industry) : "");
+      const industryCell =
+        row.industry && sectorSlug && industrySlug
+          ? `<button type="button" class="sector-acc-name-btn" data-sector-buying-open="${escapeHtml(
+              sectorHubPath(sectorSlug, industrySlug)
+            )}">${escapeHtml(row.industry)}</button>`
+          : escapeHtml(row.industry || "—");
+      return `<tr>
+        <td class="mono num">${escapeHtml(String(row.rank))}</td>
+        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${label}</a></td>
+        <td>${industryCell}</td>
+        <td class="mono num ${accMetricClass(row.netInstitutionalBuyingUsd)}">${escapeHtml(formatAccUsd(row.netInstitutionalBuyingUsd))}</td>
+        <td class="mono num">${escapeHtml(formatInteger(row.institutionsBuying || 0))}</td>
+        <td class="mono num ${accMetricClass(row.politicianBuyingUsd)}">${escapeHtml(formatAccUsd(row.politicianBuyingUsd))}</td>
+        <td class="mono num ${accMetricClass(row.totalNetBuyingUsd)}">${escapeHtml(formatAccUsd(row.totalNetBuyingUsd))}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadSectorBuyingPage() {
+  setupSectorBuyingHub();
+  syncSectorHubVisibility();
+  if (sectorBuyingLoading) {
+    renderSectorBuyingHub();
+    return;
+  }
+  if (lastSectorBuyingPayload) {
+    renderSectorBuyingHub();
+    return;
+  }
+  sectorBuyingLoading = true;
+  renderSectorBuyingHub();
+  try {
+    lastSectorBuyingPayload = await apiJson("/api/analytics/sectors/buying");
+  } catch (err) {
+    lastSectorBuyingPayload = null;
+    const body = document.getElementById("sector-buying-body");
+    if (body) {
+      body.innerHTML = `<tr><td colspan="7" class="trades-table__empty">${escapeHtml(
+        err instanceof Error ? err.message : String(err)
+      )}</td></tr>`;
+    }
+  } finally {
+    sectorBuyingLoading = false;
+    renderSectorBuyingHub();
+  }
+}
+
+function setupSectorBuyingHub() {
+  if (sectorBuyingBound) return;
+  sectorBuyingBound = true;
+
+  document.getElementById("sector-buying-sectors-list")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-sector-buying-slug]");
+    if (!btn) return;
+    const slug = btn.getAttribute("data-sector-buying-slug");
+    if (!slug || slug === sectorBuyingSelectedSlug) return;
+    sectorBuyingSelectedSlug = slug;
+    renderSectorBuyingHub();
+  });
+
+  document.getElementById("sector-buying-table")?.addEventListener("click", (e) => {
+    const open = e.target.closest?.("[data-sector-buying-open]");
+    if (open) {
+      const href = open.getAttribute("data-sector-buying-open") || "";
+      const match = href.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+      if (match) {
+        activeSectorHubView = "overview";
+        navigateToSectorHub({
+          level: "industry",
+          sectorSlug: decodeURIComponent(match[1]),
+          industrySlug: decodeURIComponent(match[2]),
+        });
+      }
+      return;
+    }
+    const sortBtn = e.target.closest?.("[data-sector-buying-sort]");
+    if (!sortBtn) return;
+    const key = sortBtn.getAttribute("data-sector-buying-sort");
+    if (!key) return;
+    if (sectorBuyingSortKey === key) {
+      sectorBuyingSortDir = sectorBuyingSortDir === "desc" ? "asc" : "desc";
+    } else {
+      sectorBuyingSortKey = key;
+      sectorBuyingSortDir = key === "ticker" || key === "industry" ? "asc" : "desc";
+    }
+    renderSectorBuyingHub();
+  });
+}
+
+function updateSectorSellingSortButtons() {
+  document.querySelectorAll("[data-sector-selling-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-sector-selling-sort");
+    const active = key === sectorSellingSortKey;
+    btn.classList.toggle("is-active", active);
+    if (active) {
+      btn.setAttribute("aria-sort", sectorSellingSortDir === "asc" ? "ascending" : "descending");
+    } else {
+      btn.removeAttribute("aria-sort");
+    }
+  });
+}
+
+function sortSectorSellingStocks(rows) {
+  const mult = sectorSellingSortDir === "asc" ? 1 : -1;
+  const key = sectorSellingSortKey;
+  return [...rows].sort((a, b) => {
+    if (key === "ticker" || key === "industry") {
+      const av = key === "ticker" ? a.companyName || a.ticker : a.industry || "";
+      const bv = key === "ticker" ? b.companyName || b.ticker : b.industry || "";
+      return String(av).localeCompare(String(bv)) * mult || String(a.ticker).localeCompare(String(b.ticker));
+    }
+    if (key === "rank") {
+      return (Number(a.rank) - Number(b.rank)) * mult;
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    const an = Number.isFinite(av) ? av : 0;
+    const bn = Number.isFinite(bv) ? bv : 0;
+    if (an === bn) return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+    return (an - bn) * mult;
+  });
+}
+
+function renderSectorSellingHub() {
+  const sectorsList = document.getElementById("sector-selling-sectors-list");
+  const sectorsMeta = document.getElementById("sector-selling-sectors-meta");
+  const body = document.getElementById("sector-selling-body");
+  const meta = document.getElementById("sector-selling-meta");
+  const heading = document.getElementById("sector-selling-table-heading");
+  const subtitle = document.getElementById("sector-selling-subtitle");
+  if (!body || !sectorsList) return;
+
+  updateSectorSellingSortButtons();
+
+  if (sectorSellingLoading && !lastSectorSellingPayload) {
+    sectorsList.innerHTML = `<p class="muted small">Loading sectors…</p>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">Loading sector selling…</td></tr>`;
+    if (sectorsMeta) sectorsMeta.textContent = "Loading…";
+    if (meta) meta.textContent = "Loading…";
+    return;
+  }
+
+  const data = lastSectorSellingPayload;
+  if (!data) {
+    sectorsList.innerHTML = `<p class="muted small">No data loaded.</p>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No data loaded.</td></tr>`;
+    return;
+  }
+
+  const sectors = Array.isArray(data.sectors) ? data.sectors : [];
+  if (subtitle) {
+    const q = data.previousQuarter
+      ? `${data.previousQuarter} → ${data.currentQuarter}`
+      : data.currentQuarter || "—";
+    subtitle.textContent = `Top 10 stocks per sector by net shares sold (share-based 13F QoQ ${q} + congressional ${data.politicianPeriodLabel || "last quarter"}).`;
+  }
+
+  if (!sectors.length) {
+    sectorsList.innerHTML = `<p class="muted small">No classified sectors available.</p>`;
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No sector selling data.</td></tr>`;
+    if (sectorsMeta) sectorsMeta.textContent = "";
+    if (meta) meta.textContent = "";
+    return;
+  }
+
+  if (
+    !sectorSellingSelectedSlug ||
+    !sectors.some((s) => s.sectorSlug === sectorSellingSelectedSlug)
+  ) {
+    sectorSellingSelectedSlug = sectors[0].sectorSlug;
+  }
+
+  const selected =
+    sectors.find((s) => s.sectorSlug === sectorSellingSelectedSlug) || sectors[0];
+
+  if (sectorsMeta) {
+    sectorsMeta.textContent = `${sectors.length} sectors · ${data.currentQuarter || "—"}`;
+  }
+
+  sectorsList.innerHTML = sectors
+    .map((sec) => {
+      const active = sec.sectorSlug === selected.sectorSlug;
+      const count = Number(sec.stockCount) || 0;
+      const soldUsd = -Math.abs(Number(sec.totalNetSellingUsd) || 0);
+      return `<button type="button" class="top-institution-entries-fund${active ? " is-active" : ""}" role="option" aria-selected="${active}" data-sector-selling-slug="${escapeHtml(sec.sectorSlug)}">
+        <span class="top-institution-entries-fund__rank mono">#${sec.rank}</span>
+        <span class="top-institution-entries-fund__name">${escapeHtml(sec.sector)}</span>
+        <span class="top-institution-entries-fund__return mono ${accMetricClass(soldUsd)}">${escapeHtml(formatAccUsd(soldUsd))}</span>
+        <span class="top-institution-entries-fund__count">${count} stock${count === 1 ? "" : "s"}</span>
+      </button>`;
+    })
+    .join("");
+
+  const stocks = sortSectorSellingStocks(Array.isArray(selected.stocks) ? selected.stocks : []);
+  if (heading) heading.textContent = `Top exits · ${selected.sector}`;
+  if (meta) {
+    const soldUsd = -Math.abs(Number(selected.totalNetSellingUsd) || 0);
+    meta.textContent = `${stocks.length} of top ${stocks.length || 10} · ${formatAccUsd(soldUsd)}`;
+  }
+
+  if (!stocks.length) {
+    body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">No selling activity for this sector in the current window.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = stocks
+    .map((row) => {
+      const label = row.companyName
+        ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+        : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span>`;
+      const sectorSlug = row.sectorSlug || sectorOverviewSlugClient(row.sector);
+      const industrySlug = row.industrySlug || (row.industry ? sectorOverviewSlugClient(row.industry) : "");
+      const industryCell =
+        row.industry && sectorSlug && industrySlug
+          ? `<button type="button" class="sector-acc-name-btn" data-sector-selling-open="${escapeHtml(
+              sectorHubPath(sectorSlug, industrySlug)
+            )}">${escapeHtml(row.industry)}</button>`
+          : escapeHtml(row.industry || "—");
+      const sharesSold = -Math.abs(Number(row.netSharesSold) || 0);
+      const instSold = -Math.abs(Number(row.netInstitutionalSellingUsd) || 0);
+      const polSold = -Math.abs(Number(row.politicianSellingUsd) || 0);
+      const totalSold = -Math.abs(Number(row.totalNetSellingUsd) || 0);
+      return `<tr>
+        <td class="mono num">${escapeHtml(String(row.rank))}</td>
+        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${label}</a></td>
+        <td>${industryCell}</td>
+        <td class="mono num ${accMetricClass(sharesSold)}">${escapeHtml(
+          sharesSold === 0 ? "—" : `−${formatShareCount(Math.abs(sharesSold))}`
+        )}</td>
+        <td class="mono num">${escapeHtml(formatInteger(row.institutionsSelling || 0))}</td>
+        <td class="mono num ${accMetricClass(instSold)}">${escapeHtml(formatAccUsd(instSold))}</td>
+        <td class="mono num ${accMetricClass(polSold)}">${escapeHtml(formatAccUsd(polSold))}</td>
+        <td class="mono num ${accMetricClass(totalSold)}">${escapeHtml(formatAccUsd(totalSold))}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadSectorSellingPage() {
+  setupSectorSellingHub();
+  syncSectorHubVisibility();
+  if (sectorSellingLoading) {
+    renderSectorSellingHub();
+    return;
+  }
+  if (lastSectorSellingPayload) {
+    renderSectorSellingHub();
+    return;
+  }
+  sectorSellingLoading = true;
+  renderSectorSellingHub();
+  try {
+    lastSectorSellingPayload = await apiJson("/api/analytics/sectors/selling");
+  } catch (err) {
+    lastSectorSellingPayload = null;
+    const body = document.getElementById("sector-selling-body");
+    if (body) {
+      body.innerHTML = `<tr><td colspan="8" class="trades-table__empty">${escapeHtml(
+        err instanceof Error ? err.message : String(err)
+      )}</td></tr>`;
+    }
+  } finally {
+    sectorSellingLoading = false;
+    renderSectorSellingHub();
+  }
+}
+
+function setupSectorSellingHub() {
+  if (sectorSellingBound) return;
+  sectorSellingBound = true;
+
+  document.getElementById("sector-selling-sectors-list")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-sector-selling-slug]");
+    if (!btn) return;
+    const slug = btn.getAttribute("data-sector-selling-slug");
+    if (!slug || slug === sectorSellingSelectedSlug) return;
+    sectorSellingSelectedSlug = slug;
+    renderSectorSellingHub();
+  });
+
+  document.getElementById("sector-selling-table")?.addEventListener("click", (e) => {
+    const open = e.target.closest?.("[data-sector-selling-open]");
+    if (open) {
+      const href = open.getAttribute("data-sector-selling-open") || "";
+      const match = href.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+      if (match) {
+        activeSectorHubView = "overview";
+        navigateToSectorHub({
+          level: "industry",
+          sectorSlug: decodeURIComponent(match[1]),
+          industrySlug: decodeURIComponent(match[2]),
+        });
+      }
+      return;
+    }
+    const sortBtn = e.target.closest?.("[data-sector-selling-sort]");
+    if (!sortBtn) return;
+    const key = sortBtn.getAttribute("data-sector-selling-sort");
+    if (!key) return;
+    if (sectorSellingSortKey === key) {
+      sectorSellingSortDir = sectorSellingSortDir === "desc" ? "asc" : "desc";
+    } else {
+      sectorSellingSortKey = key;
+      sectorSellingSortDir = key === "ticker" || key === "industry" ? "asc" : "desc";
+    }
+    renderSectorSellingHub();
+  });
+}
+
+function formatSectorFundPct(n, { signed = false } = {}) {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return "—";
+  const v = Number(n);
+  const core = `${Math.abs(v).toFixed(2)}%`;
+  if (!signed) return v < 0 ? `−${core}` : core;
+  if (v > 0) return `+${v.toFixed(2)}%`;
+  if (v < 0) return `−${Math.abs(v).toFixed(2)}%`;
+  return "0.00%";
+}
+
+function formatSectorFundPp(n) {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return "";
+  const v = Number(n);
+  if (v === 0) return "0.00pp";
+  const abs = Math.abs(v).toFixed(2);
+  return v > 0 ? `+${abs}pp` : `−${abs}pp`;
+}
+
+function formatSectorFundRatio(n) {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return "—";
+  return Number(n).toFixed(2);
+}
+
+function formatSectorFundRatioDelta(n) {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return "";
+  const v = Number(n);
+  if (v === 0) return "0.00";
+  const abs = Math.abs(v).toFixed(2);
+  return v > 0 ? `+${abs}` : `−${abs}`;
+}
+
+function sectorFundObsTitle(obs, key) {
+  const n = obs?.[key];
+  if (n == null || !Number.isFinite(Number(n)) || Number(n) <= 0) return "";
+  return ` title="${escapeHtml(String(n))} valid companies"`;
+}
+
+function sectorFundMetricCell(value, delta, { kind = "pct", invert = false, obs = null, obsKey = null, deltaObsKey = null } = {}) {
+  const title = sectorFundObsTitle(obs, obsKey);
+  if (kind === "growth") {
+    const cls = value == null || !Number.isFinite(Number(value)) ? "" : accMetricClass(invert ? -Number(value) : value);
+    return `<td class="mono num ${cls}"${title}>${escapeHtml(formatSectorFundPct(value, { signed: true }))}</td>`;
+  }
+  if (kind === "ratio") {
+    const deltaTitle = sectorFundObsTitle(obs, deltaObsKey);
+    const deltaHtml =
+      delta != null && Number.isFinite(Number(delta))
+        ? `<div class="muted small ${accMetricClass(invert ? -Number(delta) : delta)}"${deltaTitle}>${escapeHtml(formatSectorFundRatioDelta(delta))}</div>`
+        : "";
+    return `<td class="mono num"${title}>${escapeHtml(formatSectorFundRatio(value))}${deltaHtml}</td>`;
+  }
+  const deltaTitle = sectorFundObsTitle(obs, deltaObsKey);
+  const deltaHtml =
+    delta != null && Number.isFinite(Number(delta))
+      ? `<div class="muted small ${accMetricClass(invert ? -Number(delta) : delta)}"${deltaTitle}>${escapeHtml(formatSectorFundPp(delta))}</div>`
+      : "";
+  return `<td class="mono num"${title}>${escapeHtml(formatSectorFundPct(value))}${deltaHtml}</td>`;
+}
+
+function getSectorFundRows() {
+  const payload = lastSectorFundamentalsPayload;
+  if (!payload) return [];
+  if (sectorFundLevel === "industries") {
+    const slug = sectorFundSectorSlug;
+    return (payload.industries || []).filter((row) => row.sectorSlug === slug);
+  }
+  return payload.sectors || [];
+}
+
+function sortSectorFundRows(rows) {
+  const mult = sectorFundSortDir === "asc" ? 1 : -1;
+  const key = sectorFundSortKey;
+  return [...rows].sort((a, b) => {
+    if (key === "name") {
+      const an = String(a.industry || a.sector || "");
+      const bn = String(b.industry || b.sector || "");
+      return an.localeCompare(bn) * mult;
+    }
+    if (key === "rank") {
+      return 0;
+    }
+    const av = a[key];
+    const bv = b[key];
+    const an = av == null || !Number.isFinite(Number(av)) ? null : Number(av);
+    const bn = bv == null || !Number.isFinite(Number(bv)) ? null : Number(bv);
+    if (an == null && bn == null) return 0;
+    if (an == null) return 1;
+    if (bn == null) return -1;
+    if (an === bn) return 0;
+    return an < bn ? -1 * mult : 1 * mult;
+  });
+}
+
+function filterSectorFundRows(rows) {
+  const q = String(sectorFundSearch || "").trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter((row) => {
+    const name = String(row.industry || row.sector || "").toLowerCase();
+    const sector = String(row.sector || "").toLowerCase();
+    return name.includes(q) || sector.includes(q);
+  });
+}
+
+function updateSectorFundSortButtons() {
+  document.querySelectorAll("[data-sector-fund-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-sector-fund-sort");
+    const active = key === sectorFundSortKey;
+    const label = btn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+    btn.classList.toggle("is-active", active);
+    btn.textContent = active ? `${label} ${sectorFundSortDir === "asc" ? "▲" : "▼"}` : label;
+    if (active) {
+      btn.setAttribute("aria-sort", sectorFundSortDir === "asc" ? "ascending" : "descending");
+    } else {
+      btn.removeAttribute("aria-sort");
+    }
+  });
+}
+
+function renderSectorFundamentalsCrumbs() {
+  const el = document.getElementById("sector-fundamentals-crumbs");
+  const back = document.getElementById("sector-fundamentals-back");
+  if (!el) return;
+  if (sectorFundLevel !== "industries") {
+    el.hidden = true;
+    el.innerHTML = "";
+    if (back) back.hidden = true;
+    return;
+  }
+  const sector =
+    (lastSectorFundamentalsPayload?.sectors || []).find((s) => s.sectorSlug === sectorFundSectorSlug)
+      ?.sector || sectorFundSectorSlug || "Sector";
+  el.hidden = false;
+  el.innerHTML = [
+    `<button type="button" class="sector-hub__crumb" data-sector-fund-nav="sectors">Sectors</button>`,
+    `<span class="sector-hub__crumb-sep">/</span>`,
+    `<span>${escapeHtml(sector)}</span>`,
+  ].join("");
+  if (back) back.hidden = false;
+}
+
+function renderSectorFundamentalsSummary() {
+  const wrap = document.getElementById("sector-fundamentals-summary");
+  if (!wrap) return;
+  const summary = lastSectorFundamentalsPayload?.summary;
+  if (!summary) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const top = document.getElementById("sector-fundamentals-top");
+  const topMeta = document.getElementById("sector-fundamentals-top-meta");
+  const sectors = document.getElementById("sector-fundamentals-sectors");
+  const industries = document.getElementById("sector-fundamentals-industries");
+  const companies = document.getElementById("sector-fundamentals-companies");
+  if (top) {
+    top.textContent = summary.topRevenueGrowth?.name || "—";
+  }
+  if (topMeta) {
+    topMeta.textContent = summary.topRevenueGrowth
+      ? `${formatSectorFundPct(summary.topRevenueGrowth.value, { signed: true })} QoQ`
+      : "";
+  }
+  if (sectors) sectors.textContent = formatInteger(summary.sectorCount);
+  if (industries) industries.textContent = formatInteger(summary.industryCount);
+  if (companies) companies.textContent = formatInteger(summary.companyCount);
+}
+
+function renderSectorFundamentalsHub() {
+  setupSectorFundamentalsHub();
+  syncSectorHubVisibility();
+  if (activeSectorHubView !== "sector-fundamentals") return;
+
+  const heading = document.getElementById("sector-fundamentals-heading");
+  const subtitle = document.getElementById("sector-fundamentals-subtitle");
+  const loading = document.getElementById("sector-fundamentals-loading");
+  const body = document.getElementById("sector-fundamentals-body");
+  const empty = document.getElementById("sector-fundamentals-empty");
+  const countEl = document.getElementById("sector-fundamentals-count");
+  const nameBtn = document.querySelector('[data-sector-fund-sort="name"]');
+
+  renderSectorFundamentalsCrumbs();
+  renderSectorFundamentalsSummary();
+  updateSectorFundSortButtons();
+
+  if (loading) loading.hidden = !sectorFundLoading;
+  if (sectorFundLoading) {
+    if (body) body.innerHTML = "";
+    if (empty) empty.hidden = true;
+    if (countEl) countEl.textContent = "";
+    return;
+  }
+
+  const cur = lastSectorFundamentalsPayload?.currentPeriodLabel;
+  const prev = lastSectorFundamentalsPayload?.previousPeriodLabel;
+  const periodBit =
+    cur && prev ? `${cur} vs ${prev}` : cur ? cur : "Latest two SEC quarters";
+
+  if (sectorFundLevel === "industries") {
+    const sectorName =
+      (lastSectorFundamentalsPayload?.sectors || []).find((s) => s.sectorSlug === sectorFundSectorSlug)
+        ?.sector || "Sector";
+    if (heading) heading.textContent = `${sectorName} fundamentals`;
+    if (subtitle) {
+      subtitle.textContent = `Industry medians and summed growth QoQ · ${periodBit}. Industries need ≥5 companies; metrics need ≥3 valid observations.`;
+    }
+    if (nameBtn) {
+      const base = nameBtn.textContent.replace(/\s*[▲▼]\s*$/, "").trim();
+      const next = base === "Sector" || base === "Industry" ? "Industry" : base;
+      nameBtn.textContent =
+        sectorFundSortKey === "name"
+          ? `${next} ${sectorFundSortDir === "asc" ? "▲" : "▼"}`
+          : "Industry";
+    }
+  } else {
+    if (heading) heading.textContent = "Sector Fundamentals";
+    if (subtitle) {
+      subtitle.textContent = `Compare sector fundamentals QoQ · ${periodBit}. Click a sector for industries.`;
+    }
+    if (nameBtn) {
+      nameBtn.textContent =
+        sectorFundSortKey === "name"
+          ? `Sector ${sectorFundSortDir === "asc" ? "▲" : "▼"}`
+          : "Sector";
+    }
+  }
+
+  const filtered = filterSectorFundRows(getSectorFundRows());
+  const rows = sortSectorFundRows(filtered);
+  if (countEl) {
+    countEl.textContent = rows.length
+      ? `${formatInteger(rows.length)} ${sectorFundLevel === "industries" ? "industries" : "sectors"}`
+      : "";
+  }
+  if (!rows.length) {
+    if (body) body.innerHTML = "";
+    if (empty) empty.hidden = false;
+    return;
+  }
+  if (empty) empty.hidden = true;
+  if (!body) return;
+
+  body.innerHTML = rows
+    .map((row, idx) => {
+      const name = sectorFundLevel === "industries" ? row.industry : row.sector;
+      const nameCell =
+        sectorFundLevel === "sectors"
+          ? `<button type="button" class="sector-acc-name-btn" data-sector-fund-open="${escapeHtml(row.sectorSlug)}">${escapeHtml(name)}</button>`
+          : escapeHtml(name);
+      return `<tr>
+        <td class="mono num">${idx + 1}</td>
+        <td>${nameCell}</td>
+        ${sectorFundMetricCell(row.revenueGrowthQoq, null, { kind: "growth", obs: row.metricObs, obsKey: "revenueGrowthQoq" })}
+        ${sectorFundMetricCell(row.epsGrowthQoq, null, { kind: "growth", obs: row.metricObs, obsKey: "epsGrowthQoq" })}
+        ${sectorFundMetricCell(row.fcfGrowthQoq, null, { kind: "growth", obs: row.metricObs, obsKey: "fcfGrowthQoq" })}
+        ${sectorFundMetricCell(row.operatingMargin, row.operatingMarginQoq, { obs: row.metricObs, obsKey: "operatingMargin", deltaObsKey: "operatingMarginQoq" })}
+        ${sectorFundMetricCell(row.roic, row.roicQoq, { obs: row.metricObs, obsKey: "roic", deltaObsKey: "roicQoq" })}
+        ${sectorFundMetricCell(row.roe, row.roeQoq, { obs: row.metricObs, obsKey: "roe", deltaObsKey: "roeQoq" })}
+        ${sectorFundMetricCell(row.debtEquity, row.debtEquityQoq, { kind: "ratio", invert: true, obs: row.metricObs, obsKey: "debtEquity", deltaObsKey: "debtEquityQoq" })}
+        <td class="mono num" title="${escapeHtml(String(row.companyCount || 0))} companies in group">${escapeHtml(formatInteger(row.companyCount))}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function loadSectorFundamentalsPage() {
+  setupSectorFundamentalsHub();
+  syncSectorHubVisibility();
+  if (activeSectorHubView !== "sector-fundamentals") return;
+  if (lastSectorFundamentalsPayload) {
+    renderSectorFundamentalsHub();
+    return;
+  }
+  sectorFundLoading = true;
+  renderSectorFundamentalsHub();
+  try {
+    lastSectorFundamentalsPayload = await apiJson("/api/analytics/sectors/fundamentals");
+  } catch (err) {
+    console.error(err);
+    lastSectorFundamentalsPayload = null;
+    const loading = document.getElementById("sector-fundamentals-loading");
+    if (loading) {
+      loading.hidden = false;
+      loading.textContent = err?.message || "Failed to load sector fundamentals.";
+    }
+  } finally {
+    sectorFundLoading = false;
+  }
+  renderSectorFundamentalsHub();
+}
+
+function setupSectorFundamentalsHub() {
+  if (sectorFundBound) return;
+  sectorFundBound = true;
+  document.getElementById("sector-fundamentals-search")?.addEventListener("input", (e) => {
+    sectorFundSearch = e.target.value || "";
+    renderSectorFundamentalsHub();
+  });
+  document.getElementById("sector-fundamentals-back")?.addEventListener("click", () => {
+    navigateToSectorFundamentals({ level: "sectors" });
+  });
+  document.getElementById("sector-fundamentals-crumbs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-sector-fund-nav]");
+    if (!btn) return;
+    navigateToSectorFundamentals({ level: "sectors" });
+  });
+  document.getElementById("sector-fundamentals-table")?.addEventListener("click", (e) => {
+    const open = e.target.closest?.("[data-sector-fund-open]");
+    if (open) {
+      const slug = open.getAttribute("data-sector-fund-open");
+      if (slug) navigateToSectorFundamentals({ level: "industries", sectorSlug: slug });
+      return;
+    }
+    const sortBtn = e.target.closest?.("[data-sector-fund-sort]");
+    if (!sortBtn) return;
+    const key = sortBtn.getAttribute("data-sector-fund-sort");
+    if (!key || key === "rank") return;
+    if (sectorFundSortKey === key) {
+      sectorFundSortDir = sectorFundSortDir === "desc" ? "asc" : "desc";
+    } else {
+      sectorFundSortKey = key;
+      sectorFundSortDir = key === "name" ? "asc" : "desc";
+    }
+    renderSectorFundamentalsHub();
+  });
+}
+
+function formatInstConcPct(n) {
+  if (n == null || !Number.isFinite(Number(n))) return "—";
+  const v = Number(n);
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(1)}%`;
+}
+
+function formatInstConcPosition(ref) {
+  if (!ref?.ticker) return "—";
+  const name = ref.companyName || ref.ticker;
+  const usd =
+    ref.valueUsd != null
+      ? formatAccUsd(ref.valueUsd)
+      : ref.netPositionIncreaseUsd != null
+        ? formatAccUsd(ref.netPositionIncreaseUsd)
+        : "";
+  return `${name}${usd ? ` (${usd})` : ""}`;
+}
+
+function getInstConcInstitutionRow() {
+  return (
+    (lastInstConcPayload?.institutions || []).find(
+      (i) =>
+        String(i.institutionId) === String(instConcInstitutionId) &&
+        String(i.sectorSlug) === String(instConcSectorSlug) &&
+        String(i.industrySlug) === String(instConcIndustrySlug)
+    ) ||
+    (lastInstConcPayload?.institutions || []).find(
+      (i) => String(i.institutionId) === String(instConcInstitutionId)
+    ) ||
+    null
+  );
+}
+
+function renderInstConcCrumbs() {
+  const el = document.getElementById("inst-conc-crumbs");
+  const back = document.getElementById("inst-conc-back");
+  if (!el) return;
+  if (instConcLevel !== "stocks") {
+    el.hidden = true;
+    el.innerHTML = "";
+    if (back) back.hidden = true;
+    return;
+  }
+  const row = getInstConcInstitutionRow();
+  el.hidden = false;
+  el.innerHTML = [
+    `<button type="button" class="sector-hub__crumb" data-inst-conc-nav="institutions">Institutions</button>`,
+    `<span class="sector-hub__crumb-sep">/</span>`,
+    `<span>${escapeHtml(row?.institutionName || instConcInstitutionId || "Institution")}</span>`,
+    row?.industry ? `<span class="muted small"> · ${escapeHtml(row.industry)}</span>` : "",
+  ].join("");
+  if (back) back.hidden = false;
+}
+
+function renderInstConcSummary() {
+  const wrap = document.getElementById("inst-conc-summary");
+  if (!wrap) return;
+  const summary = lastInstConcPayload?.summary;
+  if (!summary) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const top = document.getElementById("inst-conc-top");
+  const topMeta = document.getElementById("inst-conc-top-meta");
+  const institutions = document.getElementById("inst-conc-institutions");
+  const inflow = document.getElementById("inst-conc-inflow");
+  const tip = summary.topInstitution;
+  if (top) top.textContent = tip?.institutionName || "—";
+  if (topMeta) {
+    topMeta.textContent = tip
+      ? `${tip.sector} · ${tip.industry} · ${formatAccUsd(tip.netPositionIncreaseUsd)}`
+      : "";
+    topMeta.className = `institution-most-accumulated__summary-meta muted small ${accMetricClass(
+      tip?.netPositionIncreaseUsd
+    )}`;
+  }
+  if (institutions) institutions.textContent = formatInteger(summary.institutionCount || 0);
+  if (inflow) {
+    inflow.textContent = formatAccUsd(summary.totalNetPositionIncreaseUsd);
+    inflow.className = `institution-most-accumulated__summary-value mono ${accMetricClass(
+      summary.totalNetPositionIncreaseUsd
+    )}`;
+  }
+}
+
+function sortInstConcInstitutions(rows) {
+  const mult = instConcSortDir === "asc" ? 1 : -1;
+  const key = instConcSortKey;
+  return [...rows].sort((a, b) => {
+    if (
+      key === "institutionName" ||
+      key === "sector" ||
+      key === "industry" ||
+      key === "largestPosition" ||
+      key === "largestPositionIncrease"
+    ) {
+      const av =
+        key === "largestPosition"
+          ? a.largestPosition?.ticker || ""
+          : key === "largestPositionIncrease"
+            ? a.largestPositionIncrease?.ticker || ""
+            : a[key] || "";
+      const bv =
+        key === "largestPosition"
+          ? b.largestPosition?.ticker || ""
+          : key === "largestPositionIncrease"
+            ? b.largestPositionIncrease?.ticker || ""
+            : b[key] || "";
+      return String(av).localeCompare(String(bv)) * mult;
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    const an = Number.isFinite(av) ? av : 0;
+    const bn = Number.isFinite(bv) ? bv : 0;
+    if (an === bn) return String(a.institutionName || "").localeCompare(String(b.institutionName || ""));
+    return (an - bn) * mult;
+  });
+}
+
+function sortInstConcStocks(rows) {
+  const mult = instConcStockSortDir === "asc" ? 1 : -1;
+  const key = instConcStockSortKey;
+  return [...rows].sort((a, b) => {
+    if (key === "ticker" || key === "activity") {
+      const av = key === "ticker" ? a.companyName || a.ticker : a.activity;
+      const bv = key === "ticker" ? b.companyName || b.ticker : b.activity;
+      return String(av || "").localeCompare(String(bv || "")) * mult;
+    }
+    const av = Number(a[key]);
+    const bv = Number(b[key]);
+    const an = Number.isFinite(av) ? av : 0;
+    const bn = Number.isFinite(bv) ? bv : 0;
+    if (an === bn) return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+    return (an - bn) * mult;
+  });
+}
+
+function instConcRowKey(rowOrParts) {
+  if (typeof rowOrParts === "string") return rowOrParts;
+  return `${rowOrParts.institutionId}::${rowOrParts.sectorSlug || ""}::${rowOrParts.industrySlug || ""}`;
+}
+
+function renderInstConcStocksDetail(key) {
+  const cached = instConcStocksCache.get(key);
+  if (!cached || cached.loading) {
+    return `<div class="discovery-detail"><p class="muted small">Loading stocks…</p></div>`;
+  }
+  if (cached.error) {
+    const msg = cached.error instanceof Error ? cached.error.message : String(cached.error);
+    return `<div class="discovery-detail"><p class="muted small">${escapeHtml(msg)}</p></div>`;
+  }
+  const stocks = sortInstConcStocks([...(cached.stocks || [])]);
+  if (!stocks.length) {
+    return `<div class="discovery-detail"><p class="muted small">No holdings for this institution in the selected industry.</p></div>`;
+  }
+  return `<div class="discovery-detail">
+    <h4 class="institution-hub__section-label">Stocks in this bet</h4>
+    <div class="table-scroll">
+      <table class="trades-table">
+        <thead>
+          <tr>
+            <th>Stock</th>
+            <th>Activity</th>
+            <th class="num">Share change</th>
+            <th class="num">Net Position Increase ($)</th>
+            <th class="num">Current value</th>
+            <th class="num">Prior value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stocks
+            .map((row) => {
+              const label = row.companyName
+                ? `<span class="most-accumulated-stock__name">${escapeHtml(row.companyName)}</span><span class="most-accumulated-stock__ticker mono muted small">${escapeHtml(row.ticker)}</span>`
+                : `<span class="most-accumulated-stock__name mono">${escapeHtml(row.ticker)}</span>`;
+              return `<tr>
+                <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link most-accumulated-stock" data-stock-symbol="${escapeHtml(row.ticker)}">${label}</a></td>
+                <td>${escapeHtml(row.activity || "—")}</td>
+                <td class="mono num ${accMetricClass(row.shareChange)}">${escapeHtml(formatInteger(row.shareChange || 0))}</td>
+                <td class="mono num ${accMetricClass(row.netPositionIncreaseUsd)}">${escapeHtml(formatAccUsd(row.netPositionIncreaseUsd))}</td>
+                <td class="mono num">${escapeHtml(formatAccUsd(row.currentValueUsd))}</td>
+                <td class="mono num">${escapeHtml(formatAccUsd(row.previousValueUsd))}</td>
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function ensureInstConcStocks(key, cik, sectorSlug, industrySlug) {
+  const existing = instConcStocksCache.get(key);
+  if (existing && !existing.loading && (existing.stocks || existing.error)) return;
+  instConcStocksCache.set(key, { loading: true });
+  renderInstitutionalConcentrationHub();
+  try {
+    const params = new URLSearchParams({
+      cik: String(cik),
+      sector: String(sectorSlug),
+    });
+    if (industrySlug) params.set("industry", String(industrySlug));
+    const payload = await apiJson(
+      `/api/analytics/sectors/institutional-concentration/stocks?${params.toString()}`
+    );
+    instConcStocksCache.set(key, { stocks: payload.stocks || [] });
+  } catch (err) {
+    instConcStocksCache.set(key, { error: err, stocks: [] });
+  } finally {
+    renderInstitutionalConcentrationHub();
+  }
+}
+
+function renderInstitutionalConcentrationHub() {
+  const tableWrap = document.getElementById("inst-conc-table-wrap");
+  const thead = document.getElementById("inst-conc-thead");
+  const body = document.getElementById("inst-conc-body");
+  const empty = document.getElementById("inst-conc-empty");
+  const loading = document.getElementById("inst-conc-loading");
+  const countEl = document.getElementById("inst-conc-count");
+  const subtitle = document.getElementById("institutional-concentration-subtitle");
+  const searchInput = document.getElementById("inst-conc-search");
+  const showAllBtn = document.getElementById("inst-conc-show-all");
+  const back = document.getElementById("inst-conc-back");
+  const crumbs = document.getElementById("inst-conc-crumbs");
+  if (!tableWrap || !body || !thead) return;
+
+  setupInstitutionalConcentrationHub();
+  if (back) back.hidden = true;
+  if (crumbs) {
+    crumbs.hidden = true;
+    crumbs.innerHTML = "";
+  }
+  renderInstConcSummary();
+
+  if (showAllBtn) {
+    showAllBtn.hidden = false;
+    showAllBtn.textContent = instConcShowAll ? "Show top 50" : "Show all";
+  }
+
+  if (loading) {
+    loading.hidden = !(instConcLoading && !lastInstConcPayload);
+    loading.textContent = "Loading institutional concentration…";
+  }
+
+  if (instConcLoading && !lastInstConcPayload) {
+    tableWrap.hidden = true;
+    if (empty) empty.hidden = true;
+    if (countEl) countEl.textContent = "";
+    return;
+  }
+
+  if (!lastInstConcPayload) {
+    tableWrap.hidden = false;
+    thead.innerHTML = "";
+    body.innerHTML = `<tr><td class="trades-table__empty">No data loaded.</td></tr>`;
+    if (empty) empty.hidden = true;
+    return;
+  }
+
+  const q = String(instConcSearch || "").trim().toLowerCase();
+  if (searchInput && searchInput.value !== instConcSearch) searchInput.value = instConcSearch;
+
+  const payload = lastInstConcPayload;
+  if (subtitle) {
+    const windowLabel = payload.previousQuarter
+      ? `${payload.previousQuarter} → ${payload.currentQuarter}`
+      : payload.currentQuarter || "—";
+    subtitle.textContent = `Institutions ranked by share-based net position increase QoQ (${windowLabel}). Expand a row for stocks; click the name for the institution profile.`;
+  }
+
+  let rows = sortInstConcInstitutions([...(payload.institutions || [])]);
+  if (q) {
+    rows = rows.filter((r) => {
+      const hay =
+        `${r.institutionName} ${r.sector} ${r.industry} ${r.largestPosition?.ticker || ""} ${r.largestPositionIncrease?.ticker || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  const total = rows.length;
+  const visible = instConcShowAll ? rows : rows.slice(0, INST_CONC_PAGE_SIZE);
+  if (countEl) {
+    countEl.textContent =
+      instConcShowAll || total <= INST_CONC_PAGE_SIZE
+        ? `${formatInteger(total)} institution bet${total === 1 ? "" : "s"}`
+        : `Top ${formatInteger(visible.length)} of ${formatInteger(total)}`;
+  }
+  thead.innerHTML = `<tr>
+    <th>Rank</th>
+    <th><button type="button" class="table-sort-btn" data-inst-conc-sort="institutionName">Institution</button></th>
+    <th><button type="button" class="table-sort-btn" data-inst-conc-sort="sector">Sector</button></th>
+    <th><button type="button" class="table-sort-btn" data-inst-conc-sort="industry">Industry</button></th>
+    <th class="num"><button type="button" class="table-sort-btn is-active" data-inst-conc-sort="netPositionIncreaseUsd">Net Position Increase ($)</button></th>
+    <th class="num"><button type="button" class="table-sort-btn" data-inst-conc-sort="portfolioExposureChangePct">% Change in Portfolio Exposure</button></th>
+    <th class="num"><button type="button" class="table-sort-btn" data-inst-conc-sort="stocksHeld"># Stocks Held</button></th>
+    <th class="num"><button type="button" class="table-sort-btn" data-inst-conc-sort="stocksIncreased"># Stocks Increased</button></th>
+    <th class="num"><button type="button" class="table-sort-btn" data-inst-conc-sort="stocksDecreased"># Stocks Decreased</button></th>
+    <th><button type="button" class="table-sort-btn" data-inst-conc-sort="largestPosition">Largest Position</button></th>
+    <th><button type="button" class="table-sort-btn" data-inst-conc-sort="largestPositionIncrease">Largest Position Increase</button></th>
+  </tr>`;
+  document.querySelectorAll("[data-inst-conc-sort]").forEach((btn) => {
+    const key = btn.getAttribute("data-inst-conc-sort");
+    btn.classList.toggle("is-active", key === instConcSortKey);
+  });
+  if (!visible.length) {
+    tableWrap.hidden = false;
+    body.innerHTML = `<tr><td colspan="11" class="trades-table__empty">No institution concentration bets found.</td></tr>`;
+    if (empty) empty.hidden = true;
+    return;
+  }
+  if (empty) empty.hidden = true;
+  tableWrap.hidden = false;
+  body.innerHTML = visible
+    .map((row) => {
+      const cik = bareInstitutionCik(row.institutionId);
+      const key = instConcRowKey(row);
+      const expanded = instConcExpanded.has(key);
+      return `
+        <tr class="discovery-row${expanded ? " is-expanded" : ""}">
+          <td class="mono num">${escapeHtml(String(row.rank))}</td>
+          <td>
+            <div class="discovery-stock">
+              <button type="button" class="btn btn--ghost discovery-expand" data-inst-conc-expand="${escapeHtml(key)}" data-inst-conc-cik="${escapeHtml(
+                String(row.institutionId)
+              )}" data-inst-conc-sector-slug="${escapeHtml(row.sectorSlug || "")}" data-inst-conc-industry-slug="${escapeHtml(
+                row.industrySlug || ""
+              )}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "▾" : "▸"}</button>
+              <a href="${institutionPath(cik)}" class="ownership-fund__link" data-institution-cik="${escapeHtml(cik)}">${escapeHtml(
+                row.institutionName
+              )}</a>
+            </div>
+          </td>
+          <td>${escapeHtml(row.sector)}</td>
+          <td>${escapeHtml(row.industry)}</td>
+          <td class="mono num ${accMetricClass(row.netPositionIncreaseUsd)}">${escapeHtml(
+            formatAccUsd(row.netPositionIncreaseUsd)
+          )}</td>
+          <td class="mono num ${accMetricClass(row.portfolioExposureChangePct)}">${escapeHtml(
+            formatInstConcPct(row.portfolioExposureChangePct)
+          )}</td>
+          <td class="mono num">${escapeHtml(formatInteger(row.stocksHeld || 0))}</td>
+          <td class="mono num">${escapeHtml(formatInteger(row.stocksIncreased || 0))}</td>
+          <td class="mono num">${escapeHtml(formatInteger(row.stocksDecreased || 0))}</td>
+          <td>${escapeHtml(formatInstConcPosition(row.largestPosition))}</td>
+          <td>${escapeHtml(formatInstConcPosition(row.largestPositionIncrease))}</td>
+        </tr>
+        <tr class="discovery-detail-row" ${expanded ? "" : "hidden"}>
+          <td colspan="11">${renderInstConcStocksDetail(key)}</td>
+        </tr>`;
+    })
+    .join("");
+}
+
+async function loadInstitutionalConcentrationPage() {
+  setupInstitutionalConcentrationHub();
+  syncSectorHubVisibility();
+  instConcLevel = "institutions";
+  if (instConcLoading) {
+    renderInstitutionalConcentrationHub();
+    return;
+  }
+  if (!lastInstConcPayload) {
+    instConcLoading = true;
+    renderInstitutionalConcentrationHub();
+    try {
+      lastInstConcPayload = await apiJson("/api/analytics/sectors/institutional-concentration");
+    } catch (err) {
+      lastInstConcPayload = null;
+      const loading = document.getElementById("inst-conc-loading");
+      if (loading) {
+        loading.hidden = false;
+        loading.textContent = err instanceof Error ? err.message : String(err);
+      }
+    } finally {
+      instConcLoading = false;
+    }
+  }
+  renderInstitutionalConcentrationHub();
+}
+
+function setupInstitutionalConcentrationHub() {
+  if (instConcBound) return;
+  instConcBound = true;
+
+  document.getElementById("inst-conc-search")?.addEventListener("input", (e) => {
+    instConcSearch = e.target?.value || "";
+    renderInstitutionalConcentrationHub();
+  });
+
+  document.getElementById("inst-conc-show-all")?.addEventListener("click", () => {
+    instConcShowAll = !instConcShowAll;
+    renderInstitutionalConcentrationHub();
+  });
+
+  document.getElementById("inst-conc-table")?.addEventListener("click", (e) => {
+    const expandBtn = e.target.closest?.("[data-inst-conc-expand]");
+    if (expandBtn) {
+      const key = expandBtn.getAttribute("data-inst-conc-expand");
+      if (!key) return;
+      if (instConcExpanded.has(key)) {
+        instConcExpanded.delete(key);
+        renderInstitutionalConcentrationHub();
+        return;
+      }
+      instConcExpanded.add(key);
+      renderInstitutionalConcentrationHub();
+      void ensureInstConcStocks(
+        key,
+        expandBtn.getAttribute("data-inst-conc-cik"),
+        expandBtn.getAttribute("data-inst-conc-sector-slug"),
+        expandBtn.getAttribute("data-inst-conc-industry-slug")
+      );
+      return;
+    }
+    const sortBtn = e.target.closest?.("[data-inst-conc-sort]");
+    if (sortBtn) {
+      const key = sortBtn.getAttribute("data-inst-conc-sort");
+      if (!key) return;
+      if (instConcSortKey === key) {
+        instConcSortDir = instConcSortDir === "desc" ? "asc" : "desc";
+      } else {
+        instConcSortKey = key;
+        instConcSortDir =
+          key === "institutionName" || key === "sector" || key === "industry" ? "asc" : "desc";
+      }
+      renderInstitutionalConcentrationHub();
+    }
+  });
+}
+
+function setupSectorAccumulationPages() {
+  if (sectorAccBound) return;
+  sectorAccBound = true;
+
+  document.getElementById("sector-accumulation-search")?.addEventListener("input", (e) => {
+    sectorAccSearch = e.target?.value || "";
+    renderSectorAccumulationTable();
+  });
+  document.getElementById("sector-accumulation-positive-only")?.addEventListener("change", (e) => {
+    sectorAccPositiveOnly = Boolean(e.target?.checked);
+    renderSectorAccumulationTable();
+  });
+  document.getElementById("sector-accumulation-table")?.addEventListener("click", (e) => {
+    const sortBtn = e.target.closest?.("[data-sector-acc-sort]");
+    if (sortBtn) {
+      const key = sortBtn.getAttribute("data-sector-acc-sort");
+      if (!key) return;
+      if (sectorAccSortKey === key) {
+        sectorAccSortDir = sectorAccSortDir === "desc" ? "asc" : "desc";
+      } else {
+        sectorAccSortKey = key;
+        sectorAccSortDir = key === "sector" ? "asc" : "desc";
+      }
+      renderSectorAccumulationTable();
+      return;
+    }
+    const open = e.target.closest?.("[data-sector-acc-open]");
+    if (open) {
+      const href = open.getAttribute("data-sector-acc-open") || "";
+      const match = href.match(/^\/sector\/([^/]+)\/?$/);
+      if (match) {
+        activeSectorHubView = "overview";
+        navigateToSectorHub({ level: "sector", sectorSlug: decodeURIComponent(match[1]) });
+      }
+    }
+  });
+
+  document.getElementById("industry-accumulation-search")?.addEventListener("input", (e) => {
+    industryAccSearch = e.target?.value || "";
+    renderIndustryAccumulationTable();
+  });
+  document.getElementById("industry-accumulation-sector")?.addEventListener("change", (e) => {
+    industryAccSectorFilter = e.target?.value || "";
+    renderIndustryAccumulationTable();
+  });
+  document.getElementById("industry-accumulation-positive-only")?.addEventListener("change", (e) => {
+    industryAccPositiveOnly = Boolean(e.target?.checked);
+    renderIndustryAccumulationTable();
+  });
+  document.getElementById("industry-accumulation-table")?.addEventListener("click", (e) => {
+    const sortBtn = e.target.closest?.("[data-industry-acc-sort]");
+    if (sortBtn) {
+      const key = sortBtn.getAttribute("data-industry-acc-sort");
+      if (!key) return;
+      if (industryAccSortKey === key) {
+        industryAccSortDir = industryAccSortDir === "desc" ? "asc" : "desc";
+      } else {
+        industryAccSortKey = key;
+        industryAccSortDir = key === "industry" || key === "sector" ? "asc" : "desc";
+      }
+      renderIndustryAccumulationTable();
+      return;
+    }
+    const open = e.target.closest?.("[data-sector-acc-open]");
+    if (open) {
+      const href = open.getAttribute("data-sector-acc-open") || "";
+      const match = href.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+      if (match) {
+        activeSectorHubView = "overview";
+        navigateToSectorHub({
+          level: "industry",
+          sectorSlug: decodeURIComponent(match[1]),
+          industrySlug: decodeURIComponent(match[2]),
+        });
+      }
+    }
+  });
+}
+
+
 function navigateToSignalsHub() {
   activeSignalsHubView = "directory";
   activeDoubleSignalTicker = null;
@@ -5860,6 +8297,41 @@ function setExploreMode(mode, { navigate = true } = {}) {
     return;
   }
 
+  if (mode === "sector") {
+    activeInstitutionCik = null;
+    activePoliticianKey = null;
+    activeInsiderKey = null;
+    if (navigate) {
+      let path = "/sector";
+      if (activeSectorHubView === "sector-accumulation") path = "/sector/accumulation";
+      else if (activeSectorHubView === "industry-accumulation") path = "/sector/industry-accumulation";
+      else if (activeSectorHubView === "sector-buying") path = "/sector/buying";
+      else if (activeSectorHubView === "sector-selling") path = "/sector/selling";
+      else if (activeSectorHubView === "sector-fundamentals") {
+        path = sectorFundamentalsPath(sectorFundLevel === "industries" ? sectorFundSectorSlug : null);
+      }
+      else if (activeSectorHubView === "institutional-concentration") {
+        path = instConcPath(instConcSectorSlug, instConcIndustrySlug, instConcInstitutionId);
+      }
+      else path = sectorHubPath(sectorHubSectorSlug, sectorHubIndustrySlug);
+      if (window.location.pathname !== path) {
+        history.pushState(
+          {
+            explore: "sector",
+            sectorHubView: activeSectorHubView,
+            sectorLevel: sectorHubLevel,
+            sectorSlug: sectorHubSectorSlug,
+            industrySlug: sectorHubIndustrySlug,
+          },
+          "",
+          path
+        );
+      }
+    }
+    updateSectorView();
+    return;
+  }
+
   if (mode === "signals") {
     activeInstitutionCik = null;
     activePoliticianKey = null;
@@ -6054,6 +8526,7 @@ function setExploreMode(mode, { navigate = true } = {}) {
     window.location.pathname.startsWith("/institution") ||
     window.location.pathname.startsWith("/institutions");
   const onPoliticiansPath = window.location.pathname.startsWith("/politicians");
+  const onSectorPath = window.location.pathname === "/sector" || window.location.pathname.startsWith("/sector/");
   const onInsidersPath = window.location.pathname.startsWith("/insiders");
   const onSignalsPath = window.location.pathname.startsWith("/signals");
   const onToolsPath = window.location.pathname.startsWith("/tools");
@@ -6062,6 +8535,7 @@ function setExploreMode(mode, { navigate = true } = {}) {
     navigate &&
     (onInstitutionPath ||
       onPoliticiansPath ||
+      onSectorPath ||
       onInsidersPath ||
       onSignalsPath ||
       onToolsPath ||
@@ -10450,6 +12924,16 @@ function mostAccumulatedPeriodLabel(period) {
   return "Last quarter";
 }
 
+/** Only show compact quarter codes in the subtitle — skip long 30d filing lists. */
+function mostAccumulatedPeriodMeta(currentPeriod, previousPeriod) {
+  const isQuarter = (q) => /^\d{4}-Q[1-4]$/.test(String(q || ""));
+  const cur = String(currentPeriod || "");
+  const prev = String(previousPeriod || "");
+  if (isQuarter(cur) && isQuarter(prev)) return `${cur} vs ${prev}`;
+  if (isQuarter(cur)) return cur;
+  return "";
+}
+
 function matchesMostAccumulatedSize(reportedValueUsd, size) {
   const v = Number(reportedValueUsd);
   if (!size || !Number.isFinite(v)) return true;
@@ -10654,9 +13138,11 @@ function renderMostAccumulatedTable() {
   const start = (page - 1) * pageSize;
   const pageRows = rows.slice(start, start + pageSize);
 
-  const periodMeta = [payload.currentPeriod, payload.previousPeriod].filter(Boolean).join(" vs ");
+  const periodMeta = mostAccumulatedPeriodMeta(payload.currentPeriod, payload.previousPeriod);
   if (subtitle) {
-    subtitle.textContent = `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · ${periodMeta} · ${total} stocks`;
+    subtitle.textContent = periodMeta
+      ? `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · ${periodMeta} · ${total} stocks`
+      : `${mostAccumulatedPeriodLabel(mostAccumulatedPeriod)} · ${total} stocks`;
   }
   if (countEl) {
     countEl.textContent = total
@@ -10822,9 +13308,6 @@ function filterNewPositionsRows(rows) {
   const q = newPositionsFilters.search.trim().toLowerCase();
   return rows.filter((row) => {
     if (newPositionsFilters.quarter && row.quarter !== newPositionsFilters.quarter) return false;
-    if (newPositionsFilters.institution && row.institutionId !== newPositionsFilters.institution) {
-      return false;
-    }
     if (newPositionsFilters.sector && row.sector !== newPositionsFilters.sector) return false;
     if (
       newPositionsFilters.minValue > 0 &&
@@ -10889,7 +13372,6 @@ function renderNewPositionsSummary(payload) {
 function renderNewPositionsFilterOptions(payload) {
   if (newPositionsFilterOptionsReady) return;
   const quarterSelect = document.getElementById("new-positions-quarter");
-  const institutionSelect = document.getElementById("new-positions-institution");
   const sectorSelect = document.getElementById("new-positions-sector");
   if (quarterSelect) {
     const current = newPositionsFilters.quarter;
@@ -10899,18 +13381,6 @@ function renderNewPositionsFilterOptions(payload) {
         .map((q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`)
         .join("");
     quarterSelect.value = current;
-  }
-  if (institutionSelect) {
-    const current = newPositionsFilters.institution;
-    institutionSelect.innerHTML =
-      `<option value="">All institutions</option>` +
-      (Array.isArray(payload?.institutions) ? payload.institutions : [])
-        .map(
-          (inst) =>
-            `<option value="${escapeHtml(inst.cik)}">${escapeHtml(inst.name)}</option>`
-        )
-        .join("");
-    institutionSelect.value = current;
   }
   if (sectorSelect) {
     const current = newPositionsFilters.sector;
@@ -10927,7 +13397,6 @@ function renderNewPositionsFilterOptions(payload) {
 function newPositionsQueryParams() {
   return {
     quarter: newPositionsFilters.quarter || undefined,
-    institution: newPositionsFilters.institution || undefined,
     sector: newPositionsFilters.sector || undefined,
     minValue: newPositionsFilters.minValue > 0 ? newPositionsFilters.minValue : undefined,
     minWeight: newPositionsFilters.minWeight > 0 ? newPositionsFilters.minWeight : undefined,
@@ -11042,7 +13511,6 @@ function renderNewPositionsTable() {
 
 function readNewPositionsFiltersFromDom() {
   newPositionsFilters.quarter = document.getElementById("new-positions-quarter")?.value || "";
-  newPositionsFilters.institution = document.getElementById("new-positions-institution")?.value || "";
   newPositionsFilters.sector = document.getElementById("new-positions-sector")?.value || "";
   newPositionsFilters.search = document.getElementById("new-positions-search")?.value || "";
   newPositionsFilters.minValue =
@@ -11134,7 +13602,6 @@ function setupNewPositionsPage() {
 
   [
     "new-positions-quarter",
-    "new-positions-institution",
     "new-positions-sector",
     "new-positions-min-value",
     "new-positions-min-weight",
@@ -16364,10 +18831,6 @@ function matchesDoubleSignalInsiderRole(row, role) {
 function filterDoubleSignalRows(rows) {
   const q = doubleSignalFilters.search.trim().toLowerCase();
   return rows.filter((row) => {
-    if (doubleSignalFilters.institution) {
-      const ids = Array.isArray(row.institutionIds) ? row.institutionIds : [];
-      if (!ids.includes(doubleSignalFilters.institution)) return false;
-    }
     if (!matchesDoubleSignalInsiderRole(row, doubleSignalFilters.insiderRole)) return false;
     if (doubleSignalFilters.sector && row.sector !== doubleSignalFilters.sector) return false;
     if (
@@ -16429,19 +18892,9 @@ function renderDoubleSignalSummary(payload, filteredCount) {
 }
 
 function renderDoubleSignalFilterOptions(payload) {
-  const institutionSelect = document.getElementById("double-signal-institution");
   const sectorSelect = document.getElementById("double-signal-sector");
   const windowSelect = document.getElementById("double-signal-window");
   if (windowSelect) windowSelect.value = String(doubleSignalWindowDays);
-  if (institutionSelect) {
-    const current = doubleSignalFilters.institution;
-    institutionSelect.innerHTML =
-      `<option value="">All institutions</option>` +
-      (Array.isArray(payload?.institutions) ? payload.institutions : [])
-        .map((inst) => `<option value="${escapeHtml(inst.cik)}">${escapeHtml(inst.name)}</option>`)
-        .join("");
-    institutionSelect.value = current;
-  }
   if (sectorSelect) {
     const current = doubleSignalFilters.sector;
     sectorSelect.innerHTML =
@@ -16640,7 +19093,6 @@ function syncDoubleSignalFiltersFromDom() {
   if (doubleSignalWindowDays !== 90 && doubleSignalWindowDays !== 180 && doubleSignalWindowDays !== 365) {
     doubleSignalWindowDays = 90;
   }
-  doubleSignalFilters.institution = document.getElementById("double-signal-institution")?.value || "";
   doubleSignalFilters.insiderRole = document.getElementById("double-signal-insider-role")?.value || "";
   doubleSignalFilters.sector = document.getElementById("double-signal-sector")?.value || "";
   doubleSignalFilters.search = document.getElementById("double-signal-search")?.value || "";
@@ -16734,7 +19186,6 @@ function bindDoubleSignalHubControls() {
 
   [
     "double-signal-window",
-    "double-signal-institution",
     "double-signal-insider-role",
     "double-signal-sector",
     "double-signal-min-inst-value",
@@ -16770,10 +19221,6 @@ function matchesTripleSignalInsiderRole(row, role) {
 function filterTripleSignalRows(rows) {
   const q = tripleSignalFilters.search.trim().toLowerCase();
   return rows.filter((row) => {
-    if (tripleSignalFilters.institution) {
-      const ids = Array.isArray(row.institutionIds) ? row.institutionIds : [];
-      if (!ids.includes(tripleSignalFilters.institution)) return false;
-    }
     if (!matchesTripleSignalInsiderRole(row, tripleSignalFilters.insiderRole)) return false;
     if (tripleSignalFilters.sector && row.sector !== tripleSignalFilters.sector) return false;
     if (
@@ -16847,19 +19294,9 @@ function renderTripleSignalSummary(payload, filteredCount) {
 }
 
 function renderTripleSignalFilterOptions(payload) {
-  const institutionSelect = document.getElementById("triple-signal-institution");
   const sectorSelect = document.getElementById("triple-signal-sector");
   const windowSelect = document.getElementById("triple-signal-window");
   if (windowSelect) windowSelect.value = String(tripleSignalWindowDays);
-  if (institutionSelect) {
-    const current = tripleSignalFilters.institution;
-    institutionSelect.innerHTML =
-      `<option value="">All institutions</option>` +
-      (Array.isArray(payload?.institutions) ? payload.institutions : [])
-        .map((inst) => `<option value="${escapeHtml(inst.cik)}">${escapeHtml(inst.name)}</option>`)
-        .join("");
-    institutionSelect.value = current;
-  }
   if (sectorSelect) {
     const current = tripleSignalFilters.sector;
     sectorSelect.innerHTML =
@@ -17086,7 +19523,6 @@ function syncTripleSignalFiltersFromDom() {
   if (tripleSignalWindowDays !== 90 && tripleSignalWindowDays !== 180 && tripleSignalWindowDays !== 365) {
     tripleSignalWindowDays = 90;
   }
-  tripleSignalFilters.institution = document.getElementById("triple-signal-institution")?.value || "";
   tripleSignalFilters.insiderRole = document.getElementById("triple-signal-insider-role")?.value || "";
   tripleSignalFilters.sector = document.getElementById("triple-signal-sector")?.value || "";
   tripleSignalFilters.search = document.getElementById("triple-signal-search")?.value || "";
@@ -17182,7 +19618,6 @@ function bindTripleSignalHubControls() {
 
   [
     "triple-signal-window",
-    "triple-signal-institution",
     "triple-signal-insider-role",
     "triple-signal-sector",
     "triple-signal-min-inst-value",
@@ -21766,6 +24201,11 @@ function clearMobileOverlays({ topbarNav = true, watchlist = true } = {}) {
       btn.setAttribute("aria-expanded", "false");
       btn.classList.remove("is-active");
     });
+    const scrim = document.getElementById("drawer-scrim");
+    if (scrim) {
+      scrim.hidden = true;
+      scrim.style.removeProperty("display");
+    }
   }
   if (topbarNav) {
     if (typeof window.closeMobileTopbarNav === "function") {
@@ -21816,6 +24256,10 @@ function setupDrawer() {
     for (const toggle of toggles) {
       toggle.setAttribute("aria-expanded", String(open));
       toggle.classList.toggle("is-active", open);
+    }
+    if (scrim) {
+      scrim.hidden = !open;
+      scrim.style.removeProperty("display");
     }
   }
 
@@ -21989,6 +24433,28 @@ async function handleRouteChange() {
       closePoliticianProfile({ navigate: false });
       updatePoliticiansView();
     }
+    return;
+  }
+  if (route.mode === "sector") {
+    closeStocksOverlays();
+    activeInstitutionCik = null;
+    activeSectorHubView = route.sectorHubView || "overview";
+    sectorHubLevel = route.sectorLevel || "overview";
+    sectorHubSectorSlug = route.sectorSlug || null;
+    sectorHubIndustrySlug = route.industrySlug || null;
+    if (activeSectorHubView === "sector-fundamentals") {
+      sectorFundLevel = route.sectorFundLevel || "sectors";
+      sectorFundSectorSlug = route.sectorFundSectorSlug || null;
+    }
+    if (activeSectorHubView === "institutional-concentration") {
+      instConcLevel = route.instConcLevel || "institutions";
+      instConcSectorSlug = route.instConcSectorSlug || null;
+      instConcIndustrySlug = route.instConcIndustrySlug || null;
+      instConcInstitutionId = route.instConcInstitutionId || null;
+      lastInstConcStocksPayload = null;
+    }
+    setExploreMode("sector", { navigate: false });
+    updateSectorView();
     return;
   }
   if (route.mode === "insiders") {
@@ -22345,15 +24811,17 @@ function setupMobileTopbarNav() {
   });
 
   // Mobile: section name → default hub; rest of row / chevron → accordion only.
+  // Always clear dimmers on subsection navigation (closeNav alone can race with async handlers).
   nav.addEventListener(
     "click",
     (e) => {
-      const sectionBtn = e.target.closest?.(".workspace-nav__btn.explore-nav__btn");
+      const el = e.target instanceof Element ? e.target : e.target?.parentElement;
+      const sectionBtn = el?.closest?.(".workspace-nav__btn.explore-nav__btn");
       if (sectionBtn && isMobileTopbar()) {
-        const onLabel = Boolean(e.target.closest?.(".workspace-nav__label"));
+        const onLabel = Boolean(el?.closest?.(".workspace-nav__label"));
         if (onLabel) {
           // Let explore-nav open the default section screen, then close the drawer.
-          closeNav();
+          clearMobileOverlays();
           return;
         }
         e.preventDefault();
@@ -22361,10 +24829,10 @@ function setupMobileTopbarNav() {
         toggleMobileNavSection(sectionBtn);
         return;
       }
-      const target = e.target.closest?.(
-        ".workspace-nav__subsection, [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-signals-view], [data-tools-view]"
+      const target = el?.closest?.(
+        ".workspace-nav__subsection, [data-stocks-view], [data-institutions-view], [data-insiders-view], [data-politicians-view], [data-sector-view], [data-signals-view], [data-tools-view]"
       );
-      if (target) closeNav();
+      if (target) clearMobileOverlays();
     },
     true
   );
@@ -22403,6 +24871,11 @@ function setupExploreNav() {
           history.pushState({ explore: "politicians", politicianHubView: "trades" }, "", "/politicians");
         }
         void updatePoliticiansView();
+        return;
+      }
+      if (mode === "sector") {
+        setExploreMode("sector", { navigate: false });
+        navigateToSectorHub({ level: "overview" });
         return;
       }
       if (mode === "insiders") {
@@ -22489,6 +24962,43 @@ function setupExploreNav() {
           setExploreMode("institutions", { navigate: false });
           navigateToNotableInvestors();
         })();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-sector-view]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const view = btn.getAttribute("data-sector-view");
+      if (view === "sector-accumulation") {
+        setExploreMode("sector", { navigate: false });
+        navigateToSectorAccumulation();
+        return;
+      }
+      if (view === "industry-accumulation") {
+        setExploreMode("sector", { navigate: false });
+        navigateToIndustryAccumulation();
+        return;
+      }
+      if (view === "sector-buying") {
+        setExploreMode("sector", { navigate: false });
+        navigateToSectorBuying();
+        return;
+      }
+      if (view === "sector-selling") {
+        setExploreMode("sector", { navigate: false });
+        navigateToSectorSelling();
+        return;
+      }
+      if (view === "sector-fundamentals") {
+        setExploreMode("sector", { navigate: false });
+        navigateToSectorFundamentals({ level: "sectors" });
+        return;
+      }
+      if (view === "institutional-concentration") {
+        setExploreMode("sector", { navigate: false });
+        navigateToInstitutionalConcentration({ level: "institutions" });
+        return;
       }
     });
   });
@@ -23092,6 +25602,30 @@ async function init() {
       closeInsiderProfile({ navigate: false });
       updateInsidersView();
     }
+    void refreshSidebarMarketPanels();
+    return;
+  }
+
+  if (appRoute.mode === "sector") {
+    closeStocksOverlays();
+    activeInstitutionCik = null;
+    activeSectorHubView = appRoute.sectorHubView || "overview";
+    sectorHubLevel = appRoute.sectorLevel || "overview";
+    sectorHubSectorSlug = appRoute.sectorSlug || null;
+    sectorHubIndustrySlug = appRoute.industrySlug || null;
+    if (activeSectorHubView === "sector-fundamentals") {
+      sectorFundLevel = appRoute.sectorFundLevel || "sectors";
+      sectorFundSectorSlug = appRoute.sectorFundSectorSlug || null;
+    }
+    if (activeSectorHubView === "institutional-concentration") {
+      instConcLevel = appRoute.instConcLevel || "institutions";
+      instConcSectorSlug = appRoute.instConcSectorSlug || null;
+      instConcIndustrySlug = appRoute.instConcIndustrySlug || null;
+      instConcInstitutionId = appRoute.instConcInstitutionId || null;
+      lastInstConcStocksPayload = null;
+    }
+    setExploreMode("sector", { navigate: false });
+    updateSectorView();
     void refreshSidebarMarketPanels();
     return;
   }

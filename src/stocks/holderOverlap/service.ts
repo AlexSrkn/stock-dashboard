@@ -130,7 +130,27 @@ export async function getHolderOverlap(
     .trim()
     .toUpperCase();
   const mode = parseHolderOverlapMode(url.searchParams.get("mode"));
-  if (!ticker) return emptyPayload("", mode);
+
+  // Always expose DB filter options so Sector / Institution type dropdowns
+  // are populated even before the user runs Analyze.
+  const loadFilterOptions = async () => {
+    const [sectorsRes, typesRes] = await Promise.all([
+      pool.query<{ sector: string }>(SELECT_SECTORS_SQL),
+      pool.query<{ type: string }>(SELECT_INSTITUTION_TYPES_SQL),
+    ]);
+    return {
+      sectors: sectorsRes.rows.map((r) => r.sector),
+      institutionTypes: typesRes.rows.map((r) => r.type),
+    };
+  };
+
+  if (!ticker) {
+    const filters = await loadFilterOptions().catch(() => ({
+      sectors: [] as string[],
+      institutionTypes: [] as string[],
+    }));
+    return { ...emptyPayload("", mode), ...filters };
+  }
 
   const institutionType = String(url.searchParams.get("institutionType") || "").trim();
   const sector = String(url.searchParams.get("sector") || "").trim();
@@ -150,7 +170,7 @@ export async function getHolderOverlap(
     marketCap,
   ];
 
-  const [countRes, rowsRes, holdersRes, stockMetaRes, sectorsRes, typesRes, insiders] =
+  const [countRes, rowsRes, holdersRes, stockMetaRes, filterOptions, insiders] =
     await Promise.all([
       pool.query<{ total: number }>(SELECT_HOLDER_OVERLAP_COUNT_SQL, filterParams),
       pool.query<{
@@ -179,8 +199,10 @@ export async function getHolderOverlap(
         SELECT_STOCK_META_SQL,
         [ticker]
       ),
-      pool.query<{ sector: string }>(SELECT_SECTORS_SQL),
-      pool.query<{ type: string }>(SELECT_INSTITUTION_TYPES_SQL),
+      loadFilterOptions().catch(() => ({
+        sectors: [] as string[],
+        institutionTypes: [] as string[],
+      })),
       loadInsiders(pool, ticker),
     ]);
 
@@ -230,8 +252,8 @@ export async function getHolderOverlap(
     institutions,
     insiders,
     politicians,
-    sectors: sectorsRes.rows.map((r) => r.sector),
-    institutionTypes: typesRes.rows.map((r) => r.type),
+    sectors: filterOptions.sectors,
+    institutionTypes: filterOptions.institutionTypes,
   };
 }
 

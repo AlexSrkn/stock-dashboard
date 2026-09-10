@@ -27,6 +27,11 @@ import type { PoliticianTrade } from "../types.js";
 
 const UNKNOWN_SECTOR = "Unknown";
 
+function isKnownSector(sector: string | null | undefined): boolean {
+  const s = String(sector || "").trim();
+  return Boolean(s) && s !== UNKNOWN_SECTOR;
+}
+
 function roundUsd(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -249,6 +254,7 @@ function buildMonthlyActivity(trades: EnrichedTrade[]): PoliticianSectorMonthlyR
     row.tradeCount += 1;
     if (trade.transactionCategory === "buy") row.buyCount += 1;
     if (trade.transactionCategory === "sell") row.sellCount += 1;
+    if (!isKnownSector(trade.sector)) continue;
     let sectorRow = row.sectors.find((s) => s.sector === trade.sector);
     if (!sectorRow) {
       sectorRow = { sector: trade.sector, tradeCount: 0 };
@@ -297,6 +303,7 @@ function aggregateSectorRows(trades: EnrichedTrade[]): PoliticianSectorRow[] {
   >();
 
   for (const trade of trades) {
+    if (!isKnownSector(trade.sector)) continue;
     let bucket = bySector.get(trade.sector);
     if (!bucket) {
       bucket = {
@@ -375,7 +382,9 @@ export async function computePoliticianSectorExposure(
     filters,
   };
 
-  const { fetchedAt, trades, politicians, states } = await loadEnrichedTrades(filters);
+  const { fetchedAt, trades: allTrades, politicians, states } = await loadEnrichedTrades(filters);
+  // Unclassified tickers dilute the ranking — omit them from sector categories.
+  const trades = allTrades.filter((t) => isKnownSector(t.sector));
   if (!fetchedAt) {
     return {
       ...base,
@@ -400,7 +409,9 @@ export async function computePoliticianSectorExposure(
     return {
       ...base,
       available: false,
-      unavailableReason: "No congressional trades match the current filters.",
+      unavailableReason: allTrades.length
+        ? "No classified sector trades match the current filters."
+        : "No congressional trades match the current filters.",
       fetchedAt,
       summary: {
         totalTrades: 0,
@@ -611,8 +622,9 @@ export async function computePoliticianProfileSectorExposure(
     sector: null,
     search: null,
   };
-  const { fetchedAt, trades } = await loadEnrichedTrades(filters);
-  const politicianName = trades[0]?.politicianName || key;
+  const { fetchedAt, trades: allTrades } = await loadEnrichedTrades(filters);
+  const trades = allTrades.filter((t) => isKnownSector(t.sector));
+  const politicianName = trades[0]?.politicianName || allTrades[0]?.politicianName || key;
 
   if (!fetchedAt || !trades.length) {
     return {

@@ -40,13 +40,14 @@ function hydrateMemory(payload: FirstTimeBuyersCachePayload): void {
 
 export function ensureFirstTimeBuyersCacheOnStartup(): void {
   try {
-    const disk = loadFirstTimeBuyersFromDisk();
-    if (!disk?.rows.length) {
+    if (!fs.existsSync(CACHE_FILE)) {
       console.log("First-time buyers cache missing — run: npm run insiders:warm-first-time-buyers");
       return;
     }
-    hydrateMemory(disk);
-    console.log(`First-time buyers cache loaded (${disk.rows.length} trades).`);
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
+    console.log(
+      `First-time buyers cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
+    );
   } catch (err) {
     console.warn(
       "First-time buyers cache load failed:",

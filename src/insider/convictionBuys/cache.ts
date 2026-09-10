@@ -40,13 +40,14 @@ function hydrateMemory(payload: ConvictionBuysCachePayload): void {
 
 export function ensureConvictionBuysCacheOnStartup(): void {
   try {
-    const disk = loadConvictionBuysFromDisk();
-    if (!disk?.rows.length) {
+    if (!fs.existsSync(CACHE_FILE)) {
       console.log("Conviction buys cache missing — run: npm run insiders:warm-conviction-buys");
       return;
     }
-    hydrateMemory(disk);
-    console.log(`Conviction buys cache loaded (${disk.rows.length} trades).`);
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
+    console.log(
+      `Conviction buys cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
+    );
   } catch (err) {
     console.warn(
       "Conviction buys cache load failed:",

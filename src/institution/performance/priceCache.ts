@@ -263,15 +263,21 @@ export async function warmReturnsMatrix(
   return warmInflight;
 }
 
-/** Load disk cache on startup only — never triggers a live price batch. */
+/** Startup check only — matrix is lazy-loaded via getReturnsMatrix() on first use. */
 export function ensureReturnsMatrixOnStartup(): void {
-  const disk = tryLoadDiskCache(null);
-  if (disk) {
-    memoryMatrix = disk;
+  try {
+    if (!fs.existsSync(CACHE_FILE)) {
+      console.log("Performance returns cache missing — run: npm run performance:warm-cache");
+      return;
+    }
+    const mb = fs.statSync(CACHE_FILE).size / (1024 * 1024);
     console.log(
-      `Performance returns cache loaded (${disk.tickers.length} tickers, ${disk.quarters.length} quarters).`
+      `Performance returns cache on disk (${mb.toFixed(1)} MB) — lazy-loaded on first request.`
     );
-    return;
+  } catch (err) {
+    console.warn(
+      "Performance returns cache check failed:",
+      err instanceof Error ? err.message : String(err)
+    );
   }
-  console.log("Performance returns cache missing — run: npm run performance:warm-cache");
 }
