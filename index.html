@@ -15,7 +15,7 @@
     />
     <link rel="stylesheet" href="/styles.css?v=hub-opacity-1" />
     <link rel="stylesheet" href="/auth.css?v=auth-topbar-width-1" />
-    <link rel="stylesheet" href="/landing.css?v=landing-saas-1" />
+    <link rel="stylesheet" href="/landing.css?v=landing-system-14" />
   </head>
   <body>
     <div class="app">
@@ -1925,11 +1925,8 @@
       <div id="view-landing" class="landing" hidden>
         <section class="landing-hero" aria-labelledby="landing-title">
           <p class="landing__eyebrow">US equities research</p>
-          <h1 id="landing-title" class="landing__title">Stocks and the institutions behind them.</h1>
-          <p class="landing__lead">
-            Charts, fundamentals, insider trades, Congress disclosures, Signals, and SEC filings —
-            in one workspace.
-          </p>
+          <h1 id="landing-title" class="landing__title">Follow the money behind the market.</h1>
+          <p class="landing__lead">Public filings. Connected research. One workspace.</p>
           <div class="landing-hero__actions">
             <button type="button" class="btn btn--primary" data-landing-enter="stocks" id="landing-enter-stocks">
               Get started
@@ -1940,350 +1937,110 @@
           </div>
         </section>
 
-        <div class="landing-frame landing-frame--hero" aria-hidden="true">
-          <div class="landing-frame__chrome">
-            <div class="landing-frame__dots" aria-hidden="true"><span></span><span></span><span></span></div>
-            <span class="landing-frame__path">investatlant.com / stock / NVDA</span>
-          </div>
-          <div class="landing-frame__body">
-            <aside class="landing-mini-watch">
-              <p class="landing-mini-watch__label">Watchlist</p>
-              <div class="landing-mini-watch__item is-active">
-                <span class="landing-mini-watch__sym">NVDA</span>
-                <span class="landing-mini-watch__name">NVIDIA Corp</span>
-                <div class="landing-pills">
-                  <span class="landing-pill landing-pill--buy">Institutions Buying</span>
-                  <span class="landing-pill landing-pill--buy">Insider Purchase</span>
-                </div>
-              </div>
-              <div class="landing-mini-watch__item">
-                <span class="landing-mini-watch__sym">AAPL</span>
-                <span class="landing-mini-watch__name">Apple Inc</span>
-                <div class="landing-pills">
-                  <span class="landing-pill landing-pill--buy">Congress Buy</span>
-                </div>
-              </div>
-              <div class="landing-mini-watch__item">
-                <span class="landing-mini-watch__sym">META</span>
-                <span class="landing-mini-watch__name">Meta Platforms</span>
-                <div class="landing-pills">
-                  <span class="landing-pill landing-pill--sell">Institutions Selling</span>
-                </div>
-              </div>
-            </aside>
-            <div class="landing-mini-main">
-              <div class="landing-mini-head">
-                <div>
-                  <span class="landing-mini-head__sym">NVDA</span>
-                  <span class="landing-mini-head__name">NVIDIA Corporation</span>
-                </div>
-                <div class="landing-mini-head__price">
-                  178.42
-                  <span class="landing-mini-head__chg">+2.14%</span>
-                </div>
-              </div>
-              <svg class="landing-chart" viewBox="0 0 640 160" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3ee6b0" stop-opacity="0.32" />
-                    <stop offset="100%" stop-color="#3ee6b0" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path fill="url(#landingChartFill)" d="M0 118C70 112 110 88 170 92S280 48 350 58 470 96 540 42L640 28V160H0Z" />
-                <path fill="none" stroke="#3ee6b0" stroke-width="2.2" d="M0 118C70 112 110 88 170 92S280 48 350 58 470 96 540 42L640 28" />
-              </svg>
-              <div class="landing-tabs">
-                <span class="is-active">Overview</span>
-                <span>Ownership</span>
-                <span>Institutional Activity</span>
-                <span>Insider Activity</span>
-                <span>Congress Activity</span>
-                <span>Signals</span>
-              </div>
-              <table class="landing-table">
-                <thead>
-                  <tr>
-                    <th>Institution</th>
-                    <th class="num">Shares</th>
-                    <th class="num">QoQ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Vanguard Group</td>
-                    <td class="num">82.4M</td>
-                    <td class="num landing-pos">+3.1%</td>
-                  </tr>
-                  <tr>
-                    <td>BlackRock</td>
-                    <td class="num">71.8M</td>
-                    <td class="num landing-pos">+1.8%</td>
-                  </tr>
-                  <tr>
-                    <td>Berkshire Hathaway</td>
-                    <td class="num">—</td>
-                    <td class="num landing-neg">exited</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <section class="landing-section landing-reveal" aria-labelledby="landing-product-title">
+        <section class="landing-section landing-section--system landing-reveal" aria-labelledby="landing-system-title">
           <header class="landing-section__head landing-section__head--center">
             <p class="landing-kicker">The workspace</p>
-            <h2 id="landing-product-title" class="landing-section__title">One ticker. Every tab that matters.</h2>
-            <p class="landing-section__copy">
-              Ownership, Signals, and Insiders in one place — switch views without leaving the stock.
-            </p>
+            <h2 id="landing-system-title" class="landing-section__title">One workspace for filing intelligence.</h2>
           </header>
-          <div class="landing-frame landing-demo">
-            <div class="landing-frame__chrome">
-              <div class="landing-tabs" role="tablist" aria-label="Product demonstration">
-                <button type="button" class="landing-demo__tab" role="tab" aria-selected="true" data-landing-demo="landing-demo-own" id="landing-demo-tab-own">Ownership</button>
-                <button type="button" class="landing-demo__tab" role="tab" aria-selected="false" data-landing-demo="landing-demo-signals" id="landing-demo-tab-signals" tabindex="-1">Signals</button>
-                <button type="button" class="landing-demo__tab" role="tab" aria-selected="false" data-landing-demo="landing-demo-insider" id="landing-demo-tab-insider" tabindex="-1">Insiders</button>
-              </div>
-            </div>
-            <div class="landing-mini-main">
-              <div class="landing-demo__panel" id="landing-demo-own" role="tabpanel" aria-labelledby="landing-demo-tab-own">
-                <table class="landing-table">
-                  <thead>
-                    <tr>
-                      <th>Filer</th>
-                      <th>Type</th>
-                      <th class="num">Value</th>
-                      <th class="num">Change</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Vanguard Group Inc</td>
-                      <td>Asset manager</td>
-                      <td class="num">$14.2B</td>
-                      <td class="num landing-pos">+4.6%</td>
-                    </tr>
-                    <tr>
-                      <td>FMR LLC</td>
-                      <td>Asset manager</td>
-                      <td class="num">$6.1B</td>
-                      <td class="num landing-pos">new</td>
-                    </tr>
-                    <tr>
-                      <td>Renaissance Technologies</td>
-                      <td>Quant</td>
-                      <td class="num">$890M</td>
-                      <td class="num landing-neg">−12.4%</td>
-                    </tr>
-                    <tr>
-                      <td>T. Rowe Price</td>
-                      <td>Asset manager</td>
-                      <td class="num">$1.4B</td>
-                      <td class="num landing-pos">+8.0%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="landing-demo__panel" id="landing-demo-signals" role="tabpanel" aria-labelledby="landing-demo-tab-signals" hidden>
-                <div class="landing-signal-row">
-                  <div>
-                    <strong>NVDA</strong> · Triple Signal
-                    <div class="landing-signal-row__meta">Institutions + insiders + Congress buying · 180d</div>
-                  </div>
-                  <span class="landing-badge">Aligned</span>
-                </div>
-                <div class="landing-signal-row">
-                  <div>
-                    <strong>UNH</strong> · Double Signal
-                    <div class="landing-signal-row__meta">13F accumulation and open-market Form 4 purchases</div>
-                  </div>
-                  <span class="landing-badge">Double</span>
-                </div>
-                <div class="landing-signal-row">
-                  <div>
-                    <strong>AVGO</strong> · Smart money
-                    <div class="landing-signal-row__meta">Conviction score when institutions, insiders, and Congress align</div>
-                  </div>
-                  <span class="landing-badge">100</span>
-                </div>
-              </div>
-              <div class="landing-demo__panel" id="landing-demo-insider" role="tabpanel" aria-labelledby="landing-demo-tab-insider" hidden>
-                <table class="landing-table">
-                  <thead>
-                    <tr>
-                      <th>Insider</th>
-                      <th>Role</th>
-                      <th>Type</th>
-                      <th class="num">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>C. Officer</td>
-                      <td>CEO</td>
-                      <td>Open-market P</td>
-                      <td class="num landing-pos">$2.4M</td>
-                    </tr>
-                    <tr>
-                      <td>J. Director</td>
-                      <td>Director</td>
-                      <td>Open-market P</td>
-                      <td class="num landing-pos">$410K</td>
-                    </tr>
-                    <tr>
-                      <td>A. Officer</td>
-                      <td>CFO</td>
-                      <td>Open-market S</td>
-                      <td class="num landing-neg">$1.1M</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section class="landing-section landing-reveal" aria-labelledby="landing-13f-title">
-          <div class="landing-split">
-            <div class="landing-split__copy">
-              <p class="landing-kicker">13F filings</p>
-              <h2 id="landing-13f-title" class="landing-section__title">See who actually owns the stock.</h2>
-              <p class="landing-section__copy">
-                Tracked institutions, quarter-over-quarter activity, new positions, and complete
-                exits — from the same 13F universe you research in Institutions.
-              </p>
-              <ul class="landing-split__list">
-                <li>Holdings, new buys, and fully sold names</li>
-                <li>Ownership movers and holder overlap</li>
-                <li>Fund performance rankings from reported 13Fs</li>
-              </ul>
-              <button type="button" class="btn btn--ghost" data-landing-enter="institutions" id="landing-enter-institutions">
-                Browse institutions
+          <div class="landing-constellation" aria-label="Filing sources connected into Signals">
+            <div class="landing-constellation__field" aria-hidden="true"></div>
+            <svg class="landing-constellation__lines" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              <defs>
+                <marker id="landing-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M1 1.5 L10.5 6 L1 10.5 Z" fill="rgba(62,230,176,0.75)" />
+                </marker>
+                <marker id="landing-arrow-hot" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+                  <path d="M1 1.5 L10.5 6 L1 10.5 Z" fill="rgba(62,230,176,1)" />
+                </marker>
+              </defs>
+              <g class="landing-constellation__flows" opacity="0.55">
+                <path class="landing-constellation__flow" d="M120 190 C 250 210, 420 285, 500 325" />
+                <path class="landing-constellation__flow" d="M310 155 C 380 205, 460 285, 500 325" />
+                <path class="landing-constellation__flow" d="M500 140 C 500 200, 500 285, 500 325" />
+                <path class="landing-constellation__flow" d="M690 155 C 620 205, 540 285, 500 325" />
+                <path class="landing-constellation__flow" d="M880 190 C 750 210, 580 285, 500 325" />
+              </g>
+              <path class="landing-constellation__path" data-from="stocks" marker-end="url(#landing-arrow)" d="M120 190 C 250 210, 420 285, 500 325" />
+              <path class="landing-constellation__path" data-from="institutions" marker-end="url(#landing-arrow)" d="M310 155 C 380 205, 460 285, 500 325" />
+              <path class="landing-constellation__path" data-from="insiders" marker-end="url(#landing-arrow)" d="M500 140 C 500 200, 500 285, 500 325" />
+              <path class="landing-constellation__path" data-from="congress" marker-end="url(#landing-arrow)" d="M690 155 C 620 205, 540 285, 500 325" />
+              <path class="landing-constellation__path" data-from="sector" marker-end="url(#landing-arrow)" d="M880 190 C 750 210, 580 285, 500 325" />
+            </svg>
+
+            <div class="landing-constellation__map">
+              <button type="button" class="landing-node landing-node--stocks" data-landing-enter="stocks">
+                <span class="landing-node__source">SEC filings</span>
+                <span class="landing-node__label">Stocks</span>
+              </button>
+              <button type="button" class="landing-node landing-node--institutions" data-landing-enter="institutions">
+                <span class="landing-node__source">SEC 13F</span>
+                <span class="landing-node__label">Institutions</span>
+              </button>
+              <button type="button" class="landing-node landing-node--insiders" data-landing-enter="insiders">
+                <span class="landing-node__source">Form 4</span>
+                <span class="landing-node__label">Insiders</span>
+              </button>
+              <button type="button" class="landing-node landing-node--congress" data-landing-enter="politicians">
+                <span class="landing-node__source">PTR</span>
+                <span class="landing-node__label">Congress</span>
+              </button>
+              <button type="button" class="landing-node landing-node--sector" data-landing-enter="sector">
+                <span class="landing-node__source">SEC 13F</span>
+                <span class="landing-node__label">Sectors</span>
+              </button>
+              <button type="button" class="landing-node landing-node--hub" data-landing-enter="signals">
+                <span class="landing-node__source">Alignment</span>
+                <span class="landing-node__label">Signals</span>
+                <span class="landing-node__pulse" aria-hidden="true"></span>
               </button>
             </div>
-            <div class="landing-frame">
-              <div class="landing-mini-main">
-                <table class="landing-table">
-                  <thead>
-                    <tr>
-                      <th>New 13F entry</th>
-                      <th>Fund</th>
-                      <th class="num">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>CRWD</td>
-                      <td>Top 10 · 1Y</td>
-                      <td class="num">$186M</td>
-                    </tr>
-                    <tr>
-                      <td>CEG</td>
-                      <td>Top 10 · 1Y</td>
-                      <td class="num">$94M</td>
-                    </tr>
-                    <tr>
-                      <td>VRT</td>
-                      <td>Top 10 · 1Y</td>
-                      <td class="num">$61M</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
+            <p class="landing-constellation__hint">Click a source to open it in the workspace</p>
           </div>
         </section>
 
         <section class="landing-section landing-reveal" aria-labelledby="landing-signals-title">
-          <div class="landing-split landing-split--flip">
-            <div class="landing-frame">
-              <div class="landing-mini-main">
-                <div class="landing-signal-row">
-                  <div><strong>Double Signal</strong><div class="landing-signal-row__meta">Institutions + insider purchases</div></div>
-                  <span class="landing-badge">1,280</span>
-                </div>
-                <div class="landing-signal-row">
-                  <div><strong>Triple Signal</strong><div class="landing-signal-row__meta">Plus politician buys in-window</div></div>
-                  <span class="landing-badge">51</span>
-                </div>
-                <div class="landing-signal-row">
-                  <div><strong>Conflict</strong><div class="landing-signal-row__meta">When the books disagree</div></div>
-                  <span class="landing-badge">558</span>
-                </div>
-              </div>
-            </div>
-            <div class="landing-split__copy">
-              <p class="landing-kicker">Signals</p>
-              <h2 id="landing-signals-title" class="landing-section__title">Alignment is the product.</h2>
-              <p class="landing-section__copy">
-                Smart Money, Double and Triple Signal, Hidden Gems, Conviction Score, and
-                Institutional Discovery — screens computed from the filings, not a news headline.
-              </p>
-              <ul class="landing-split__list">
-                <li>Open-market Form 4 P/S only — not awards or exercises</li>
-                <li>House and Senate PTR buys in the same window</li>
-                <li>Conflict signals when institutions and insiders diverge</li>
-              </ul>
-              <button type="button" class="btn btn--ghost" data-landing-enter="signals">
-                Open signals
-              </button>
-            </div>
-          </div>
-        </section>
+          <header class="landing-section__head landing-section__head--center">
+            <p class="landing-kicker">Signals</p>
+            <h2 id="landing-signals-title" class="landing-section__title">When the signals align.</h2>
+          </header>
 
-        <section class="landing-section landing-reveal" aria-labelledby="landing-flow-title">
-          <div class="landing-split">
-            <div class="landing-split__copy">
-              <p class="landing-kicker">Form 4 &amp; PTR</p>
-              <h2 id="landing-flow-title" class="landing-section__title">Insiders and Congress, in the same tape.</h2>
-              <p class="landing-section__copy">
-                Cluster buying, conviction buys, repeat buyers, heavy selling, and disclosed
-                House and Senate trades — linked back to the ticker you already have open.
-              </p>
-              <div class="landing-hero__actions landing-hero__actions--start">
-                <button type="button" class="btn btn--ghost" data-landing-enter="insiders" id="landing-enter-insiders">
-                  Insider trades
-                </button>
-                <button type="button" class="btn btn--ghost" data-landing-enter="politicians" id="landing-enter-politicians">
-                  Congress trades
-                </button>
-              </div>
-            </div>
-            <div class="landing-frame">
-              <div class="landing-mini-main">
-                <table class="landing-table">
-                  <thead>
-                    <tr>
-                      <th>Source</th>
-                      <th>Name</th>
-                      <th>Side</th>
-                      <th>Ticker</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Form 4</td>
-                      <td>CEO</td>
-                      <td class="landing-pos">Buy</td>
-                      <td class="mono">UNH</td>
-                    </tr>
-                    <tr>
-                      <td>Senate PTR</td>
-                      <td>Disclosed filer</td>
-                      <td class="landing-pos">Buy</td>
-                      <td class="mono">NVDA</td>
-                    </tr>
-                    <tr>
-                      <td>Form 4</td>
-                      <td>CFO</td>
-                      <td class="landing-neg">Sell</td>
-                      <td class="mono">META</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div class="landing-signal-list" role="list">
+            <button type="button" class="landing-signal-row" role="listitem" data-landing-enter="double-signal">
+              <span class="landing-signal-row__main">
+                <span class="landing-signal-row__title">Double Signal</span>
+                <span class="landing-signal-row__flow">Institutions <span aria-hidden="true">+</span> Insiders</span>
+              </span>
+              <span class="landing-signal-row__go" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="landing-signal-row" role="listitem" data-landing-enter="triple-signal">
+              <span class="landing-signal-row__main">
+                <span class="landing-signal-row__title">Triple Signal</span>
+                <span class="landing-signal-row__flow">Institutions <span aria-hidden="true">+</span> Insiders <span aria-hidden="true">+</span> Congress</span>
+              </span>
+              <span class="landing-signal-row__go" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="landing-signal-row" role="listitem" data-landing-enter="conflict-signals">
+              <span class="landing-signal-row__main">
+                <span class="landing-signal-row__title">Conflict</span>
+                <span class="landing-signal-row__flow">Institutions <span aria-hidden="true">≠</span> Insiders</span>
+              </span>
+              <span class="landing-signal-row__go" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="landing-signal-row" role="listitem" data-landing-enter="institutional-discovery">
+              <span class="landing-signal-row__main">
+                <span class="landing-signal-row__title">Institutional Discovery</span>
+                <span class="landing-signal-row__flow">New holders <span aria-hidden="true">+</span> ownership breadth</span>
+              </span>
+              <span class="landing-signal-row__go" aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div class="landing-signal-more">
+            <button type="button" class="landing-text-arrow" data-landing-enter="signals">
+              View all signals
+              <span aria-hidden="true">→</span>
+            </button>
           </div>
         </section>
 
@@ -2292,76 +2049,37 @@
             <p class="landing-kicker">How it works</p>
             <h2 id="landing-how-title" class="landing-section__title">Three steps. Same workspace.</h2>
           </header>
-          <div class="landing-steps">
-            <article class="landing-step">
-              <span class="landing-step__n">1</span>
-              <h3>Search a ticker</h3>
-              <p>Use the top bar to open any US name. Chart, fundamentals, and filings load in one place.</p>
-            </article>
-            <article class="landing-step">
-              <span class="landing-step__n">2</span>
-              <h3>Open the activity tabs</h3>
-              <p>Switch between Ownership, Insiders, and Congress Activity without leaving the stock page.</p>
-            </article>
-            <article class="landing-step">
-              <span class="landing-step__n">3</span>
-              <h3>Act on alignment</h3>
-              <p>Use Signals screens when institutions, insiders, and Congress move together.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="landing-section landing-reveal" aria-labelledby="landing-more-title">
-          <header class="landing-section__head landing-section__head--center">
-            <p class="landing-kicker">In the product</p>
-            <h2 id="landing-more-title" class="landing-section__title">Screens and tools, not a feed.</h2>
-            <p class="landing-section__copy">The same boxes you open from Signals and Tools.</p>
-          </header>
-          <div class="landing-showcase">
-            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
-              <span class="landing-showcase__title">Smart money</span>
-              <span class="landing-showcase__desc">Conviction when institutions, insiders, and Congress align.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
-              <span class="landing-showcase__title">Double Signal</span>
-              <span class="landing-showcase__desc">13F buying plus open-market insider purchases.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
-              <span class="landing-showcase__title">Triple Signal</span>
-              <span class="landing-showcase__desc">The same window, with politician buys included.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="signals">
-              <span class="landing-showcase__title">Institutional Discovery</span>
-              <span class="landing-showcase__desc">New holders and growing ownership breadth.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
-              <span class="landing-showcase__title">DCF Calculator</span>
-              <span class="landing-showcase__desc">Intrinsic value from filing-derived free cash flow.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
-              <span class="landing-showcase__title">WACC Calculator</span>
-              <span class="landing-showcase__desc">Cost of capital from SEC data and CAPM inputs.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="tools">
-              <span class="landing-showcase__title">EPV Calculator</span>
-              <span class="landing-showcase__desc">Earnings power value — no growth assumptions.</span>
-            </button>
-            <button type="button" class="landing-showcase__card" data-landing-enter="stocks">
-              <span class="landing-showcase__title">Screener</span>
-              <span class="landing-showcase__desc">Filter the universe you already research.</span>
-            </button>
-          </div>
+          <ol class="landing-steps">
+            <li class="landing-step">
+              <span class="landing-step__n" aria-hidden="true">1</span>
+              <h3>Open a name or screen</h3>
+            </li>
+            <li class="landing-step">
+              <span class="landing-step__n" aria-hidden="true">2</span>
+              <h3>Read the filing trail</h3>
+            </li>
+            <li class="landing-step">
+              <span class="landing-step__n" aria-hidden="true">3</span>
+              <h3>Watch for alignment</h3>
+            </li>
+          </ol>
         </section>
 
         <section class="landing-final landing-reveal" aria-labelledby="landing-final-title">
-          <h2 id="landing-final-title">Open the workspace.</h2>
-          <p>Start with a ticker, a fund, or a signal. Everything else is one tab away.</p>
-          <button type="button" class="btn btn--primary" data-landing-enter="stocks">Get started</button>
+          <h2 id="landing-final-title">Open the research workspace.</h2>
+          <button
+            type="button"
+            class="landing-final__arrow"
+            data-landing-enter="stocks"
+            aria-label="Open stocks workspace"
+          >
+            <span aria-hidden="true">→</span>
+          </button>
         </section>
 
         <p class="landing__footnote muted small">
-          Holdings from SEC 13F filings. Insider trades from Form 4. Congress trades from House and Senate
-          periodic transaction reports. Market data from SEC filings and TradingView.
+          Holdings from SEC 13F. Insider trades from Form 4. Congress from House and Senate PTRs.
+          Market prices are supporting context via TradingView.
         </p>
       </div>
 

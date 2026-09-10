@@ -40,6 +40,7 @@ import { tryHandleToolsFcfYield } from "./src/api/toolsFcfYield.ts";
 import { tryHandleToolsSimilarStocks } from "./src/api/toolsSimilarStocks.ts";
 import { tryHandleStocksHub } from "./src/api/stocksHub.ts";
 import { tryHandleAnalytics } from "./src/api/analytics.ts";
+import { tryHandleLandingPreview } from "./src/api/landingPreview.ts";
 import { tryHandleAuth } from "./src/api/auth.ts";
 import { ensureAuthSchema } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
@@ -677,6 +678,7 @@ http
       if (await tryHandleToolsSimilarStocks(u, req, clientRes)) return;
       if (await tryHandleStocksHub(u, clientRes)) return;
       if (await tryHandleStockActivity(u, clientRes)) return;
+      if (await tryHandleLandingPreview(u, clientRes)) return;
       if (await tryHandleAnalytics(u, clientRes)) return;
       if (await tryHandleStockOwnership(u, clientRes)) return;
       if (await tryHandleOwnershipIntelligence(u, clientRes)) return;

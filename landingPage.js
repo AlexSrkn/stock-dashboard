@@ -24,62 +24,89 @@ function initLandingReveal(root) {
   nodes.forEach((el) => io.observe(el));
 }
 
-function initLandingDemo(root) {
-  const tabs = [...root.querySelectorAll(".landing-demo__tab")];
-  const panels = [...root.querySelectorAll(".landing-demo__panel")];
-  if (!tabs.length || !panels.length) return;
-
-  const ids = tabs.map((t) => t.getAttribute("data-landing-demo")).filter(Boolean);
-  let i = 0;
-
-  const activate = (id) => {
-    tabs.forEach((tab) => {
-      const on = tab.getAttribute("data-landing-demo") === id;
-      tab.setAttribute("aria-selected", on ? "true" : "false");
-      tab.tabIndex = on ? 0 : -1;
-    });
-    panels.forEach((panel) => {
-      panel.hidden = panel.id !== id;
-    });
-  };
-
-  tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => {
-      i = index;
-      activate(tab.getAttribute("data-landing-demo"));
-    });
-    tab.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      e.preventDefault();
-      const next = e.key === "ArrowRight" ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
-      i = next;
-      tabs[next].focus();
-      activate(tabs[next].getAttribute("data-landing-demo"));
-    });
+function prepareConstellationPaths(constellation) {
+  constellation.querySelectorAll(".landing-constellation__path").forEach((path) => {
+    const length = path.getTotalLength();
+    path.style.strokeDasharray = String(length);
+    path.style.strokeDashoffset = String(length);
   });
+}
 
-  let timer = null;
-  const play = () => {
-    if (prefersReducedMotion() || ids.length < 2) return;
-    timer = window.setInterval(() => {
-      i = (i + 1) % ids.length;
-      activate(ids[i]);
-    }, 5200);
-  };
-  const stop = () => {
-    if (timer) window.clearInterval(timer);
-    timer = null;
+function initLandingConstellation(root) {
+  const constellation = root.querySelector(".landing-constellation");
+  if (!constellation) return;
+
+  prepareConstellationPaths(constellation);
+
+  const draw = () => {
+    if (prefersReducedMotion()) {
+      constellation.classList.add("is-drawn", "is-flowing");
+      constellation.querySelectorAll(".landing-constellation__path").forEach((path) => {
+        path.style.strokeDashoffset = "0";
+      });
+      return;
+    }
+    constellation.classList.add("is-drawn");
+    window.setTimeout(() => constellation.classList.add("is-flowing"), 1100);
   };
 
-  const stage = root.querySelector(".landing-demo");
-  stage?.addEventListener("mouseenter", stop);
-  stage?.addEventListener("focusin", stop);
-  stage?.addEventListener("mouseleave", play);
-  REDUCE_MOTION.addEventListener?.("change", () => {
-    stop();
-    play();
+  if (!("IntersectionObserver" in window)) {
+    draw();
+  } else {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          draw();
+          io.disconnect();
+        }
+      },
+      { threshold: 0.35 }
+    );
+    io.observe(constellation);
+  }
+
+  const clearActive = () => {
+    constellation.classList.remove(
+      "is-active-stocks",
+      "is-active-institutions",
+      "is-active-insiders",
+      "is-active-congress",
+      "is-active-sector",
+      "is-active-hub"
+    );
+  };
+
+  constellation.querySelectorAll(".landing-node").forEach((node) => {
+    const mode = node.getAttribute("data-landing-enter");
+    const activeClass =
+      mode === "stocks"
+        ? "is-active-stocks"
+        : mode === "institutions"
+          ? "is-active-institutions"
+          : mode === "insiders"
+            ? "is-active-insiders"
+            : mode === "politicians"
+              ? "is-active-congress"
+              : mode === "sector"
+                ? "is-active-sector"
+                : mode === "signals"
+                  ? "is-active-hub"
+                  : null;
+
+    if (!activeClass) return;
+
+    node.addEventListener("mouseenter", () => {
+      clearActive();
+      constellation.classList.add(activeClass);
+    });
+    node.addEventListener("focus", () => {
+      clearActive();
+      constellation.classList.add(activeClass);
+    });
+    node.addEventListener("mouseleave", clearActive);
+    node.addEventListener("blur", clearActive);
   });
-  play();
 }
 
 export function initLandingPage() {
@@ -90,7 +117,7 @@ export function initLandingPage() {
     if (started || root.hidden) return;
     started = true;
     initLandingReveal(root);
-    initLandingDemo(root);
+    initLandingConstellation(root);
   };
   start();
   const mo = new MutationObserver(start);

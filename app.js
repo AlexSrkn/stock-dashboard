@@ -1740,9 +1740,21 @@ async function enterAppFromLanding(mode) {
     void refreshSidebarMarketPanels();
     return;
   }
-  if (mode === "signals") {
+  if (
+    mode === "signals" ||
+    mode === "double-signal" ||
+    mode === "triple-signal" ||
+    mode === "conflict-signals" ||
+    mode === "institutional-discovery" ||
+    mode === "smart-money"
+  ) {
     setExploreMode("signals", { navigate: false });
-    navigateToSignalsHub();
+    if (mode === "double-signal") navigateToDoubleSignal();
+    else if (mode === "triple-signal") navigateToTripleSignal();
+    else if (mode === "conflict-signals") navigateToConflictSignals();
+    else if (mode === "institutional-discovery") navigateToInstitutionalDiscovery();
+    else if (mode === "smart-money") navigateToSignalsSmartMoney();
+    else navigateToSignalsHub();
     void refreshSidebarMarketPanels();
     return;
   }
