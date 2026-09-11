@@ -8957,6 +8957,8 @@ function getFilteredPoliticianTrades() {
       cmp = String(a.chamber || "").localeCompare(String(b.chamber || ""), undefined, {
         sensitivity: "base",
       });
+    } else if (key === "traded") {
+      cmp = parseTradeDateMs(a.transactionDate) - parseTradeDateMs(b.transactionDate);
     } else {
       // Default "date" = disclosure/filing date (when the PTR became public).
       cmp = parsePoliticianFilingDateMs(a.filingDate) - parsePoliticianFilingDateMs(b.filingDate);
@@ -9214,7 +9216,8 @@ function renderPoliticianTradeTableRow(trade) {
     <td><a href="${politicianPath(key)}" class="politicians-name-link" data-politician-key="${escapeHtml(key)}">${escapeHtml(trade.politicianName)}</a></td>
     <td>${politicianStockCell(trade)}</td>
     <td>${escapeHtml(typeLabel)}</td>
-    <td>${escapeHtml(formatPoliticianTradeDate(trade.filingDate || trade.transactionDate))}</td>
+    <td>${escapeHtml(formatPoliticianTradeDate(trade.filingDate))}</td>
+    <td>${escapeHtml(formatPoliticianTradeDate(trade.transactionDate))}</td>
     <td class="num">${escapeHtml(trade.amountRange || "—")}</td>
     <td><span class="politicians-hub__chamber-badge politicians-hub__chamber-badge--inline">${escapeHtml(politicianChamberLabel(trade.chamber))}</span></td>
   </tr>`;
