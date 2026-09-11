@@ -138,10 +138,31 @@ function mergeBundles(
   return sortBundlesNewest([...byId.values()]);
 }
 
-/** Resolve a since-date from an existing recent.json payload (fetchedAt day). */
-export function sinceDateFromExisting(payload: PoliticiansRecentPayload | null): string | null {
+/** Days to re-scan before fetchedAt so late House/Senate index updates are not skipped. */
+export const POLITICIANS_INCREMENTAL_LOOKBACK_DAYS = 7;
+
+function subtractDaysIso(iso: string, days: number): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  dt.setUTCDate(dt.getUTCDate() - Math.max(0, days));
+  return dt.toISOString().slice(0, 10);
+}
+
+/**
+ * Resolve a since-date from an existing recent.json payload.
+ * Uses fetchedAt minus a lookback window: the clerk index often lags disclosure day,
+ * and advancing the watermark to fetchedAt alone permanently misses those filings.
+ * Already-stored docIds are still skipped during merge.
+ */
+export function sinceDateFromExisting(
+  payload: PoliticiansRecentPayload | null,
+  lookbackDays = POLITICIANS_INCREMENTAL_LOOKBACK_DAYS
+): string | null {
   if (!payload?.fetchedAt) return null;
-  return toIsoDate(payload.fetchedAt);
+  const fetchedDay = toIsoDate(payload.fetchedAt);
+  if (!fetchedDay) return null;
+  return subtractDaysIso(fetchedDay, lookbackDays);
 }
 
 export async function fetchRecentPoliticianFilings(

@@ -8871,7 +8871,10 @@ function setupInstitutionHub() {
 }
 
 function parsePoliticianFilingDateMs(value) {
-  const m = String(value || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const raw = String(value || "").trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return 0;
   return Date.UTC(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
 }
@@ -8955,11 +8958,14 @@ function getFilteredPoliticianTrades() {
         sensitivity: "base",
       });
     } else {
-      cmp = parseTradeDateMs(a.transactionDate) - parseTradeDateMs(b.transactionDate);
+      // Default "date" = disclosure/filing date (when the PTR became public).
+      cmp = parsePoliticianFilingDateMs(a.filingDate) - parsePoliticianFilingDateMs(b.filingDate);
     }
     if (cmp !== 0) return cmp * mul;
-    const byDate = parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
-    if (byDate !== 0) return byDate;
+    const byFiled = parsePoliticianFilingDateMs(b.filingDate) - parsePoliticianFilingDateMs(a.filingDate);
+    if (byFiled !== 0) return byFiled;
+    const byTrade = parseTradeDateMs(b.transactionDate) - parseTradeDateMs(a.transactionDate);
+    if (byTrade !== 0) return byTrade;
     return String(a.politicianName || "").localeCompare(String(b.politicianName || ""), undefined, {
       sensitivity: "base",
     });
@@ -9208,7 +9214,7 @@ function renderPoliticianTradeTableRow(trade) {
     <td><a href="${politicianPath(key)}" class="politicians-name-link" data-politician-key="${escapeHtml(key)}">${escapeHtml(trade.politicianName)}</a></td>
     <td>${politicianStockCell(trade)}</td>
     <td>${escapeHtml(typeLabel)}</td>
-    <td>${escapeHtml(formatPoliticianTradeDate(trade.transactionDate))}</td>
+    <td>${escapeHtml(formatPoliticianTradeDate(trade.filingDate || trade.transactionDate))}</td>
     <td class="num">${escapeHtml(trade.amountRange || "—")}</td>
     <td><span class="politicians-hub__chamber-badge politicians-hub__chamber-badge--inline">${escapeHtml(politicianChamberLabel(trade.chamber))}</span></td>
   </tr>`;

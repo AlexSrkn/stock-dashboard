@@ -37,7 +37,7 @@ async function main() {
 
   if (sinceDate) {
     console.log(
-      `Incremental PTR fetch since ${sinceDate} (House year ${houseYear} + Senate)…`
+      `Incremental PTR fetch since ${sinceDate} (House year ${houseYear} + Senate; re-scans lookback so late index updates are not missed)…`
     );
     console.log(
       `Existing: House ${existing?.house?.length ?? 0}, Senate ${existing?.senate?.length ?? 0} (fetchedAt ${existing?.fetchedAt ?? "n/a"})`
