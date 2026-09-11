@@ -554,22 +554,150 @@
   text-align: center;
 }
 
+/* Compact constellation for tablets + phone landscape — keep the graphic */
+@media (max-width: 1100px) {
+  .landing-node {
+    min-width: 8.75rem;
+    padding: 0.88rem 0.95rem 0.92rem;
+  }
+
+  .landing-node__source {
+    font-size: 0.64rem;
+  }
+
+  .landing-node__label {
+    font-size: 1.02rem;
+  }
+
+  .landing-node--hub {
+    min-width: 11.5rem;
+    padding: 1.05rem 1.2rem 1.1rem;
+  }
+
+  .landing-node--hub .landing-node__label {
+    font-size: 1.22rem;
+  }
+}
+
 @media (max-width: 900px) {
+  .landing-constellation__map {
+    height: clamp(18.5rem, 46vw, 23rem);
+  }
+
+  .landing-node {
+    min-width: 7.6rem;
+    padding: 0.78rem 0.82rem 0.82rem;
+    gap: 0.22rem;
+  }
+
+  .landing-node__source {
+    font-size: 0.6rem;
+  }
+
+  .landing-node__label {
+    font-size: 0.92rem;
+  }
+
+  .landing-node--stocks {
+    left: 13%;
+    top: 36%;
+  }
+  .landing-node--institutions {
+    left: 31%;
+    top: 27%;
+  }
+  .landing-node--insiders {
+    left: 50%;
+    top: 21%;
+  }
+  .landing-node--congress {
+    left: 69%;
+    top: 27%;
+  }
+  .landing-node--sector {
+    left: 87%;
+    top: 36%;
+  }
+
+  .landing-node--hub {
+    min-width: 10rem;
+    padding: 0.95rem 1.1rem;
+    top: 78%;
+  }
+
+  .landing-node--hub .landing-node__label {
+    font-size: 1.12rem;
+  }
+
+  .landing-steps {
+    grid-template-columns: 1fr;
+    gap: 1.15rem;
+  }
+
+  .landing-step:not(:last-child)::after {
+    display: none;
+  }
+}
+
+/* Short landscape (phones tilted) — keep graphic, compress height */
+@media (max-width: 1000px) and (max-height: 520px) {
+  .landing-constellation {
+    padding-top: 0.25rem;
+  }
+
+  .landing-constellation__map {
+    height: clamp(15.5rem, 68vh, 18.5rem);
+  }
+
+  .landing-constellation__field {
+    inset: 0.15rem 0.35rem 2rem;
+  }
+
+  .landing-constellation__lines {
+    inset: 0 0 1.9rem;
+    height: calc(100% - 1.9rem);
+  }
+
+  .landing-node {
+    min-width: 6.8rem;
+    padding: 0.58rem 0.7rem 0.62rem;
+  }
+
+  .landing-node__label {
+    font-size: 0.84rem;
+  }
+
+  .landing-node--hub {
+    min-width: 8.8rem;
+    padding: 0.72rem 0.9rem;
+    top: 80%;
+  }
+
+  .landing-node--hub .landing-node__label {
+    font-size: 1rem;
+  }
+
+  .landing-node__pulse {
+    inset: -6px;
+  }
+}
+
+/* Narrow phone portrait only — stacked fallback */
+@media (max-width: 599px) {
   .landing-constellation__lines {
     display: none;
   }
 
   .landing-constellation__field {
-    inset: 0;
-    margin-bottom: 2.2rem;
+    display: none;
   }
 
   .landing-constellation__map {
     height: auto;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.75rem;
-    padding: 1rem 1rem 0.25rem;
+    padding: 0.15rem 0 0.25rem;
   }
 
   .landing-node {
@@ -579,6 +707,15 @@
     transform: none;
     width: 100%;
     min-width: 0;
+    padding: 1.05rem 1.2rem 1.1rem;
+  }
+
+  .landing-node__source {
+    font-size: 0.7rem;
+  }
+
+  .landing-node__label {
+    font-size: 1.18rem;
   }
 
   .landing-node:hover {
@@ -589,15 +726,12 @@
     grid-column: 1 / -1;
     align-items: center;
     text-align: center;
+    min-width: 0;
+    padding: 1.25rem 1.45rem 1.3rem;
   }
 
-  .landing-steps {
-    grid-template-columns: 1fr;
-    gap: 1.15rem;
-  }
-
-  .landing-step:not(:last-child)::after {
-    display: none;
+  .landing-node--hub .landing-node__label {
+    font-size: 1.4rem;
   }
 }
 
@@ -617,23 +751,8 @@
     justify-content: flex-start;
   }
 
-  .landing-constellation__map {
-    grid-template-columns: 1fr;
-    padding-left: 0;
-    padding-right: 0;
-  }
-
   .landing-section--system .landing-section__head {
     margin-bottom: 0.45rem;
-  }
-
-  .landing-constellation__field {
-    display: none;
-  }
-
-  .landing-node--hub {
-    align-items: center;
-    text-align: center;
   }
 
   .landing__footnote {
