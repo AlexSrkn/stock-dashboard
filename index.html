@@ -4928,7 +4928,10 @@
                     <span class="muted small" id="institution-holdings-subtitle">Top positions by reported value</span>
                   </div>
                   <div class="portfolio-powerbar" id="institution-holdings-powerbar" hidden>
-                    <p class="portfolio-powerbar__label muted small">Portfolio mix</p>
+                    <div class="portfolio-powerbar__head">
+                      <p class="portfolio-powerbar__label muted small">Portfolio mix</p>
+                      <p class="portfolio-powerbar__hint muted small mono" id="institution-holdings-powerbar-hint"></p>
+                    </div>
                     <div
                       class="portfolio-powerbar__track"
                       id="institution-holdings-powerbar-track"
@@ -7228,7 +7231,7 @@
               aria-labelledby="sector-fundamentals-heading"
               hidden
             >
-              <header class="institution-most-accumulated__head">
+              <header class="institution-hub__header">
                 <nav class="sector-hub__crumbs" id="sector-fundamentals-crumbs" aria-label="Fundamentals breadcrumb" hidden></nav>
                 <div class="sector-hub__title-row">
                   <div>

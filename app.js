@@ -851,22 +851,21 @@ let institutionHubShowAll = false;
 
 const INSTITUTION_ACTIVITY_INITIAL_COUNT = 5;
 const INSTITUTION_HOLDINGS_INITIAL_COUNT = 15;
-const PORTFOLIO_POWERBAR_MAX_SEGMENTS = 12;
+const PORTFOLIO_POWERBAR_MAX_SEGMENTS = 10;
+/** Green intensity ramp — largest holding first, then dimmer. */
 const PORTFOLIO_POWERBAR_COLORS = [
   "#3ee6b0",
-  "#5b9cff",
-  "#f5a623",
-  "#b388ff",
-  "#ff6b7a",
-  "#4dd0e1",
-  "#aed581",
-  "#ff8a65",
-  "#9575cd",
-  "#4fc3f7",
-  "#dce775",
-  "#f06292",
+  "#2bc997",
+  "#22ad81",
+  "#1b916c",
+  "#167658",
+  "#125c45",
+  "#0e4635",
+  "#0b3428",
+  "#09281f",
+  "#071e18",
 ];
-const PORTFOLIO_POWERBAR_OTHER_COLOR = "#5a6478";
+const PORTFOLIO_POWERBAR_OTHER_COLOR = "#1a222c";
 /** @type {Array<object>} */
 let lastInstitutionAdds = [];
 /** @type {Array<object>} */
@@ -12008,94 +12007,6 @@ function renderInstitutionHeader(meta) {
   }
 }
 
-function renderInstitutionPortfolioPowerbar(holdings, meta) {
-  const wrap = document.getElementById("institution-holdings-powerbar");
-  const track = document.getElementById("institution-holdings-powerbar-track");
-  const legend = document.getElementById("institution-holdings-powerbar-legend");
-  if (!wrap || !track || !legend) return;
-
-  if (!holdings?.length) {
-    wrap.hidden = true;
-    track.innerHTML = "";
-    legend.innerHTML = "";
-    return;
-  }
-
-  const listedValue = holdings.reduce((s, h) => s + (Number(h.valueUsd) || 0), 0);
-  const portfolioTotal =
-    meta?.portfolioValueUsd != null && Number(meta.portfolioValueUsd) > 0
-      ? Number(meta.portfolioValueUsd)
-      : listedValue;
-  const rows = holdings
-    .map((h) => {
-      const valueUsd = Number(h.valueUsd) || 0;
-      const pct =
-        portfolioTotal > 0
-          ? ((Number(h.valueUsd) || 0) / portfolioTotal) * 100
-          : h.pctOfPortfolio != null && Number.isFinite(Number(h.pctOfPortfolio))
-            ? Number(h.pctOfPortfolio)
-            : 0;
-      return { ...h, pct };
-    })
-    .filter((h) => h.pct > 0)
-    .sort((a, b) => b.pct - a.pct);
-
-  if (!rows.length) {
-    wrap.hidden = true;
-    return;
-  }
-
-  const top = rows.slice(0, PORTFOLIO_POWERBAR_MAX_SEGMENTS);
-  const otherPct = Math.max(0, roundPct(100 - top.reduce((s, r) => s + r.pct, 0)));
-  const segments = [...top];
-  if (otherPct >= 0.05) {
-    segments.push({
-      ticker: null,
-      issuer: "Other",
-      pct: otherPct,
-      isOther: true,
-    });
-  }
-
-  wrap.hidden = false;
-  track.innerHTML = segments
-    .map((seg, i) => {
-      const pct = roundPct(seg.pct);
-      if (pct <= 0) return "";
-      const color = seg.isOther ? PORTFOLIO_POWERBAR_OTHER_COLOR : PORTFOLIO_POWERBAR_COLORS[i % PORTFOLIO_POWERBAR_COLORS.length];
-      const sym = seg.ticker ? String(seg.ticker).toUpperCase() : "";
-      const label = sym || String(seg.issuer || "Other");
-      const title = `${label} · ${pct.toFixed(1)}% of portfolio`;
-      const stockAttr = sym ? ` data-stock-symbol="${escapeHtml(sym)}"` : "";
-      return `<button type="button" class="portfolio-powerbar__segment" style="--segment-color:${color};width:${pct}%" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${stockAttr}></button>`;
-    })
-    .join("");
-
-  legend.innerHTML = segments
-    .map((seg, i) => {
-      const pct = roundPct(seg.pct);
-      if (pct <= 0) return "";
-      const color = seg.isOther ? PORTFOLIO_POWERBAR_OTHER_COLOR : PORTFOLIO_POWERBAR_COLORS[i % PORTFOLIO_POWERBAR_COLORS.length];
-      const sym = seg.ticker ? String(seg.ticker).toUpperCase() : "";
-      const label = sym || (seg.isOther ? "Other" : String(seg.issuer || "—"));
-      const stockAttr = sym ? ` data-stock-symbol="${escapeHtml(sym)}"` : "";
-      return `
-    <li>
-      <button type="button" class="portfolio-powerbar__legend-item"${stockAttr} title="${escapeHtml(label)} · ${pct.toFixed(1)}%">
-        <span class="portfolio-powerbar__swatch" style="background:${color}"></span>
-        <span class="portfolio-powerbar__legend-label">${escapeHtml(label)}</span>
-        <span class="portfolio-powerbar__legend-pct mono">${escapeHtml(pct.toFixed(1))}%</span>
-      </button>
-    </li>
-  `;
-    })
-    .join("");
-}
-
-function roundPct(n) {
-  return Math.round(Number(n) * 10) / 10;
-}
-
 function institutionRowSortValue(row, key) {
   if (key === "ticker" || key === "issuer" || key === "fundName") {
     return String(row[key] || row.fundName || row.ticker || "").trim().toLowerCase();
@@ -12156,6 +12067,114 @@ function bindInstitutionTableSort(attr, getKey, getDir, setKey, setDir, defaultD
       rerender();
     });
   });
+}
+
+function roundPct(n) {
+  return Math.round(Number(n) * 10) / 10;
+}
+
+function renderInstitutionPortfolioPowerbar(holdings, meta) {
+  const wrap = document.getElementById("institution-holdings-powerbar");
+  const track = document.getElementById("institution-holdings-powerbar-track");
+  const legend = document.getElementById("institution-holdings-powerbar-legend");
+  const hint = document.getElementById("institution-holdings-powerbar-hint");
+  if (!wrap || !track || !legend) return;
+
+  if (!holdings?.length) {
+    wrap.hidden = true;
+    track.innerHTML = "";
+    legend.innerHTML = "";
+    if (hint) hint.textContent = "";
+    return;
+  }
+
+  const listedValue = holdings.reduce((s, h) => s + (Number(h.valueUsd) || 0), 0);
+  const portfolioTotal =
+    meta?.portfolioValueUsd != null && Number(meta.portfolioValueUsd) > 0
+      ? Number(meta.portfolioValueUsd)
+      : listedValue;
+  const rows = holdings
+    .map((h) => {
+      const valueUsd = Number(h.valueUsd) || 0;
+      const pct =
+        portfolioTotal > 0
+          ? (valueUsd / portfolioTotal) * 100
+          : h.pctOfPortfolio != null && Number.isFinite(Number(h.pctOfPortfolio))
+            ? Number(h.pctOfPortfolio)
+            : 0;
+      return { ...h, pct };
+    })
+    .filter((h) => h.pct > 0)
+    .sort((a, b) => b.pct - a.pct);
+
+  if (!rows.length) {
+    wrap.hidden = true;
+    track.innerHTML = "";
+    legend.innerHTML = "";
+    if (hint) hint.textContent = "";
+    return;
+  }
+
+  const top = rows.slice(0, PORTFOLIO_POWERBAR_MAX_SEGMENTS);
+  const otherPct = Math.max(0, roundPct(100 - top.reduce((s, r) => s + r.pct, 0)));
+  const segments = [...top];
+  if (otherPct >= 0.05) {
+    segments.push({
+      ticker: null,
+      issuer: "Other",
+      pct: otherPct,
+      isOther: true,
+    });
+  }
+
+  const topPct = roundPct(top[0]?.pct || 0);
+  const topSym = top[0]?.ticker ? String(top[0].ticker).toUpperCase() : "";
+  if (hint) {
+    hint.textContent = topSym ? `TOP ${topSym} ${topPct.toFixed(1)}%` : "";
+  }
+
+  wrap.hidden = false;
+  track.innerHTML = segments
+    .map((seg, i) => {
+      const pct = roundPct(seg.pct);
+      if (pct <= 0) return "";
+      const color = seg.isOther
+        ? PORTFOLIO_POWERBAR_OTHER_COLOR
+        : PORTFOLIO_POWERBAR_COLORS[Math.min(i, PORTFOLIO_POWERBAR_COLORS.length - 1)];
+      const sym = seg.ticker ? String(seg.ticker).toUpperCase() : "";
+      const label = sym || String(seg.issuer || "Other");
+      const title = `${label} · ${pct.toFixed(1)}% of portfolio`;
+      const stockAttr = sym ? ` data-stock-symbol="${escapeHtml(sym)}"` : "";
+      return `<button type="button" class="portfolio-powerbar__segment${seg.isOther ? " portfolio-powerbar__segment--other" : ""}" style="--segment-color:${color};width:${pct}%" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${stockAttr}></button>`;
+    })
+    .join("");
+
+  legend.innerHTML = segments
+    .map((seg, i) => {
+      const pct = roundPct(seg.pct);
+      if (pct <= 0) return "";
+      const color = seg.isOther
+        ? PORTFOLIO_POWERBAR_OTHER_COLOR
+        : PORTFOLIO_POWERBAR_COLORS[Math.min(i, PORTFOLIO_POWERBAR_COLORS.length - 1)];
+      const sym = seg.ticker ? String(seg.ticker).toUpperCase() : "";
+      const label = sym || (seg.isOther ? "OTHER" : String(seg.issuer || "—").toUpperCase());
+      const title = `${label} · ${pct.toFixed(1)}%`;
+      const inner = `
+        <span class="portfolio-powerbar__swatch" style="background:${color}"></span>
+        <span class="portfolio-powerbar__legend-label mono">${escapeHtml(label)}</span>
+        <span class="portfolio-powerbar__legend-pct mono">${escapeHtml(pct.toFixed(1))}%</span>`;
+      if (sym) {
+        return `<li>
+      <button type="button" class="portfolio-powerbar__legend-item" data-stock-symbol="${escapeHtml(sym)}" title="${escapeHtml(title)}">${inner}
+      </button>
+    </li>`;
+      }
+      return `<li>
+      <span class="portfolio-powerbar__legend-item portfolio-powerbar__legend-item--other" title="${escapeHtml(title)}">${inner}
+      </span>
+    </li>`;
+    })
+    .join("");
 }
 
 function renderInstitutionHoldingsRow(h) {
