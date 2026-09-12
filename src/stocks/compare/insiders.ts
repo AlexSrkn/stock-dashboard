@@ -5,6 +5,8 @@ import { getCachedRepeatBuyers } from "../../insider/repeatBuyers/cache.js";
 import { getCachedFirstTimeBuyers } from "../../insider/firstTimeBuyers/cache.js";
 import { getCachedHeavySelling } from "../../insider/heavySelling/cache.js";
 import { getCachedInsiderClusterForTicker } from "../../insiderCluster/cache.js";
+import { DEFAULT_CLUSTER_LOOKBACK_DAYS } from "../../insiderCluster/types.js";
+import { isClusterBuyingFlag } from "../../insiderCluster/thresholds.js";
 import type { CompareInsiders, OverlapInsider } from "./types.js";
 
 function round2(n: number): number {
@@ -72,7 +74,7 @@ export async function buildInsiderSide(
     const repeatCache = getCachedRepeatBuyers();
     const firstCache = getCachedFirstTimeBuyers();
     const heavyCache = getCachedHeavySelling();
-    const cluster = getCachedInsiderClusterForTicker(sym, 90);
+    const cluster = getCachedInsiderClusterForTicker(sym, DEFAULT_CLUSTER_LOOKBACK_DAYS);
 
     const repeatBuyers =
       repeatCache?.rows?.filter((r) => String(r.ticker).toUpperCase() === sym).length ?? 0;
@@ -81,8 +83,7 @@ export async function buildInsiderSide(
     const heavySelling =
       (heavyCache?.rows?.some((r) => String(r.ticker).toUpperCase() === sym) ?? false) ||
       null;
-    const clusterBuying =
-      cluster != null ? Boolean(cluster.clusterAlert || cluster.buyerCount >= 3) : null;
+    const clusterBuying = cluster != null ? isClusterBuyingFlag(cluster) : null;
 
     const available = transactions.length > 0 || repeatBuyers > 0 || firstTimeBuyers > 0;
 

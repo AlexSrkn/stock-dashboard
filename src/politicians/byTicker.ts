@@ -8,9 +8,15 @@ export function normalizeTicker(sym: string): string {
 
 export function tradeMatchesTicker(trade: PoliticianTrade, sym: string): boolean {
   const ticker = normalizeTicker(sym);
+  if (!ticker) return false;
   if (normalizeTicker(trade.ticker || "") === ticker) return true;
-  const paren = trade.assetName?.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/i);
-  return normalizeTicker(paren?.[1] || "") === ticker;
+  const asset = String(trade.assetName || "").trim();
+  if (!asset) return false;
+  const paren = asset.match(/\(([A-Z]{1,6}(?:\.[A-Z])?)\)/i);
+  if (normalizeTicker(paren?.[1] || "") === ticker) return true;
+  // Senate/House sometimes put "ACN - Accenture plc..." with a null ticker column.
+  const prefix = asset.match(/^([A-Z]{1,6}(?:\.[A-Z])?)\s*[-–—]/i);
+  return normalizeTicker(prefix?.[1] || "") === ticker;
 }
 
 export function isCongressBuy(trade: PoliticianTrade): boolean {

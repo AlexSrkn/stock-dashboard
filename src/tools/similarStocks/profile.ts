@@ -1,4 +1,6 @@
 import { getCachedInsiderClusterForTicker } from "../../insiderCluster/cache.js";
+import { DEFAULT_CLUSTER_LOOKBACK_DAYS } from "../../insiderCluster/types.js";
+import { isClusterBuyingFlag } from "../../insiderCluster/thresholds.js";
 import { getCachedFirstTimeBuyers } from "../../insider/firstTimeBuyers/cache.js";
 import { getCachedHeavySelling } from "../../insider/heavySelling/cache.js";
 import { getCachedRepeatBuyers } from "../../insider/repeatBuyers/cache.js";
@@ -171,7 +173,7 @@ export function buildTickerProfile(
 ): ProfileMetrics {
   const ticker = String(tickerRaw || "").trim().toUpperCase();
   const discovery = lookups.discovery.get(ticker);
-  const cluster = getCachedInsiderClusterForTicker(ticker, 90);
+  const cluster = getCachedInsiderClusterForTicker(ticker, DEFAULT_CLUSTER_LOOKBACK_DAYS);
   const doubleSignal = lookups.signals.double90.has(ticker);
   const tripleSignal = lookups.signals.triple90.has(ticker);
   const hiddenGem = lookups.signals.gems.has(ticker);
@@ -206,8 +208,7 @@ export function buildTickerProfile(
     ownershipChangePct: discovery?.ownershipChangePercent ?? null,
     convictionScore: lookups.conviction.get(ticker) ?? null,
     insiderSentiment: sentiment,
-    clusterBuying:
-      cluster != null ? Boolean(cluster.clusterAlert || cluster.buyerCount >= 3) : null,
+    clusterBuying: cluster != null ? isClusterBuyingFlag(cluster) : null,
     heavySelling: heavySelling || null,
     repeatBuyers: repeatBuyers || null,
     ...politician,

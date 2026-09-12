@@ -11,6 +11,7 @@ export interface InsiderBuyRow {
   transactionDate: string | null;
   transactionValue: number;
   shares: number;
+  pricePerShare: number | null;
   cik: string;
 }
 

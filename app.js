@@ -160,6 +160,7 @@ function resetStockPanelUi(sym) {
   renderCategoryScoresPanel(null, "Loading…");
   renderOwnershipIntelligencePanel(null, "Loading…");
   renderStockInsiderCluster(null);
+  renderOverviewInsiderSalesPuts(null);
   renderOwnershipHoldersBody(
     `<tr><td colspan="6" class="trades-table__empty">Loading institutional holders…</td></tr>`
   );
@@ -5816,22 +5817,7 @@ function setupSectorHub() {
     const card = e.target.closest?.("[data-sector-card-href]");
     if (!card) return;
     const href = card.getAttribute("data-sector-card-href") || "";
-    const industryMatch = href.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
-    if (industryMatch) {
-      navigateToSectorHub({
-        level: "industry",
-        sectorSlug: decodeURIComponent(industryMatch[1]),
-        industrySlug: decodeURIComponent(industryMatch[2]),
-      });
-      return;
-    }
-    const sectorMatch = href.match(/^\/sector\/([^/]+)\/?$/);
-    if (sectorMatch) {
-      navigateToSectorHub({
-        level: "sector",
-        sectorSlug: decodeURIComponent(sectorMatch[1]),
-      });
-    }
+    navigateFromSectorHubHref(href);
   });
 
   document.getElementById("sector-hub-stocks-table")?.addEventListener("click", (e) => {
@@ -15257,25 +15243,161 @@ function formatInsiderTxCode(code) {
   return INSIDER_TX_CODE_LABELS[c] || `Code ${c}`;
 }
 
+/** Infer call/put from Form 4 derivative security title text. */
+function classifyInsiderCallPut(securityTitle) {
+  const t = String(securityTitle || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  if (
+    /\bputs?\b/.test(t) ||
+    /right to sell/.test(t) ||
+    /obligation to (buy|purchase)/.test(t) ||
+    /put equivalent/.test(t)
+  ) {
+    return "Put";
+  }
+  if (
+    /\bcalls?\b/.test(t) ||
+    /right to buy/.test(t) ||
+    /obligation to sell/.test(t) ||
+    /\bwarrants?\b/.test(t) ||
+    /stock options?\b/.test(t) ||
+    /employee stock option/.test(t) ||
+    /non-qualified stock option/.test(t) ||
+    /\boption\b/.test(t)
+  ) {
+    return "Call";
+  }
+  return null;
+}
+
+function insiderSharesKey(shares) {
+  const n = Number(shares);
+  if (!Number.isFinite(n)) return "";
+  return String(Math.round(n * 10000) / 10000);
+}
+
+/**
+ * Form 4 option exercises usually file two M rows: derivative (option) + common stock.
+ * The common-stock leg has no call/put in the title — inherit from the matching option leg.
+ */
+function resolveInsiderCallPut(row) {
+  const direct = classifyInsiderCallPut(row?.securityTitle);
+  if (direct) {
+    return { side: direct, title: row.securityTitle || direct, kind: "classified" };
+  }
+
+  const code = String(row?.transactionCode || "").trim().toUpperCase();
+  if (code === "M") {
+    const name = String(row?.insiderName || "").trim().toLowerCase();
+    const date = String(row?.transactionDate || row?.filingDate || "").slice(0, 10);
+    const shares = insiderSharesKey(row?.shares);
+    const accession = String(row?.accessionNumber || "").trim();
+    const siblings = lastInsiderTransactions.filter((other) => {
+      if (other === row || !other?.isDerivative) return false;
+      if (String(other.transactionCode || "").trim().toUpperCase() !== "M") return false;
+      if (String(other.insiderName || "").trim().toLowerCase() !== name) return false;
+      if (String(other.transactionDate || other.filingDate || "").slice(0, 10) !== date) return false;
+      if (shares && insiderSharesKey(other.shares) !== shares) return false;
+      if (
+        accession &&
+        String(other.accessionNumber || "").trim() &&
+        String(other.accessionNumber || "").trim() !== accession
+      ) {
+        return false;
+      }
+      return true;
+    });
+    for (const sibling of siblings) {
+      const side = classifyInsiderCallPut(sibling.securityTitle);
+      if (side) {
+        return {
+          side,
+          title: sibling.securityTitle || side,
+          kind: "classified",
+        };
+      }
+    }
+    if (siblings.length) {
+      return {
+        side: null,
+        title: siblings[0].securityTitle || row.securityTitle || "Derivative",
+        kind: "other",
+      };
+    }
+  }
+
+  if (row?.isDerivative) {
+    return {
+      side: null,
+      title: row.securityTitle || "Derivative",
+      kind: "other",
+    };
+  }
+
+  return { side: null, title: null, kind: "none" };
+}
+
 function insiderActivityShowsSignal() {
   return insiderSignalFilter === "all" || insiderSignalFilter === "low";
 }
 
+function insiderActivityShowsCallPut() {
+  return insiderSignalFilter === "all" || insiderSignalFilter === "options";
+}
+
 function insiderActivityColspan() {
-  return insiderActivityShowsSignal() ? 8 : 7;
+  let cols = 7;
+  if (insiderActivityShowsCallPut()) cols += 1;
+  if (insiderActivityShowsSignal()) cols += 1;
+  return cols;
 }
 
 function syncInsiderSignalColumn() {
-  const th = document.getElementById("insider-activity-signal-col");
-  if (th) th.hidden = !insiderActivityShowsSignal();
+  const signalTh = document.getElementById("insider-activity-signal-col");
+  if (signalTh) signalTh.hidden = !insiderActivityShowsSignal();
+  const optionTh = document.getElementById("insider-activity-option-col");
+  if (optionTh) optionTh.hidden = !insiderActivityShowsCallPut();
 }
 
-function renderInsiderSignalCell(isHighSignal, code) {
-  const high = Boolean(isHighSignal);
-  const label = high ? "High" : "Low";
-  const tone = high ? "up" : "neutral";
-  const title = `${formatInsiderTxCode(code)} (${String(code || "").toUpperCase()})`;
-  return `<span class="change-pill change-pill--${tone}" title="${escapeHtml(title)}">${label}</span>`;
+/** Open-market purchase/sale of listed options (Form 4 derivative P/S). */
+function isInsiderOpenMarketOptionTrade(row) {
+  const code = String(row?.transactionCode || "").trim().toUpperCase();
+  return row?.isDerivative === true && (code === "P" || code === "S");
+}
+
+/** Effective high-signal flag for UI (includes open-market option buys/sells). */
+function insiderRowIsHighSignal(row) {
+  if (row?.isHighSignal) return true;
+  return isInsiderOpenMarketOptionTrade(row);
+}
+
+function renderInsiderSignalCell(row) {
+  const code = String(row?.transactionCode || "").trim().toUpperCase();
+  const title = `${formatInsiderTxCode(code)} (${code || "—"})`;
+
+  // Option / derivative exercises are not administrative "Low" noise — label them clearly.
+  if (isInsiderOptionExercise(row)) {
+    return `<span class="change-pill change-pill--neutral" title="${escapeHtml(title)}">Exercise</span>`;
+  }
+
+  // Open-market option purchases/sales are high-signal (same as common-stock P/S).
+  if (insiderRowIsHighSignal(row)) {
+    return `<span class="change-pill change-pill--up" title="${escapeHtml(title)}">High</span>`;
+  }
+
+  return `<span class="change-pill change-pill--neutral" title="${escapeHtml(title)}">Low</span>`;
+}
+
+function renderInsiderCallPutCell(row) {
+  const resolved = resolveInsiderCallPut(row);
+  if (resolved.kind === "none") {
+    return `<td class="muted">—</td>`;
+  }
+  if (resolved.kind === "other" || !resolved.side) {
+    return `<td title="${escapeHtml(resolved.title || "")}"><span class="muted">RSU / other</span></td>`;
+  }
+  const tone = resolved.side === "Call" ? "up" : "down";
+  return `<td title="${escapeHtml(resolved.title || resolved.side)}"><span class="change-pill change-pill--${tone}">${escapeHtml(resolved.side)}</span></td>`;
 }
 
 function formatInsiderPricePerShare(price) {
@@ -15291,18 +15413,44 @@ function insiderRowHighlightClass(transactionCode) {
   return "";
 }
 
+function isInsiderOptionExercise(row) {
+  return String(row?.transactionCode || "").trim().toUpperCase() === "M";
+}
+
+function filterInsiderActivityRows(rows) {
+  if (insiderSignalFilter === "high") {
+    // Open-market P/S: common stock and option purchases/sales (not exercises).
+    return rows.filter((r) => {
+      if (isInsiderOptionExercise(r)) return false;
+      const code = String(r.transactionCode || "").trim().toUpperCase();
+      return code === "P" || code === "S";
+    });
+  }
+  if (insiderSignalFilter === "options") {
+    // Form 4 code M — option / derivative exercise only (not grants/awards).
+    return rows.filter((r) => isInsiderOptionExercise(r));
+  }
+  if (insiderSignalFilter === "low") {
+    // Administrative: grants, awards, tax withholdings, gifts, etc. (not exercises / option trades).
+    return rows.filter((r) => !insiderRowIsHighSignal(r) && !isInsiderOptionExercise(r));
+  }
+  return rows;
+}
+
 function renderInsiderTransactionRow(row) {
   const code = String(row.transactionCode || "").trim().toUpperCase();
   const codeLabel = formatInsiderTxCode(code);
   const rowClass = insiderRowHighlightClass(code);
+  const optionCell = insiderActivityShowsCallPut() ? renderInsiderCallPutCell(row) : "";
   const signalCell = insiderActivityShowsSignal()
-    ? `<td>${renderInsiderSignalCell(row.isHighSignal, code)}</td>`
+    ? `<td>${renderInsiderSignalCell(row)}</td>`
     : "";
   return `
     <tr${rowClass ? ` class="${rowClass}"` : ""}>
       <td><span class="ownership-fund__name">${escapeHtml(row.insiderName)}</span></td>
       <td>${escapeHtml(row.insiderTitle || "—")}</td>
       <td title="${escapeHtml(code || "—")}">${escapeHtml(codeLabel)}</td>
+      ${optionCell}
       ${signalCell}
       <td class="mono num">${escapeHtml(formatShareCount(row.shares))}</td>
       <td class="mono num">${escapeHtml(formatInsiderPricePerShare(row.pricePerShare))}</td>
@@ -15317,13 +15465,15 @@ function renderInsiderActivityTable() {
   if (!body) return;
   syncInsiderSignalColumn();
 
-  let rows = lastInsiderTransactions;
-  if (insiderSignalFilter === "high") rows = rows.filter((r) => r.isHighSignal);
-  if (insiderSignalFilter === "low") rows = rows.filter((r) => !r.isHighSignal);
+  const rows = filterInsiderActivityRows(lastInsiderTransactions);
 
   if (!rows.length) {
+    const empty =
+      insiderSignalFilter === "options"
+        ? "No option / derivative exercises"
+        : "No recent Insider Trades";
     body.innerHTML =
-      `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">No recent Insider Trades</td></tr>`;
+      `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">${empty}</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(renderInsiderTransactionRow).join("");
@@ -15350,21 +15500,23 @@ async function loadInsiderActivityPanel(symbol) {
     }
     setInsiderActivitySubtitle(parts.join(" · "));
     renderInsiderActivityTable();
+    renderOverviewInsiderSalesPuts(computeInsiderSalesPutsPressure(lastInsiderTransactions));
     void loadStockInsiderCluster(symbol);
   } catch (err) {
     lastInsiderTransactions = [];
+    renderOverviewInsiderSalesPuts(null);
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
     body.innerHTML = `<tr><td colspan="${insiderActivityColspan()}" class="trades-table__empty">${msg}</td></tr>`;
     setInsiderActivitySubtitle("Insider activity (error)");
   }
 }
 
-function setCongressActivitySubtitle(_text) {
+function setCongressActivitySubtitle(text) {
   const el = document.getElementById("congress-activity-subtitle");
-  if (el) {
-    el.textContent = "";
-    el.hidden = true;
-  }
+  if (!el) return;
+  const value = String(text || "").trim();
+  el.textContent = value;
+  el.hidden = !value;
 }
 
 let lastCongressTrades = [];
@@ -15372,12 +15524,14 @@ let lastCongressTrades = [];
 function renderCongressActivityRow(trade) {
   const key = trade.politicianKey || politicianKey(trade.politicianName);
   const catClass = politicianTradeCategoryClass(trade.transactionCategory);
+  const typeLabel = politicianTransactionTypeLabel(trade);
   const filingLink = trade.sourceUrl
     ? `<a href="${escapeHtml(trade.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="fundamentals-grid__link">Filing</a>`
     : "—";
   return `<tr class="politicians-hub__trade-row ${catClass}">
     <td><a href="${politicianPath(key)}" class="politicians-name-link" data-politician-key="${escapeHtml(key)}">${escapeHtml(trade.politicianName)}</a></td>
     <td><span class="politicians-hub__chamber-badge politicians-hub__chamber-badge--inline">${escapeHtml(politicianChamberLabel(trade.chamber))}</span></td>
+    <td>${escapeHtml(typeLabel)}</td>
     <td>${escapeHtml(formatPoliticianTradeDate(trade.transactionDate || trade.notificationDate))}</td>
     <td class="num">${escapeHtml(trade.amountRange || "—")}</td>
     <td>${filingLink}</td>
@@ -15390,7 +15544,7 @@ function renderCongressActivityTable() {
 
   if (!lastCongressTrades.length) {
     body.innerHTML =
-      '<tr><td colspan="5" class="trades-table__empty">No recent Congress Trades</td></tr>';
+      '<tr><td colspan="6" class="trades-table__empty">No recent Congress trades</td></tr>';
     return;
   }
   body.innerHTML = lastCongressTrades.map(renderCongressActivityRow).join("");
@@ -15400,21 +15554,25 @@ async function loadCongressActivityPanel(symbol) {
   const body = document.getElementById("congress-activity-body");
   if (!body) return;
   body.innerHTML =
-    '<tr><td colspan="5" class="trades-table__empty">Loading congress activity…</td></tr>';
+    '<tr><td colspan="6" class="trades-table__empty">Loading congress activity…</td></tr>';
   setCongressActivitySubtitle("Loading…");
   try {
     const sym = encodeURIComponent(symbol);
     const res = await apiJson(`/api/stocks/${sym}/congress-activity`);
     lastCongressTrades = Array.isArray(res?.trades) ? res.trades : [];
-    const meta = res?.meta || {};
-    const parts = ["Politician purchases (PTR)"];
-    if (meta.count != null) parts.push(`${meta.count} buy${meta.count === 1 ? "" : "s"}`);
+    const buys = lastCongressTrades.filter((t) => t.transactionCategory === "buy").length;
+    const sells = lastCongressTrades.filter((t) => t.transactionCategory === "sell").length;
+    const parts = ["Congressional PTR trades"];
+    if (lastCongressTrades.length) {
+      parts.push(`${lastCongressTrades.length} trade${lastCongressTrades.length === 1 ? "" : "s"}`);
+      if (buys || sells) parts.push(`${buys} purchase${buys === 1 ? "" : "s"} · ${sells} sale${sells === 1 ? "" : "s"}`);
+    }
     setCongressActivitySubtitle(parts.join(" · "));
     renderCongressActivityTable();
   } catch (err) {
     lastCongressTrades = [];
     const msg = escapeHtml(err instanceof Error ? err.message : String(err));
-    body.innerHTML = `<tr><td colspan="5" class="trades-table__empty">${msg}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="trades-table__empty">${msg}</td></tr>`;
     setCongressActivitySubtitle("Congress activity (error)");
   }
 }
@@ -17103,6 +17261,13 @@ function formatOwnershipIntelNetShares(netShares, netValueUsd, currency = active
   return sharesLabel;
 }
 
+/** Keep in sync with src/smartMoney/thresholds.ts */
+const SMART_MONEY_BULLISH_SCORE = 65;
+const SMART_MONEY_BEARISH_SCORE = 35;
+/** Keep in sync with src/insiderCluster/thresholds.ts */
+const CLUSTER_UI_STRONG = 70;
+const CLUSTER_UI_MODERATE = 50;
+
 function formatSmartMoneyComponent(value) {
   const x = Number(value);
   if (!Number.isFinite(x)) return "—";
@@ -17113,16 +17278,16 @@ function formatSmartMoneyComponent(value) {
 function smartMoneyConvictionLabel(score) {
   const x = Number(score);
   if (!Number.isFinite(x)) return "—";
-  if (x >= 65) return "Bullish alignment";
-  if (x <= 35) return "Bearish alignment";
-  return "Neutral / mixed";
+  if (x >= SMART_MONEY_BULLISH_SCORE) return "Bullish";
+  if (x <= SMART_MONEY_BEARISH_SCORE) return "Bearish";
+  return "Neutral";
 }
 
 function smartMoneyConvictionClass(score) {
   const x = Number(score);
   if (!Number.isFinite(x)) return "overview-smart-money__score--neutral";
-  if (x >= 65) return "overview-smart-money__score--bullish";
-  if (x <= 35) return "overview-smart-money__score--bearish";
+  if (x >= SMART_MONEY_BULLISH_SCORE) return "overview-smart-money__score--bullish";
+  if (x <= SMART_MONEY_BEARISH_SCORE) return "overview-smart-money__score--bearish";
   return "overview-smart-money__score--neutral";
 }
 
@@ -17133,8 +17298,8 @@ let insiderClusterSymbol = null;
 function insiderClusterScoreClass(score) {
   const x = Number(score);
   if (!Number.isFinite(x)) return "overview-insider-cluster__score--weak";
-  if (x >= 70) return "overview-insider-cluster__score--strong";
-  if (x >= 40) return "overview-insider-cluster__score--moderate";
+  if (x >= CLUSTER_UI_STRONG) return "overview-insider-cluster__score--strong";
+  if (x >= CLUSTER_UI_MODERATE) return "overview-insider-cluster__score--moderate";
   return "overview-insider-cluster__score--weak";
 }
 
@@ -17150,11 +17315,6 @@ function formatInsiderClusterBuyValue(value) {
 }
 
 function renderStockInsiderCluster(signal) {
-  const overviewWrap = document.getElementById("overview-insider-cluster");
-  const overviewScore = document.getElementById("overview-insider-cluster-score");
-  const overviewLabel = document.getElementById("overview-insider-cluster-label");
-  const overviewSignal = document.getElementById("overview-insider-cluster-signal");
-
   const banner = document.getElementById("insider-activity-cluster-banner");
   const bannerScore = document.getElementById("insider-activity-cluster-score");
   const bannerLabel = document.getElementById("insider-activity-cluster-label");
@@ -17163,19 +17323,6 @@ function renderStockInsiderCluster(signal) {
   const bannerAlert = document.getElementById("insider-activity-cluster-alert");
 
   const show = signal && Number.isFinite(Number(signal.insiderClusterScore));
-
-  if (overviewWrap && overviewScore && overviewLabel && overviewSignal) {
-    if (!show) {
-      overviewWrap.hidden = true;
-    } else {
-      overviewWrap.hidden = false;
-      overviewScore.textContent = Number(signal.insiderClusterScore).toFixed(1);
-      overviewScore.className = `overview-insider-cluster__score mono ${insiderClusterScoreClass(signal.insiderClusterScore)}`;
-      overviewLabel.textContent = signal.clusterStrengthLabel || "—";
-      overviewLabel.className = insiderClusterBadgeClass(signal.clusterStrengthLabel);
-      overviewSignal.textContent = signal.clusterSignal || "";
-    }
-  }
 
   if (banner && bannerScore && bannerLabel && bannerSignal && bannerMeta && bannerAlert) {
     if (!show) {
@@ -17189,6 +17336,84 @@ function renderStockInsiderCluster(signal) {
       bannerMeta.textContent = `${signal.buyerCount} buyer${signal.buyerCount === 1 ? "" : "s"} · ${formatInsiderClusterBuyValue(signal.totalBuyValue)} · ${signal.lookbackDays}d window`;
       bannerAlert.hidden = !signal.clusterAlert;
     }
+  }
+}
+
+const OVERVIEW_INSIDER_SALES_PUTS_RATIO = 2;
+
+function insiderRowDollarValue(row) {
+  const v = Number(row?.transactionValue);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/** Sales+puts vs buys+calls pressure from recent Form 4 rows. */
+function computeInsiderSalesPutsPressure(rows) {
+  let commonBuys = 0;
+  let commonSales = 0;
+  let callValue = 0;
+  let putValue = 0;
+
+  for (const row of rows || []) {
+    const code = String(row?.transactionCode || "").trim().toUpperCase();
+    const value = insiderRowDollarValue(row);
+    if (!row?.isDerivative) {
+      if (code === "P") commonBuys += value;
+      else if (code === "S") commonSales += value;
+      continue;
+    }
+    const side = classifyInsiderCallPut(row?.securityTitle);
+    if (side === "Call") callValue += value;
+    else if (side === "Put") putValue += value;
+  }
+
+  const salesPuts = commonSales + putValue;
+  const buysCalls = commonBuys + callValue;
+  const detected = salesPuts > 0 && salesPuts >= OVERVIEW_INSIDER_SALES_PUTS_RATIO * buysCalls;
+  return { commonBuys, commonSales, callValue, putValue, salesPuts, buysCalls, detected };
+}
+
+function renderOverviewInsiderSalesPuts(pressure) {
+  const wrap = document.getElementById("overview-insider-sales-puts");
+  const sellEl = document.getElementById("overview-insider-sales-puts-sell");
+  const buyEl = document.getElementById("overview-insider-sales-puts-buy");
+  const hintEl = document.getElementById("overview-insider-sales-puts-hint");
+  if (!wrap || !sellEl || !buyEl || !hintEl) return;
+
+  if (!pressure?.detected) {
+    wrap.hidden = true;
+    sellEl.textContent = "—";
+    buyEl.textContent = "—";
+    hintEl.textContent = "";
+    return;
+  }
+
+  wrap.hidden = false;
+  sellEl.textContent = formatHoldingValueUsd(pressure.salesPuts, lastOwnershipCurrency);
+  buyEl.textContent = formatHoldingValueUsd(pressure.buysCalls, lastOwnershipCurrency);
+  const ratio =
+    pressure.buysCalls > 0
+      ? `${(pressure.salesPuts / pressure.buysCalls).toFixed(1)}× sales+puts vs buys+calls`
+      : "Sales + puts with no offsetting buys + calls";
+  hintEl.textContent = `Sales + puts · Buys + calls · ${ratio}`;
+}
+
+async function loadOverviewInsiderSalesPuts(symbol) {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) {
+    renderOverviewInsiderSalesPuts(null);
+    return;
+  }
+  try {
+    const res = await apiJson(`/api/stocks/${encodeURIComponent(sym)}/insider-transactions`, {
+      limit: 200,
+      sort: "date",
+    });
+    if (normalizeSymbol(getViewingSymbol()) !== sym) return;
+    const rows = Array.isArray(res?.transactions) ? res.transactions : [];
+    renderOverviewInsiderSalesPuts(computeInsiderSalesPutsPressure(rows));
+  } catch {
+    if (normalizeSymbol(getViewingSymbol()) !== sym) return;
+    renderOverviewInsiderSalesPuts(null);
   }
 }
 
@@ -21079,7 +21304,7 @@ async function loadSmartMoneyHub() {
     const total = Number(data.count ?? rows.length);
     const scores = rows.map((row) => Number(row.smartMoneyConvictionScore)).filter(Number.isFinite);
     const highest = scores.length ? Math.max(...scores) : null;
-    const bullish = scores.filter((s) => s >= 65).length;
+    const bullish = scores.filter((s) => s >= SMART_MONEY_BULLISH_SCORE).length;
     if (highestEl) highestEl.textContent = highest != null ? highest.toFixed(1) : "—";
     if (bullishEl) bullishEl.textContent = String(bullish);
     if (countEl) countEl.textContent = String(total);
@@ -21368,22 +21593,6 @@ function renderOwnershipIntelligencePanel(data, errMsg) {
   const inst = data.institutional || {};
   const insider = data.insider || {};
   const pol = data.politician || {};
-  const sm = data.smartMoney;
-  const smWrap = document.getElementById("overview-smart-money");
-  const smScore = document.getElementById("overview-smart-money-score");
-  const smHint = document.getElementById("overview-smart-money-hint");
-  if (smWrap && smScore && smHint) {
-    if (sm?.smartMoneyConvictionScore != null) {
-      smWrap.hidden = false;
-      smScore.textContent = Number(sm.smartMoneyConvictionScore).toFixed(1);
-      smScore.className = `overview-smart-money__score mono ${smartMoneyConvictionClass(sm.smartMoneyConvictionScore)}`;
-      smHint.textContent = `${smartMoneyConvictionLabel(sm.smartMoneyConvictionScore)} · alignment ${sm.alignmentScore != null ? `${(Number(sm.alignmentScore) * 100).toFixed(0)}%` : "—"}`;
-    } else {
-      smWrap.hidden = true;
-      smScore.textContent = "—";
-      smHint.textContent = "";
-    }
-  }
   const ownershipPct =
     inst.ownershipPct != null ? `${Number(inst.ownershipPct).toFixed(1)}%` : "—";
 
@@ -22605,13 +22814,46 @@ function renderStockClassificationLabel(classification) {
     return;
   }
   el.hidden = false;
-  if (sector && industry) {
-    el.innerHTML = `<span class="chart-card__classification-sector">${escapeHtml(sector)}</span><span class="chart-card__classification-industry">${escapeHtml(industry)}</span>`;
-  } else if (sector) {
-    el.innerHTML = `<span class="chart-card__classification-sector">${escapeHtml(sector)}</span>`;
-  } else {
-    el.innerHTML = `<span class="chart-card__classification-industry">${escapeHtml(industry)}</span>`;
+  const sectorSlug = sector ? sectorOverviewSlugClient(sector) : "";
+  const industrySlug = industry ? sectorOverviewSlugClient(industry) : "";
+  const sectorHref = sectorSlug ? sectorHubPath(sectorSlug) : "";
+  const industryHref =
+    sectorSlug && industrySlug ? sectorHubPath(sectorSlug, industrySlug) : "";
+
+  const sectorHtml = sector
+    ? sectorHref
+      ? `<a href="${escapeHtml(sectorHref)}" class="chart-card__classification-link chart-card__classification-sector" data-sector-hub-href="${escapeHtml(sectorHref)}">${escapeHtml(sector)}</a>`
+      : `<span class="chart-card__classification-sector">${escapeHtml(sector)}</span>`
+    : "";
+  const industryHtml = industry
+    ? industryHref
+      ? `<a href="${escapeHtml(industryHref)}" class="chart-card__classification-link chart-card__classification-industry" data-sector-hub-href="${escapeHtml(industryHref)}">${escapeHtml(industry)}</a>`
+      : `<span class="chart-card__classification-industry">${escapeHtml(industry)}</span>`
+    : "";
+
+  el.innerHTML = `${sectorHtml}${industryHtml}`;
+}
+
+function navigateFromSectorHubHref(href) {
+  const raw = String(href || "").trim();
+  const industryMatch = raw.match(/^\/sector\/([^/]+)\/([^/]+)\/?$/);
+  if (industryMatch) {
+    navigateToSectorHub({
+      level: "industry",
+      sectorSlug: decodeURIComponent(industryMatch[1]),
+      industrySlug: decodeURIComponent(industryMatch[2]),
+    });
+    return true;
   }
+  const sectorMatch = raw.match(/^\/sector\/([^/]+)\/?$/);
+  if (sectorMatch) {
+    navigateToSectorHub({
+      level: "sector",
+      sectorSlug: decodeURIComponent(sectorMatch[1]),
+    });
+    return true;
+  }
+  return false;
 }
 
 async function fetchStockClassification(symbol) {
@@ -24198,6 +24440,7 @@ async function loadActiveSymbolPanels(forSymbol) {
   if (isStalePanelLoad(loadSeq, sym)) return;
 
   void loadStockInsiderCluster(sym);
+  void loadOverviewInsiderSalesPuts(sym);
 
   void intelPromise.then(
     (payload) => {
@@ -25337,6 +25580,12 @@ function setupContactForm() {
 
 function setupEntityLinkDelegation() {
   document.addEventListener("click", (e) => {
+    const sectorHubLink = e.target.closest?.("a[data-sector-hub-href]");
+    if (sectorHubLink) {
+      e.preventDefault();
+      navigateFromSectorHubHref(sectorHubLink.getAttribute("data-sector-hub-href") || "");
+      return;
+    }
     const instLink = e.target.closest?.("a.ownership-fund__link[data-institution-cik]");
     if (instLink) {
       e.preventDefault();

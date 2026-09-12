@@ -1,5 +1,12 @@
 import { clusterAlert, clusterStrengthLabel } from "./classify.js";
-import { minMaxTo100, capScore } from "./normalize.js";
+import {
+  absoluteBuyValueScore,
+  absoluteBuyerCountScore,
+  absoluteDensityScore,
+  absoluteRoleWeightScore,
+  capScore,
+} from "./normalize.js";
+import { filterOutlierInsiderBuys } from "./outliers.js";
 import { clusterRoleWeight, isCeoRole } from "./roleWeights.js";
 import { buildClusterSignal } from "./signals.js";
 import type { ClusterLookbackDays, InsiderBuyRow, InsiderClusterSignal } from "./types.js";
@@ -80,23 +87,7 @@ function buildDrafts(
   byTicker: Map<string, TickerAccumulator>,
   lookbackDays: ClusterLookbackDays
 ): Map<string, InsiderClusterDraft> {
-  const buyerCountMap = new Map<string, number>();
-  const roleWeightMap = new Map<string, number>();
-  const buyValueMap = new Map<string, number>();
-  const densityMap = new Map<string, number>();
-
-  const rawByTicker = new Map<
-    string,
-    {
-      buyerCount: number;
-      roleWeightScore: number;
-      totalBuyValue: number;
-      clusterDensityRaw: number;
-      ceoParticipation: boolean;
-      daysBetween: number;
-      buyerRoles: Map<string, string | null>;
-    }
-  >();
+  const drafts = new Map<string, InsiderClusterDraft>();
 
   for (const [ticker, acc] of byTicker) {
     const buyerCount = acc.buyers.size;
@@ -114,35 +105,12 @@ function buildDrafts(
     const spanDays = daysBetween(acc.minDateMs, acc.maxDateMs);
     const clusterDensityRaw = buyerCount / Math.max(spanDays, 1);
 
-    buyerCountMap.set(ticker, buyerCount);
-    roleWeightMap.set(ticker, roleWeightScore);
-    buyValueMap.set(ticker, acc.totalBuyValue);
-    densityMap.set(ticker, clusterDensityRaw);
-
-    rawByTicker.set(ticker, {
-      buyerCount,
-      roleWeightScore,
-      totalBuyValue: acc.totalBuyValue,
-      clusterDensityRaw,
-      ceoParticipation,
-      daysBetween: spanDays,
-      buyerRoles,
-    });
-  }
-
-  const normBuyer = minMaxTo100(buyerCountMap);
-  const normRole = minMaxTo100(roleWeightMap);
-  const normValue = minMaxTo100(buyValueMap);
-  const normDensity = minMaxTo100(densityMap);
-
-  const drafts = new Map<string, InsiderClusterDraft>();
-
-  for (const [ticker, raw] of rawByTicker) {
-    const normalizedBuyerCount = normBuyer.get(ticker) ?? 0;
-    const roleWeightScoreNormalized = normRole.get(ticker) ?? 0;
-    const buyValueScore = normValue.get(ticker) ?? 0;
-    const clusterDensityScore = normDensity.get(ticker) ?? 0;
-    const ceoBonus = raw.ceoParticipation ? 25 : 0;
+    // Absolute tiers — not min-max vs other tickers (that buried real buying like APCX).
+    const normalizedBuyerCount = absoluteBuyerCountScore(buyerCount);
+    const roleWeightScoreNormalized = absoluteRoleWeightScore(roleWeightScore);
+    const buyValueScore = absoluteBuyValueScore(acc.totalBuyValue);
+    const clusterDensityScore = absoluteDensityScore(buyerCount, spanDays);
+    const ceoBonus = ceoParticipation ? 20 : 0;
 
     const baseScore =
       0.4 * normalizedBuyerCount +
@@ -156,24 +124,24 @@ function buildDrafts(
       ticker,
       insiderClusterScore,
       clusterStrengthLabel: clusterStrengthLabel(insiderClusterScore),
-      buyerCount: raw.buyerCount,
-      ceoParticipation: raw.ceoParticipation,
-      totalBuyValue: raw.totalBuyValue,
-      roleWeightScore: Math.round(raw.roleWeightScore * 10_000) / 10_000,
+      buyerCount,
+      ceoParticipation,
+      totalBuyValue: acc.totalBuyValue,
+      roleWeightScore: Math.round(roleWeightScore * 10_000) / 10_000,
       clusterDensityScore,
       clusterSignal: "",
-      clusterAlert: clusterAlert(raw.buyerCount, raw.ceoParticipation, insiderClusterScore),
+      clusterAlert: clusterAlert(buyerCount, ceoParticipation, insiderClusterScore),
       lookbackDays,
-      daysBetweenFirstAndLastBuy: raw.daysBetween,
+      daysBetweenFirstAndLastBuy: spanDays,
       supportingMetrics: {
         normalizedBuyerCount,
         roleWeightScoreNormalized,
         buyValueScore,
-        clusterDensityRaw: Math.round(raw.clusterDensityRaw * 10_000) / 10_000,
+        clusterDensityRaw: Math.round(clusterDensityRaw * 10_000) / 10_000,
         ceoBonus,
       },
-      buyerRoles: raw.buyerRoles,
-      clusterDensityRaw: raw.clusterDensityRaw,
+      buyerRoles,
+      clusterDensityRaw,
     };
 
     partial.clusterSignal = buildClusterSignal(partial, lookbackDays);
@@ -187,7 +155,8 @@ export function buildInsiderClusterSignals(
   rows: InsiderBuyRow[],
   lookbackDays: ClusterLookbackDays
 ): InsiderClusterSignal[] {
-  const byTicker = aggregateByTicker(rows);
+  const cleaned = filterOutlierInsiderBuys(rows);
+  const byTicker = aggregateByTicker(cleaned);
   const drafts = buildDrafts(byTicker, lookbackDays);
 
   return [...drafts.values()]

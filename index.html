@@ -3353,18 +3353,14 @@
           <div id="overview-panel" class="overview-panel overview-panel--empty">
             <section class="overview-ownership-intel trades-card" aria-labelledby="overview-ownership-intel-heading">
               <h2 id="overview-ownership-intel-heading" class="overview-section-title">Ownership intelligence</h2>
-              <div class="overview-smart-money" id="overview-smart-money" hidden>
-                <div class="overview-smart-money__label">Smart money conviction</div>
-                <div class="overview-smart-money__score mono" id="overview-smart-money-score">—</div>
-                <div class="overview-smart-money__hint muted small" id="overview-smart-money-hint"></div>
-              </div>
-              <div class="overview-insider-cluster" id="overview-insider-cluster" hidden>
-                <div class="overview-insider-cluster__main">
-                  <div class="overview-insider-cluster__label">Insider cluster score</div>
-                  <div class="overview-insider-cluster__score mono" id="overview-insider-cluster-score">—</div>
-                  <span class="insider-cluster-badge" id="overview-insider-cluster-label"></span>
+              <div class="overview-insider-sales-puts" id="overview-insider-sales-puts" hidden>
+                <div class="overview-insider-sales-puts__label">Insider Sales and Puts Detected</div>
+                <div class="overview-insider-sales-puts__amounts">
+                  <span class="mono overview-insider-sales-puts__sell" id="overview-insider-sales-puts-sell">—</span>
+                  <span class="muted small">vs</span>
+                  <span class="mono overview-insider-sales-puts__buy" id="overview-insider-sales-puts-buy">—</span>
                 </div>
-                <p class="overview-insider-cluster__signal muted small" id="overview-insider-cluster-signal"></p>
+                <p class="muted small overview-insider-sales-puts__hint" id="overview-insider-sales-puts-hint"></p>
               </div>
               <div
                 id="overview-ownership-intel-grid"
@@ -3689,6 +3685,7 @@
               <div class="table-scroll">
                 <div class="insider-filters" role="group" aria-label="Insider transaction filters">
                   <button type="button" class="btn btn--ghost insider-filter is-active" data-insider-signal="high">Open market (P/S)</button>
+                  <button type="button" class="btn btn--ghost insider-filter" data-insider-signal="options">Options (exercises)</button>
                   <button type="button" class="btn btn--ghost insider-filter" data-insider-signal="low">Administrative</button>
                   <button type="button" class="btn btn--ghost insider-filter" data-insider-signal="all">All</button>
                 </div>
@@ -3698,6 +3695,7 @@
                       <th>Insider</th>
                       <th>Role</th>
                       <th>Code</th>
+                      <th id="insider-activity-option-col" hidden>Call/Put</th>
                       <th id="insider-activity-signal-col" hidden>Signal</th>
                       <th class="num">Shares</th>
                       <th class="num">Price</th>
@@ -3727,14 +3725,15 @@
                     <tr>
                       <th>Politician</th>
                       <th>Chamber</th>
-                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Traded</th>
                       <th class="num">Amount</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody id="congress-activity-body">
                     <tr>
-                      <td colspan="5" class="trades-table__empty">Select a stock to load congressional purchases.</td>
+                      <td colspan="6" class="trades-table__empty">Select a stock to load congressional trades.</td>
                     </tr>
                   </tbody>
                 </table>

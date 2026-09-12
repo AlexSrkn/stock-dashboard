@@ -5502,6 +5502,22 @@ button.portfolio-powerbar__legend-item:hover {
   font-weight: 400;
 }
 
+a.chart-card__classification-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.chart-card__classification-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.chart-card__classification-link:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .stock-add-watchlist-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -6391,6 +6407,48 @@ body.chart-fullscreen-active {
 
 .overview-smart-money__hint {
   flex: 1 1 100%;
+}
+
+.overview-insider-sales-puts {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--down, #ff6b7a) 28%, rgba(255, 255, 255, 0.07));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--down, #ff6b7a) 6%, rgba(255, 255, 255, 0.02));
+}
+
+.overview-insider-sales-puts__label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--down, #ff6b7a);
+}
+
+.overview-insider-sales-puts__amounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.overview-insider-sales-puts__sell {
+  font-size: 1.35rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--down, #ff6b7a);
+}
+
+.overview-insider-sales-puts__buy {
+  font-size: 1.1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--up, #3ee6b0);
+}
+
+.overview-insider-sales-puts__hint {
+  margin: 0.45rem 0 0;
 }
 
 .overview-insider-cluster {

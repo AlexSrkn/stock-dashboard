@@ -1,5 +1,5 @@
 import type http from "node:http";
-import { getCongressBuysForTicker, normalizeTicker } from "../politicians/byTicker.js";
+import { getCongressTradesForTicker, normalizeTicker } from "../politicians/byTicker.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 import {
   getPoliticianLargestPortfolios,
@@ -40,7 +40,7 @@ export async function tryHandlePoliticians(
   const stockMatch = url.pathname.match(ROUTE_STOCK_CONGRESS_RE);
   if (stockMatch) {
     const ticker = normalizeTicker(decodeURIComponent(stockMatch[1]));
-    const { fetchedAt, trades } = getCongressBuysForTicker(ticker);
+    const { fetchedAt, trades } = getCongressTradesForTicker(ticker);
     if (!readPoliticiansRecent()) {
       json(res, 404, {
         error: "not_found",

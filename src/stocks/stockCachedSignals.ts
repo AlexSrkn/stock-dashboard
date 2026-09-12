@@ -1,4 +1,12 @@
 import { getCachedSmartMoneyScore } from "../smartMoney/cache.js";
+import {
+  SMART_MONEY_BEARISH_SCORE,
+  SMART_MONEY_BULLISH_SCORE,
+  SMART_MONEY_HIGH_BEARISH_SCORE,
+  SMART_MONEY_HIGH_BULLISH_SCORE,
+  smartMoneyLabel,
+  smartMoneyQualifies,
+} from "../smartMoney/thresholds.js";
 import { getCachedDoubleSignal } from "../signals/doubleSignal/cache.js";
 import { DEFAULT_DOUBLE_SIGNAL_WINDOW } from "../signals/doubleSignal/types.js";
 import { getCachedTripleSignal } from "../signals/tripleSignal/cache.js";
@@ -20,6 +28,7 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Generic 0–100 score bands for non–Smart Money cached signals. */
 function directionFromScore(score: number): SignalDirection {
   if (score >= 55) return "buying";
   if (score <= 45) return "selling";
@@ -32,8 +41,16 @@ function strengthFromScore(score: number): SignalStrength {
   return "neutral";
 }
 
-function smartMoneyQualifies(score: number): boolean {
-  return score >= 65 || score <= 35;
+function smartMoneyDirection(score: number): SignalDirection {
+  if (score >= SMART_MONEY_BULLISH_SCORE) return "buying";
+  if (score <= SMART_MONEY_BEARISH_SCORE) return "selling";
+  return "neutral";
+}
+
+function smartMoneyStrength(score: number): SignalStrength {
+  if (score >= SMART_MONEY_HIGH_BULLISH_SCORE || score <= SMART_MONEY_HIGH_BEARISH_SCORE) return "high";
+  if (score >= SMART_MONEY_BULLISH_SCORE || score <= SMART_MONEY_BEARISH_SCORE) return "normal";
+  return "neutral";
 }
 
 function pushScoreSignal(
@@ -49,13 +66,15 @@ function pushScoreSignal(
     netStat: number;
     statLabels: { buy: string; sell: string; net: string };
     statValuesAreNumeric?: boolean;
+    direction?: SignalDirection;
+    strength?: SignalStrength;
   }
 ): void {
   out.push({
     category: input.category as StockSignal["category"],
     label: input.label,
-    direction: directionFromScore(input.score),
-    strength: strengthFromScore(input.score),
+    direction: input.direction ?? directionFromScore(input.score),
+    strength: input.strength ?? strengthFromScore(input.score),
     buyValueUsd: round2(input.buyStat),
     sellValueUsd: round2(input.sellStat),
     netValueUsd: round2(input.netStat),
@@ -76,9 +95,10 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
 
   const smart = getCachedSmartMoneyScore(sym);
   if (smart && smartMoneyQualifies(smart.smartMoneyConvictionScore)) {
+    const tone = smartMoneyLabel(smart.smartMoneyConvictionScore);
     pushScoreSignal(out, {
       category: "smart-money",
-      label: smart.smartMoneyConvictionScore >= 65 ? "Bullish conviction" : "Bearish conviction",
+      label: `${tone} alignment`,
       score: smart.smartMoneyConvictionScore,
       href: "/signals/smart-money",
       hint: "Composite institutional, insider & congressional flow alignment",
@@ -86,6 +106,8 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
       sellStat: smart.insiderScore,
       netStat: smart.politicianScore,
       statLabels: { buy: "Institutional", sell: "Insider", net: "Congress" },
+      direction: smartMoneyDirection(smart.smartMoneyConvictionScore),
+      strength: smartMoneyStrength(smart.smartMoneyConvictionScore),
     });
   }
 
