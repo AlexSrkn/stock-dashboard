@@ -221,7 +221,11 @@ function finalizeOwnershipFromAggs(
   const rows: OwnershipCacheRow[] = [];
   for (const agg of byTicker.values()) {
     const so = sharesOutstanding.get(agg.ticker) ?? null;
-    const instPct = so && so > 0 ? (agg.currentShares / so) * 100 : null;
+    let instPct = so && so > 0 ? (agg.currentShares / so) * 100 : null;
+    // Don't persist impossible ownership (e.g. post reverse-split SO vs pre-split 13F shares).
+    if (instPct != null && (!Number.isFinite(instPct) || instPct <= 0 || instPct > 100.5)) {
+      instPct = null;
+    }
 
     const holders = [...agg.holders.values()].sort((a, b) => b.currentShares - a.currentShares);
     const types = new Set<InstitutionType>();

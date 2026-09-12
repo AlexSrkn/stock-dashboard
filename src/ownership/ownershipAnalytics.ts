@@ -179,6 +179,16 @@ async function loadSharesOutstandingForTicker(
   pool: pg.Pool,
   ticker: string
 ): Promise<number | null> {
+  const series = await loadSharesOutstandingSeries(pool, ticker, 1);
+  return series[0] ?? null;
+}
+
+/** Newest-first positive shares-outstanding readings from SEC financials. */
+async function loadSharesOutstandingSeries(
+  pool: pg.Pool,
+  ticker: string,
+  limit = 8
+): Promise<number[]> {
   const { rows } = await pool.query<{ so: string | null }>(
     `SELECT (metrics->>'shares_outstanding')::float8 AS so
      FROM sec_financial_period
@@ -186,11 +196,15 @@ async function loadSharesOutstandingForTicker(
        AND metrics ? 'shares_outstanding'
        AND (metrics->>'shares_outstanding')::float8 > 0
      ORDER BY period_end DESC, filed_date DESC
-     LIMIT 1`,
-    [ticker.trim().toUpperCase()]
+     LIMIT $2`,
+    [ticker.trim().toUpperCase(), Math.max(1, limit)]
   );
-  const n = rows[0]?.so != null ? Number(rows[0].so) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const out: number[] = [];
+  for (const row of rows) {
+    const n = row.so != null ? Number(row.so) : NaN;
+    if (Number.isFinite(n) && n > 0 && !out.includes(n)) out.push(n);
+  }
+  return out;
 }
 
 /** Fallback when ownership_cache has no SO (ADRs, dual-class gaps like GOOG). */
@@ -215,6 +229,48 @@ async function resolveSharesOutstanding(
 ): Promise<number | null> {
   if (cached != null && Number.isFinite(cached) && cached > 0) return cached;
   return loadSharesOutstandingFromFinancials(pool, ticker);
+}
+
+/** Public helper when ownership_cache is missing shares outstanding. */
+export async function resolveSharesOutstandingForTicker(
+  pool: pg.Pool,
+  ticker: string,
+  cached: number | null | undefined = null
+): Promise<number | null> {
+  return resolveSharesOutstanding(pool, ticker, cached);
+}
+
+/**
+ * Institutional ownership % from 13F shares ÷ shares outstanding.
+ * Skips SO readings that imply >100% (common after reverse splits when 13F
+ * share counts and the latest SO are on different share bases).
+ */
+export async function resolveInstitutionalOwnershipPct(
+  pool: pg.Pool,
+  ticker: string,
+  institutionalShares: number,
+  cachedSo: number | null | undefined = null
+): Promise<number | null> {
+  const shares = Number(institutionalShares);
+  if (!Number.isFinite(shares) || shares <= 0) return null;
+
+  const candidates: number[] = [];
+  const push = (so: number | null | undefined) => {
+    const n = Number(so);
+    if (Number.isFinite(n) && n > 0 && !candidates.includes(n)) candidates.push(n);
+  };
+  push(cachedSo);
+  const sym = String(ticker || "").trim().toUpperCase();
+  for (const so of await loadSharesOutstandingSeries(pool, sym, 8)) push(so);
+  for (const sibling of SHARES_OUTSTANDING_SIBLINGS[sym] ?? []) {
+    for (const so of await loadSharesOutstandingSeries(pool, sibling, 4)) push(so);
+  }
+
+  for (const so of candidates) {
+    const pct = round2((shares / so) * 100);
+    if (Number.isFinite(pct) && pct > 0 && pct <= 100.5) return pct;
+  }
+  return null;
 }
 
 export async function loadOwnershipMeta(

@@ -15400,8 +15400,15 @@ function renderInsiderCallPutCell(row) {
   return `<td title="${escapeHtml(resolved.title || resolved.side)}"><span class="change-pill change-pill--${tone}">${escapeHtml(resolved.side)}</span></td>`;
 }
 
-function formatInsiderPricePerShare(price) {
-  const x = Number(price);
+function formatInsiderPricePerShare(price, shares, transactionValue) {
+  let x = Number(price);
+  if (!Number.isFinite(x) || x <= 0) {
+    const sh = Number(shares);
+    const val = Number(transactionValue);
+    if (Number.isFinite(sh) && sh > 0 && Number.isFinite(val) && val > 0) {
+      x = val / sh;
+    }
+  }
   if (!Number.isFinite(x) || x <= 0) return "—";
   return formatPrice(x, lastOwnershipCurrency);
 }
@@ -15453,7 +15460,7 @@ function renderInsiderTransactionRow(row) {
       ${optionCell}
       ${signalCell}
       <td class="mono num">${escapeHtml(formatShareCount(row.shares))}</td>
-      <td class="mono num">${escapeHtml(formatInsiderPricePerShare(row.pricePerShare))}</td>
+      <td class="mono num">${escapeHtml(formatInsiderPricePerShare(row.pricePerShare, row.shares, row.transactionValue))}</td>
       <td class="mono num">${escapeHtml(formatHoldingValueUsd(row.transactionValue, lastOwnershipCurrency))}</td>
       <td class="mono">${escapeHtml(row.transactionDate || row.filingDate || "—")}</td>
     </tr>
@@ -17316,7 +17323,6 @@ function formatInsiderClusterBuyValue(value) {
 
 function renderStockInsiderCluster(signal) {
   const banner = document.getElementById("insider-activity-cluster-banner");
-  const bannerScore = document.getElementById("insider-activity-cluster-score");
   const bannerLabel = document.getElementById("insider-activity-cluster-label");
   const bannerSignal = document.getElementById("insider-activity-cluster-signal");
   const bannerMeta = document.getElementById("insider-activity-cluster-meta");
@@ -17324,12 +17330,11 @@ function renderStockInsiderCluster(signal) {
 
   const show = signal && Number.isFinite(Number(signal.insiderClusterScore));
 
-  if (banner && bannerScore && bannerLabel && bannerSignal && bannerMeta && bannerAlert) {
+  if (banner && bannerLabel && bannerSignal && bannerMeta && bannerAlert) {
     if (!show) {
       banner.hidden = true;
     } else {
       banner.hidden = false;
-      bannerScore.textContent = Number(signal.insiderClusterScore).toFixed(1);
       bannerLabel.textContent = signal.clusterStrengthLabel || "—";
       bannerLabel.className = insiderClusterBadgeClass(signal.clusterStrengthLabel);
       bannerSignal.textContent = signal.clusterSignal || "";

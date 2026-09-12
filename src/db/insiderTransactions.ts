@@ -84,7 +84,15 @@ INSERT INTO insider_transaction (
   $9, $10, $11, $12,
   $13, $14, $15, $16, $17
 )
-ON CONFLICT (row_hash) DO NOTHING
+ON CONFLICT (row_hash) DO UPDATE SET
+  price_per_share = COALESCE(
+    NULLIF(EXCLUDED.price_per_share, 0),
+    insider_transaction.price_per_share
+  ),
+  transaction_value = COALESCE(
+    NULLIF(EXCLUDED.transaction_value, 0),
+    insider_transaction.transaction_value
+  )
 `;
 
 export async function insertInsiderTransactions(
@@ -114,6 +122,7 @@ export async function insertInsiderTransactions(
       r.isDerivative,
       r.isHighSignal,
     ]);
+    // ON CONFLICT DO UPDATE still reports rowCount 1 in pg.
     if ((res.rowCount ?? 0) > 0) inserted++;
     else skipped++;
   }

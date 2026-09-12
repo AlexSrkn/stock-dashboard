@@ -14,6 +14,8 @@ const form4Parser = new XMLParser({
       "derivativeTransaction",
       "nonDerivativeHolding",
       "derivativeHolding",
+      "footnote",
+      "footnoteId",
     ].includes(tagName),
 });
 
@@ -72,6 +74,79 @@ function readInsiderName(owner: Record<string, unknown>): string {
   return readText(owner.rptOwnerName) || "Unknown insider";
 }
 
+function extractFootnotes(root: Record<string, unknown>): Map<string, string> {
+  const out = new Map<string, string>();
+  const block = root.footnotes as Record<string, unknown> | undefined;
+  for (const fn of asArray(block?.footnote)) {
+    if (typeof fn !== "object" || fn === null) continue;
+    const o = fn as Record<string, unknown>;
+    const id = String(o["@_id"] ?? o.id ?? "").trim();
+    if (!id) continue;
+    const text = readText(o).replace(/\s+/g, " ").trim();
+    if (text) out.set(id, text);
+  }
+  return out;
+}
+
+function readFootnoteIds(value: unknown): string[] {
+  if (value == null || typeof value !== "object") return [];
+  const o = value as Record<string, unknown>;
+  const ids: string[] = [];
+  for (const fn of asArray(o.footnoteId)) {
+    if (typeof fn === "string") {
+      if (fn.trim()) ids.push(fn.trim());
+      continue;
+    }
+    if (typeof fn !== "object" || fn === null) continue;
+    const id = String((fn as Record<string, unknown>)["@_id"] ?? (fn as Record<string, unknown>).id ?? "").trim();
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+/** Pull a usable $/share figure out of Form 4 footnote prose. */
+export function parsePriceFromFootnoteText(text: string): number | null {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+
+  const range = t.match(
+    /prices?\s+ranging\s+from\s+\$?\s*([\d,]+(?:\.\d+)?)\s+to\s+\$?\s*([\d,]+(?:\.\d+)?)/i
+  );
+  if (range) {
+    const a = Number(range[1]!.replace(/,/g, ""));
+    const b = Number(range[2]!.replace(/,/g, ""));
+    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) {
+      return Math.round(((a + b) / 2) * 1_000_000) / 1_000_000;
+    }
+  }
+
+  const patterns = [
+    /(?:purchase price|sale price|price paid|priced? at|weighted average price(?:\s+of)?|was)\s*[^\d$]{0,48}\$\s*([\d,]+(?:\.\d+)?)/i,
+    /\$\s*([\d,]+(?:\.\d+)?)\s+per share/i,
+    /(?:was|at|of)\s+\$\s*([\d,]+(?:\.\d+)?)\b/i,
+  ];
+  for (const re of patterns) {
+    const m = t.match(re);
+    if (!m) continue;
+    const n = Number(m[1]!.replace(/,/g, ""));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
+
+function resolvePriceFromFootnotes(
+  priceNode: unknown,
+  footnotes: Map<string, string>
+): number | null {
+  for (const id of readFootnoteIds(priceNode)) {
+    const text = footnotes.get(id);
+    if (!text) continue;
+    const price = parsePriceFromFootnoteText(text);
+    if (price != null) return price;
+  }
+  return null;
+}
+
 function parseTransactionRow(
   tx: Record<string, unknown>,
   ctx: {
@@ -79,6 +154,7 @@ function parseTransactionRow(
     insiderTitle: string | null;
     filingDate: string | null;
     isDerivative: boolean;
+    footnotes: Map<string, string>;
   }
 ): ParsedForm4Transaction | null {
   const coding = (tx.transactionCoding ?? tx.transactionCode) as Record<string, unknown> | undefined;
@@ -87,7 +163,13 @@ function parseTransactionRow(
 
   const amounts = tx.transactionAmounts as Record<string, unknown> | undefined;
   const shares = readNumber(amounts?.transactionShares ?? tx.transactionShares);
-  const price = readNumber(amounts?.transactionPricePerShare ?? tx.transactionPricePerShare);
+  const priceNode = amounts?.transactionPricePerShare ?? tx.transactionPricePerShare;
+  // Keep null in rowKey when price lived only in a footnote — matches already-ingested hashes.
+  const priceFromValue = readNumber(priceNode);
+  const price =
+    priceFromValue != null && priceFromValue > 0
+      ? priceFromValue
+      : resolvePriceFromFootnotes(priceNode, ctx.footnotes);
   const adCode = readText(
     amounts?.transactionAcquiredDisposedCode ?? tx.transactionAcquiredDisposedCode
   ).toUpperCase();
@@ -107,7 +189,7 @@ function parseTransactionRow(
     code,
     txDate ?? "",
     String(shares ?? ""),
-    String(price ?? ""),
+    String(priceFromValue ?? ""),
     adCode,
     securityTitle ?? "",
     ctx.isDerivative ? "D" : "N",
@@ -134,12 +216,13 @@ function parseTransactionRow(
 function extractTransactionsForOwner(
   doc: Record<string, unknown>,
   owner: Record<string, unknown>,
-  filingDate: string | null
+  filingDate: string | null,
+  footnotes: Map<string, string>
 ): ParsedForm4Transaction[] {
   const insiderName = readInsiderName(owner);
   const rel = owner.reportingOwnerRelationship as Record<string, unknown> | undefined;
   const insiderTitle = buildInsiderTitle(rel);
-  const ctx = { insiderName, insiderTitle, filingDate, isDerivative: false };
+  const ctx = { insiderName, insiderTitle, filingDate, isDerivative: false, footnotes };
 
   const out: ParsedForm4Transaction[] = [];
   const nonDeriv = doc.nonDerivativeTable as Record<string, unknown> | undefined;
@@ -181,6 +264,7 @@ export function parseForm4Xml(xml: string, filingDate: string | null = null): Pa
   const issuerTicker = readText(issuer?.issuerTradingSymbol).toUpperCase() || null;
   const issuerName = readText(issuer?.issuerName) || null;
   const periodOfReport = normalizeDate(root.periodOfReport);
+  const footnotes = extractFootnotes(root);
 
   const effectiveFilingDate = filingDate ?? normalizeDate(root.periodOfReport);
   const transactions: ParsedForm4Transaction[] = [];
@@ -190,11 +274,16 @@ export function parseForm4Xml(xml: string, filingDate: string | null = null): Pa
     for (const owner of owners) {
       if (typeof owner !== "object" || owner === null) continue;
       transactions.push(
-        ...extractTransactionsForOwner(root, owner as Record<string, unknown>, effectiveFilingDate)
+        ...extractTransactionsForOwner(
+          root,
+          owner as Record<string, unknown>,
+          effectiveFilingDate,
+          footnotes
+        )
       );
     }
   } else {
-    transactions.push(...extractTransactionsForOwner(root, root, effectiveFilingDate));
+    transactions.push(...extractTransactionsForOwner(root, root, effectiveFilingDate, footnotes));
   }
 
   return {

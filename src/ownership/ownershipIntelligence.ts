@@ -6,7 +6,7 @@ import type { PoliticianTrade } from "../politicians/types.js";
 import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 import type { SmartMoneyScore } from "../smartMoney/types.js";
 import { classifyActivityTrend, type ActivityTrend } from "./activityTrend.js";
-import { loadOwnershipMeta, fetchQuarterPairMap } from "./ownershipAnalytics.js";
+import { loadOwnershipMeta, fetchQuarterPairMap, resolveInstitutionalOwnershipPct } from "./ownershipAnalytics.js";
 import {
   loadOwnershipCacheSnapshot,
   countFilersByCusipQuarter,
@@ -254,21 +254,36 @@ export async function getOwnershipIntelligence(
           }
         }
 
+        let ownershipPct = snapshot.institutionalOwnershipPct;
+        // Reject impossible >100% figures (reverse-split / share-basis mismatch).
+        if (ownershipPct != null && Number.isFinite(ownershipPct) && ownershipPct > 100.5) {
+          ownershipPct = null;
+        }
+        if (
+          (ownershipPct == null || !Number.isFinite(ownershipPct)) &&
+          snapshot.currentShares > 0
+        ) {
+          ownershipPct = await resolveInstitutionalOwnershipPct(
+            pool,
+            sym,
+            snapshot.currentShares,
+            snapshot.sharesOutstanding
+          ).catch(() => null);
+        }
+
         return {
           meta: {
             currentQuarter: snapshot.currentQuarter,
             previousQuarter: snapshot.previousQuarter,
             trackedFundCount: snapshot.institutionCount,
             institutionalOwnership:
-              snapshot.institutionalOwnershipPct != null
-                ? snapshot.institutionalOwnershipPct / 100
-                : null,
+              ownershipPct != null && Number.isFinite(ownershipPct) ? ownershipPct / 100 : null,
           },
           institutional: {
             trend:
               trendFromOwnershipCache(snapshot.ownershipTrend) ??
               classifyActivityTrend(netShares, buyShares, sellShares),
-            ownershipPct: snapshot.institutionalOwnershipPct,
+            ownershipPct,
             institutionCountChange,
             newPositions,
             netShares,
