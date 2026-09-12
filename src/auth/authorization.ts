@@ -9,6 +9,8 @@ import type { AppUser, UserPlan } from "./types.js";
  */
 export function canAccessPremiumContent(user: AppUser | null | undefined): boolean {
   if (!user) return false;
+  // Admins can preview Premium sections without a paid plan.
+  if (user.role === "admin") return true;
   if (user.plan !== "premium") return false;
 
   // Future Stripe: treat canceled-but-still-in-period as allowed.

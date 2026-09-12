@@ -19,7 +19,8 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=mobile-auth-nav-4";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=account-avatar-1";
+import { setupPremiumGate } from "./premiumGate.js";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -24770,9 +24771,9 @@ async function handleRouteChange() {
   if (route.mode === "tools") {
     closeStocksOverlays();
     activeInstitutionCik = null;
+    setExploreMode("tools", { navigate: false });
     if (route.toolsHubView === "dcf") {
       activeToolsHubView = "dcf";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureDcfCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24780,7 +24781,6 @@ async function handleRouteChange() {
       if (ticker) void dcfCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "wacc") {
       activeToolsHubView = "wacc";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureWaccCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24788,7 +24788,6 @@ async function handleRouteChange() {
       if (ticker) void waccCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "epv") {
       activeToolsHubView = "epv";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureEpvCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24796,7 +24795,6 @@ async function handleRouteChange() {
       if (ticker) void epvCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "ev") {
       activeToolsHubView = "ev";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureEvCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24804,7 +24802,6 @@ async function handleRouteChange() {
       if (ticker) void evCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "pe") {
       activeToolsHubView = "pe";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensurePeCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24812,7 +24809,6 @@ async function handleRouteChange() {
       if (ticker) void peCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "evebitda") {
       activeToolsHubView = "evebitda";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureEvEbitdaCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24820,7 +24816,6 @@ async function handleRouteChange() {
       if (ticker) void evebitdaCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "fcfyield") {
       activeToolsHubView = "fcfyield";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureFcfYieldCalculator();
       const sp = new URLSearchParams(window.location.search);
@@ -24828,7 +24823,6 @@ async function handleRouteChange() {
       if (ticker) void fcfYieldCalculator?.loadTicker(ticker);
     } else if (route.toolsHubView === "similar") {
       activeToolsHubView = "similar";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
       ensureSimilarStocksTool();
       const sp = new URLSearchParams(window.location.search);
@@ -24836,7 +24830,6 @@ async function handleRouteChange() {
       if (ticker) void similarStocksTool?.loadTicker(ticker);
     } else {
       activeToolsHubView = "directory";
-      setExploreMode("tools", { navigate: false });
       updateToolsView();
     }
     return;
@@ -25555,30 +25548,64 @@ function setupContactForm() {
   const form = document.getElementById("contact-form");
   if (!form) return;
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const note = document.getElementById("contact-form-note");
+    const submitBtn = form.querySelector('button[type="submit"]');
     const name = String(document.getElementById("contact-name")?.value || "").trim();
     const email = String(document.getElementById("contact-email")?.value || "").trim();
     const subject = String(document.getElementById("contact-subject")?.value || "").trim();
     const message = String(document.getElementById("contact-message")?.value || "").trim();
+    const honey = String(document.getElementById("contact-company")?.value || "").trim();
+
+    const setNote = (text, isError = false) => {
+      if (!note) return;
+      note.hidden = false;
+      note.textContent = text;
+      note.classList.toggle("contact-form__note--error", isError);
+      note.classList.toggle("contact-form__note--ok", !isError);
+    };
 
     if (!name || !email || !subject || !message) {
-      if (note) {
-        note.hidden = false;
-        note.textContent = "Please fill in all fields.";
-      }
+      setNote("Please fill in all fields.", true);
       return;
     }
 
-    const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n");
-    const mailto = `mailto:contact@investatlant.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+    const idleLabel = submitBtn?.textContent || "Send message";
+    if (submitBtn instanceof HTMLButtonElement) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+    }
 
-    if (note) {
-      note.hidden = false;
-      note.textContent =
-        "Opening your email app to send the message. If nothing opens, email contact@investatlant.com directly.";
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ name, email, subject, message, company: honey }),
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        setNote(
+          data?.message || "Could not send your message. Please email contact@investatlant.com.",
+          true
+        );
+        return;
+      }
+      setNote(data?.message || "Message sent. We’ll get back to you soon.");
+      form.reset();
+    } catch {
+      setNote("Network error. Please try again or email contact@investatlant.com.", true);
+    } finally {
+      if (submitBtn instanceof HTMLButtonElement) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = idleLabel;
+      }
     }
   });
 }
@@ -26483,6 +26510,7 @@ setupChartSettings();
 setupTabs();
 setupDrawer();
 setupAuthLoginPanel();
+setupPremiumGate();
 setupTopSearch();
 setupWatchlistSearch();
 void init();

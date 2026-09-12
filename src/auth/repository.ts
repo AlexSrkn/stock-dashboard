@@ -228,6 +228,69 @@ export class AuthRepository {
     const res = await this.pool.query(`DELETE FROM app_session WHERE expires_at <= NOW()`);
     return res.rowCount ?? 0;
   }
+
+  async listUsers(options: { limit?: number; offset?: number; q?: string } = {}): Promise<{
+    users: AppUser[];
+    total: number;
+  }> {
+    const limit = Math.min(200, Math.max(1, options.limit ?? 50));
+    const offset = Math.max(0, options.offset ?? 0);
+    const q = String(options.q || "").trim().toLowerCase();
+    const params: unknown[] = [];
+    let where = "";
+    if (q) {
+      params.push(`%${q}%`);
+      where = `WHERE email_normalized LIKE $1 OR COALESCE(display_name, '') ILIKE $1`;
+    }
+    const countRes = await this.pool.query(
+      `SELECT COUNT(*)::int AS n FROM app_user ${where}`,
+      params
+    );
+    const total = Number(countRes.rows[0]?.n) || 0;
+    const listParams = q ? [params[0], limit, offset] : [limit, offset];
+    const listSql = q
+      ? `SELECT * FROM app_user
+         WHERE email_normalized LIKE $1 OR COALESCE(display_name, '') ILIKE $1
+         ORDER BY created_at DESC
+         LIMIT $2 OFFSET $3`
+      : `SELECT * FROM app_user
+         ORDER BY created_at DESC
+         LIMIT $1 OFFSET $2`;
+    const res = await this.pool.query(listSql, listParams);
+    return { users: res.rows.map((row) => mapUser(row)), total };
+  }
+
+  async setUserPlan(userId: number, plan: UserPlan): Promise<AppUser | null> {
+    const normalized = plan === "premium" ? "premium" : "free";
+    const res = await this.pool.query(
+      `UPDATE app_user
+       SET plan = $2,
+           subscription_status = CASE
+             WHEN $2 = 'premium' THEN COALESCE(subscription_status, 'active')
+             ELSE NULL
+           END,
+           subscription_current_period_end = CASE
+             WHEN $2 = 'premium' THEN COALESCE(subscription_current_period_end, NOW() + INTERVAL '100 years')
+             ELSE NULL
+           END,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [userId, normalized]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
+
+  async setUserRole(userId: number, role: "user" | "admin"): Promise<AppUser | null> {
+    const normalized = role === "admin" ? "admin" : "user";
+    const res = await this.pool.query(
+      `UPDATE app_user SET role = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [userId, normalized]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
 }
 
 let repo: AuthRepository | null = null;

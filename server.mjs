@@ -42,6 +42,7 @@ import { tryHandleStocksHub } from "./src/api/stocksHub.ts";
 import { tryHandleAnalytics } from "./src/api/analytics.ts";
 import { tryHandleLandingPreview } from "./src/api/landingPreview.ts";
 import { tryHandleAuth } from "./src/api/auth.ts";
+import { tryHandleContact } from "./src/api/contact.ts";
 import { ensureAuthSchema } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
@@ -665,6 +666,7 @@ http
 
     void (async () => {
       if (await tryHandleAuth(u, req, clientRes)) return;
+      if (await tryHandleContact(u, req, clientRes)) return;
       if (await tryHandleStockSearch(u, clientRes)) return;
       if (await tryHandleStockCompare(u, clientRes)) return;
       if (await tryHandleWatchlistActivity(u, clientRes)) return;
@@ -768,6 +770,7 @@ http
     console.log("Insider API: /api/stocks/:ticker/insider-transactions");
     console.log("Institutions API: /api/institutions, /api/institutions/performance-rankings, /api/institutions/most-accumulated, /api/institutions/new-positions, /api/institutions/completely-sold, /api/institutions/compare, /api/institutions/:cik/{holdings,activity,history,performance}");
     console.log("Auth API: /api/auth/{signup,login,logout,me,forgot-password,reset-password,verify-email}, /api/account, /api/premium/ping");
+    console.log("Contact API: POST /api/contact → CONTACT_INBOX (Resend)");
     ensureReturnsMatrixOnStartup();
     ensurePerformanceSummariesOnStartup();
     ensurePortfolioProxyCacheOnStartup();

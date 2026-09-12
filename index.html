@@ -258,16 +258,21 @@
             <div class="topbar-login__user" id="topbar-login-user" hidden>
               <button
                 type="button"
-                class="btn btn--ghost topbar-login__trigger topbar-login__trigger--user"
+                class="topbar-login__account"
                 id="topbar-login-user-trigger"
                 aria-expanded="false"
                 aria-controls="topbar-login-user-menu"
+                aria-label="Account menu"
               >
-                <span class="topbar-login__email" id="topbar-login-user-name"></span>
+                <span class="topbar-login__avatar" id="topbar-login-avatar" aria-hidden="true"></span>
+                <span class="topbar-login__account-label" id="topbar-login-user-name">Account</span>
               </button>
               <div class="topbar-login__panel topbar-login__panel--menu" id="topbar-login-user-menu" hidden>
-                <p class="topbar-login__plan muted small" id="topbar-login-user-email-menu" hidden></p>
-                <p class="topbar-login__plan muted small" id="topbar-login-user-plan" hidden>Free plan</p>
+                <div class="topbar-login__menu-head">
+                  <p class="topbar-login__menu-name" id="topbar-login-menu-name" hidden></p>
+                  <p class="topbar-login__menu-email muted small" id="topbar-login-user-email-menu" hidden></p>
+                  <p class="topbar-login__menu-plan muted small" id="topbar-login-user-plan" hidden>Free plan</p>
+                </div>
                 <button type="button" class="topbar-login__menu-item" id="topbar-login-logout">Log out</button>
               </div>
             </div>
@@ -438,20 +443,24 @@
       <div id="view-premium" class="premium-page" hidden>
         <article class="premium-page__card" aria-labelledby="premium-page-title">
           <p class="premium-page__eyebrow">Premium</p>
-          <h1 id="premium-page-title" class="premium-page__title">Premium is coming soon.</h1>
+          <h1 id="premium-page-title" class="premium-page__title">Premium access</h1>
           <div class="premium-page__body">
-            <p>For now, enjoy everything for free.</p>
-            <p>Soon it won't be. :)</p>
             <p>
-              All the features are already here — we're just keeping them free for now. Eventually, some of them will
-              move behind Premium.
+              Self-serve billing is not live yet. For now, explore the product freely — we may move some sections behind
+              Premium later.
             </p>
-            <p class="premium-page__highlight">
-              Until then — explore everything, build your watchlist, and enjoy the free ride.
+            <p>
+              Questions? Email
+              <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>.
             </p>
           </div>
           <div class="premium-page__actions">
-            <a href="/stocks" class="btn btn--primary premium-page__cta">Explore everything</a>
+            <a href="/stocks" class="btn btn--primary premium-page__cta">Explore</a>
+            <a
+              href="mailto:contact@investatlant.com?subject=Premium%20access%20request"
+              class="btn btn--ghost premium-page__cta"
+              >Contact us</a
+            >
           </div>
         </article>
       </div>
@@ -718,9 +727,9 @@
                 <summary class="faq-item__q">What is InvestAtlant Premium?</summary>
                 <div class="faq-item__a">
                   <p>
-                    Premium is our upcoming paid plan. Today the product is fully usable for free; Premium will unlock or
-                    retain a subset of features once it launches. Details will be published on
-                    <a href="/pricing">Pricing</a> when ready.
+                    Premium is our upcoming paid plan. Self-serve billing is not live yet — email
+                    <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>
+                    if you have questions. Today the product is fully usable; some features may move behind Premium later.
                   </p>
                 </div>
               </details>
@@ -728,8 +737,9 @@
                 <summary class="faq-item__q">When will Premium launch?</summary>
                 <div class="faq-item__a">
                   <p>
-                    Premium is coming soon. We have not announced a firm launch date yet — follow
-                    <a href="/premium">Premium</a> for updates.
+                    We have not announced a firm launch date yet. Follow
+                    <a href="/premium">Premium</a> for updates, or email
+                    <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>.
                   </p>
                 </div>
               </details>
@@ -1143,12 +1153,22 @@
 
           <div class="method-prose contact-page__prose">
             <p>
-              Email us at
-              <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>.
-              We use one inbox for general inquiries, data issues, and privacy requests.
+              Use the form below to reach us, or email
+              <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>
+              directly. We use one inbox for general inquiries, data issues, and privacy requests.
             </p>
 
             <form id="contact-form" class="contact-form" novalidate>
+              <input
+                class="contact-honeypot"
+                type="text"
+                name="company"
+                id="contact-company"
+                value=""
+                tabindex="-1"
+                autocomplete="off"
+                aria-hidden="true"
+              />
               <label class="contact-field">
                 <span class="contact-field__label">Name</span>
                 <input class="contact-field__input" type="text" name="name" id="contact-name" autocomplete="name" required />
@@ -9676,6 +9696,37 @@
         <span class="mobile-dock__plus" aria-hidden="true">+</span>
       </button>
     </nav>
+
+    <div
+      id="premium-gate"
+      class="premium-gate"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="premium-gate-title"
+    >
+      <div class="premium-gate__backdrop" data-premium-gate-close tabindex="-1"></div>
+      <div class="premium-gate__panel">
+        <p class="premium-gate__eyebrow">Premium</p>
+        <h2 id="premium-gate-title" class="premium-gate__title">This section is Premium</h2>
+        <p id="premium-gate-lead" class="premium-gate__lead">
+          Premium unlocks Signals and Tools. Email us to request access — billing is not self-serve yet.
+        </p>
+        <div class="premium-gate__actions">
+          <a
+            id="premium-gate-contact"
+            class="btn btn--primary"
+            href="mailto:contact@investatlant.com?subject=Premium%20access%20request"
+            >Email contact@investatlant.com</a
+          >
+          <a id="premium-gate-login" class="btn btn--ghost" href="/login">Log in</a>
+          <a class="btn btn--ghost" href="/premium">Learn more</a>
+          <button type="button" class="btn btn--ghost" id="premium-gate-close" data-premium-gate-close>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="/app.js?v=sector-leaders-1"></script>
   </body>

@@ -256,23 +256,53 @@ function navigate(path) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function userInitials(user) {
+  const name = String(user?.name || user?.displayName || "").trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  const local = String(user?.email || "?").split("@")[0] || "?";
+  return local.slice(0, 2).toUpperCase();
+}
+
 function renderTopbarUser() {
   const root = document.getElementById("topbar-login");
   if (!root) return;
   const guest = qs(root, "#topbar-login-guest");
   const user = qs(root, "#topbar-login-user");
-  const nameEl = qs(root, "#topbar-login-user-name");
+  const avatarEl = qs(root, "#topbar-login-avatar");
+  const labelEl = qs(root, "#topbar-login-user-name");
+  const menuNameEl = qs(root, "#topbar-login-menu-name");
   const planEl = qs(root, "#topbar-login-user-plan");
   const emailMenuEl = qs(root, "#topbar-login-user-email-menu");
+  const trigger = qs(root, "#topbar-login-user-trigger");
 
   if (currentUser) {
     guest?.setAttribute("hidden", "");
     user?.removeAttribute("hidden");
-    // Prefer profile name; fall back to email only if name was never set.
-    const label =
-      String(currentUser.name || currentUser.displayName || "").trim() ||
-      currentUser.email;
-    if (nameEl) nameEl.textContent = label;
+    const displayName = String(currentUser.name || currentUser.displayName || "").trim();
+    const initials = userInitials(currentUser);
+    if (avatarEl) avatarEl.textContent = initials;
+    if (labelEl) labelEl.textContent = displayName || "Account";
+    if (trigger) {
+      trigger.setAttribute(
+        "aria-label",
+        displayName ? `Account menu for ${displayName}` : `Account menu for ${currentUser.email}`
+      );
+    }
+    if (menuNameEl) {
+      if (displayName) {
+        menuNameEl.textContent = displayName;
+        menuNameEl.hidden = false;
+      } else {
+        menuNameEl.textContent = "";
+        menuNameEl.hidden = true;
+      }
+    }
     if (emailMenuEl) {
       emailMenuEl.textContent = currentUser.email;
       emailMenuEl.hidden = false;

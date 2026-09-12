@@ -879,6 +879,11 @@ button.workspace-nav__subsection {
   gap: 0.45rem;
 }
 
+.topbar-login__guest[hidden],
+.topbar-login__user[hidden] {
+  display: none !important;
+}
+
 a.topbar-login__link {
   text-decoration: none;
   display: inline-flex;
@@ -905,6 +910,58 @@ a.topbar-login__link.topbar-login__signup {
   font-weight: 500;
 }
 
+.topbar-login__user {
+  display: flex;
+  align-items: center;
+  height: var(--topbar-control-height);
+}
+
+.topbar-login__account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--topbar-control-height);
+  height: var(--topbar-control-height);
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.topbar-login__account:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.topbar-login__account:focus-visible {
+  outline: 2px solid rgba(62, 230, 176, 0.45);
+  outline-offset: 2px;
+}
+
+.topbar-login__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.topbar-login__account-label {
+  display: none;
+}
+
 .topbar-login__panel {
   position: absolute;
   top: calc(100% + 0.45rem);
@@ -919,8 +976,38 @@ a.topbar-login__link.topbar-login__signup {
 }
 
 .topbar-login__panel--menu {
-  width: min(12rem, calc(100vw - 1.5rem));
-  padding: 0.45rem;
+  width: min(15rem, calc(100vw - 1.5rem));
+  padding: 0.4rem;
+}
+
+.topbar-login__menu-head {
+  padding: 0.55rem 0.7rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.25rem;
+}
+
+.topbar-login__menu-name {
+  margin: 0 0 0.15rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-login__menu-email,
+.topbar-login__menu-plan {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-login__menu-plan {
+  margin-top: 0.2rem;
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .topbar-login__title {
@@ -1041,7 +1128,9 @@ a.topbar-login__link.topbar-login__signup {
   font-size: 0.875rem;
   font-weight: 500;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .topbar-login__menu-item:hover {
@@ -1407,6 +1496,9 @@ body.is-premium [id^="view-legal-"] {
 }
 
 .premium-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   margin-top: 1.5rem;
 }
 
@@ -1422,6 +1514,79 @@ body.is-premium [id^="view-legal-"] {
 .premium-page__cta:hover {
   filter: brightness(1.06);
   color: #04140f;
+}
+
+/* Premium gate modal */
+.premium-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.premium-gate[hidden] {
+  display: none !important;
+}
+
+.premium-gate__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 14, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.premium-gate__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 26rem);
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: calc(var(--radius) + 2px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(18, 24, 34, 0.98);
+  box-shadow: var(--shadow);
+  animation: premium-fade-in 0.28s ease;
+}
+
+.premium-gate__eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.premium-gate__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.premium-gate__lead {
+  margin: 0 0 1.25rem;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.premium-gate__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.premium-gate__actions .btn {
+  justify-content: center;
+  text-align: center;
+}
+
+body.premium-gate-open {
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
@@ -1876,6 +2041,7 @@ body.is-contact [id^="view-legal-"] {
 }
 
 .contact-form {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -1886,6 +2052,18 @@ body.is-contact [id^="view-legal-"] {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+/* Bot trap — never visible */
+.contact-honeypot {
+  position: absolute !important;
+  left: -10000px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .contact-field__label {
@@ -1928,6 +2106,14 @@ body.is-contact [id^="view-legal-"] {
   font-size: 0.88rem;
   line-height: 1.5;
   color: var(--muted);
+}
+
+.contact-form__note--ok {
+  color: var(--accent);
+}
+
+.contact-form__note--error {
+  color: var(--danger);
 }
 
 @media (max-width: 768px) {
@@ -8446,7 +8632,13 @@ body.chart-fullscreen-active {
     width: 100%;
   }
 
-  .topbar-drawer-login .topbar-login__guest {
+  .topbar-drawer-login .topbar-login__guest[hidden],
+  .topbar-drawer-login .topbar-login__user[hidden] {
+    display: none !important;
+  }
+
+  .topbar-drawer-login .topbar-login__guest:not([hidden]) {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -8476,17 +8668,36 @@ body.chart-fullscreen-active {
     color: #fff;
   }
 
-  .topbar-drawer-login .topbar-login__trigger--user {
-    max-width: none;
+  .topbar-drawer-login .topbar-login__account {
+    width: 100%;
+    height: auto;
+    min-height: 2.55rem;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
     background: #0a0a0c;
     border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .topbar-drawer-login .topbar-login__account:hover {
+    background: #141418;
+  }
+
+  .topbar-drawer-login .topbar-login__account-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: #fff;
   }
 
-  .topbar-drawer-login .topbar-login__trigger--user:hover {
-    filter: none;
-    background: #141418;
-    color: #fff;
+  .topbar-drawer-login .topbar-login__avatar {
+    width: 1.7rem;
+    height: 1.7rem;
+    flex-shrink: 0;
   }
 
   /* Sidebar Create Account — match /register auth-submit colors. */
@@ -8502,16 +8713,10 @@ body.chart-fullscreen-active {
     color: #04140f;
   }
 
-  .topbar-drawer-login .topbar-login__email {
-    max-width: none;
-    font-size: 0.88rem;
-    color: inherit;
-  }
-
   .topbar-drawer-login .topbar-login__panel {
     left: 0;
     right: auto;
-    width: min(12rem, calc(100vw - 2rem));
+    width: min(15rem, calc(100vw - 2rem));
   }
 }
 
