@@ -5414,14 +5414,10 @@ function signalsHubPath(view = activeSignalsHubView) {
   if (view === "directory") return "/signals";
   if (view === "top-institution-entries") return "/signals/top-institution-new-entries";
   if (view === "double-signal") {
-    return activeDoubleSignalTicker
-      ? `/signals/double-signal/${encodeURIComponent(activeDoubleSignalTicker)}`
-      : "/signals/double-signal";
+    return "/signals/double-signal";
   }
   if (view === "triple-signal") {
-    return activeTripleSignalTicker
-      ? `/signals/triple-signal/${encodeURIComponent(activeTripleSignalTicker)}`
-      : "/signals/triple-signal";
+    return "/signals/triple-signal";
   }
   if (view === "conflict-signals") return "/signals/conflict-signals";
   if (view === "hidden-gems") return "/signals/hidden-gems";
@@ -7985,36 +7981,32 @@ function navigateToTopInstitutionNewEntries() {
 }
 
 function navigateToDoubleSignal(ticker = null) {
+  if (ticker) {
+    void openStockPreview(ticker);
+    return;
+  }
   activeSignalsHubView = "double-signal";
   activeTripleSignalTicker = null;
-  activeDoubleSignalTicker = ticker ? String(ticker).trim().toUpperCase() : null;
-  const path = activeDoubleSignalTicker
-    ? `/signals/double-signal/${encodeURIComponent(activeDoubleSignalTicker)}`
-    : "/signals/double-signal";
+  activeDoubleSignalTicker = null;
+  const path = "/signals/double-signal";
   if (window.location.pathname !== path) {
-    history.pushState(
-      { explore: "signals", signalsHubView: "double-signal", doubleSignalTicker: activeDoubleSignalTicker },
-      "",
-      path
-    );
+    history.pushState({ explore: "signals", signalsHubView: "double-signal" }, "", path);
   }
   setExploreMode("signals", { navigate: false });
   updateSignalsView();
 }
 
 function navigateToTripleSignal(ticker = null) {
+  if (ticker) {
+    void openStockPreview(ticker);
+    return;
+  }
   activeSignalsHubView = "triple-signal";
   activeDoubleSignalTicker = null;
-  activeTripleSignalTicker = ticker ? String(ticker).trim().toUpperCase() : null;
-  const path = activeTripleSignalTicker
-    ? `/signals/triple-signal/${encodeURIComponent(activeTripleSignalTicker)}`
-    : "/signals/triple-signal";
+  activeTripleSignalTicker = null;
+  const path = "/signals/triple-signal";
   if (window.location.pathname !== path) {
-    history.pushState(
-      { explore: "signals", signalsHubView: "triple-signal", tripleSignalTicker: activeTripleSignalTicker },
-      "",
-      path
-    );
+    history.pushState({ explore: "signals", signalsHubView: "triple-signal" }, "", path);
   }
   setExploreMode("signals", { navigate: false });
   updateSignalsView();
@@ -8350,30 +8342,24 @@ function setExploreMode(mode, { navigate = true } = {}) {
       } else if (route.signalsHubView === "double-signal") {
         activeSignalsHubView = "double-signal";
         activeTripleSignalTicker = null;
-        activeDoubleSignalTicker = route.doubleSignalTicker ?? null;
-        const path = activeDoubleSignalTicker
-          ? `/signals/double-signal/${encodeURIComponent(activeDoubleSignalTicker)}`
-          : "/signals/double-signal";
-        if (window.location.pathname !== path) {
-          history.pushState(
-            { explore: "signals", signalsHubView: "double-signal", doubleSignalTicker: activeDoubleSignalTicker },
-            "",
-            path
-          );
+        activeDoubleSignalTicker = null;
+        if (route.doubleSignalTicker) {
+          void openStockPreview(route.doubleSignalTicker);
+          return;
+        }
+        if (window.location.pathname !== "/signals/double-signal") {
+          history.pushState({ explore: "signals", signalsHubView: "double-signal" }, "", "/signals/double-signal");
         }
       } else if (route.signalsHubView === "triple-signal") {
         activeSignalsHubView = "triple-signal";
         activeDoubleSignalTicker = null;
-        activeTripleSignalTicker = route.tripleSignalTicker ?? null;
-        const path = activeTripleSignalTicker
-          ? `/signals/triple-signal/${encodeURIComponent(activeTripleSignalTicker)}`
-          : "/signals/triple-signal";
-        if (window.location.pathname !== path) {
-          history.pushState(
-            { explore: "signals", signalsHubView: "triple-signal", tripleSignalTicker: activeTripleSignalTicker },
-            "",
-            path
-          );
+        activeTripleSignalTicker = null;
+        if (route.tripleSignalTicker) {
+          void openStockPreview(route.tripleSignalTicker);
+          return;
+        }
+        if (window.location.pathname !== "/signals/triple-signal") {
+          history.pushState({ explore: "signals", signalsHubView: "triple-signal" }, "", "/signals/triple-signal");
         }
       } else if (route.signalsHubView === "conflict-signals") {
         activeSignalsHubView = "conflict-signals";
@@ -19218,10 +19204,13 @@ function renderDoubleSignalTableRows(rows) {
   }
 
   body.innerHTML = pageRows
-    .map(
-      (row) => `<tr class="double-signal-row" data-double-signal-ticker="${escapeHtml(row.ticker)}" tabindex="0" role="link">
-        <td>${escapeHtml(row.companyName || "—")}</td>
-        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
+    .map((row) => {
+      const ticker = escapeHtml(row.ticker);
+      const company = escapeHtml(row.companyName || row.ticker || "—");
+      const href = stockPath(row.ticker);
+      return `<tr class="double-signal-row" data-double-signal-ticker="${ticker}">
+        <td><a href="${href}" class="fundamentals-grid__link" data-stock-symbol="${ticker}">${company}</a></td>
+        <td><a href="${href}" class="fundamentals-grid__link" data-stock-symbol="${ticker}">${ticker}</a></td>
         <td class="mono num">${formatInteger(row.institutionCount)}</td>
         <td class="mono num">${formatInteger(row.insiderPurchaseCount)}</td>
         <td class="mono num">${escapeHtml(formatHoldingValueUsd(row.largestInstitutionalPositionUsd, "USD"))}</td>
@@ -19229,8 +19218,8 @@ function renderDoubleSignalTableRows(rows) {
         <td class="mono">${escapeHtml(formatDoubleSignalDate(row.latestInstitutionalFilingDate))}</td>
         <td class="mono">${escapeHtml(formatDoubleSignalDate(row.latestInsiderPurchaseDate))}</td>
         <td class="mono num"><strong>${Number(row.signalStrengthScore).toFixed(0)}</strong></td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
   if (pagination) {
@@ -19375,9 +19364,11 @@ function syncDoubleSignalFiltersFromDom() {
 
 async function loadDoubleSignalHub() {
   const loading = document.getElementById("double-signal-loading");
+  // Legacy detail ticker state → stock page.
   if (activeDoubleSignalTicker) {
-    if (loading) loading.hidden = true;
-    await renderDoubleSignalDetail(activeDoubleSignalTicker);
+    const ticker = activeDoubleSignalTicker;
+    activeDoubleSignalTicker = null;
+    void openStockPreview(ticker);
     return;
   }
 
@@ -19440,19 +19431,19 @@ function bindDoubleSignalHubControls() {
     }
 
     const row = e.target.closest?.("[data-double-signal-ticker]");
-    if (row && !e.target.closest("a")) {
+    if (row && !e.target.closest("a, button")) {
       const ticker = row.getAttribute("data-double-signal-ticker");
-      if (ticker) navigateToDoubleSignal(ticker);
+      if (ticker) void openStockPreview(ticker);
     }
   });
 
   panel?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     const row = e.target.closest?.("[data-double-signal-ticker]");
-    if (!row) return;
+    if (!row || e.target.closest("a, button")) return;
     e.preventDefault();
     const ticker = row.getAttribute("data-double-signal-ticker");
-    if (ticker) navigateToDoubleSignal(ticker);
+    if (ticker) void openStockPreview(ticker);
   });
 
   [
@@ -19620,10 +19611,13 @@ function renderTripleSignalTableRows(rows) {
   }
 
   body.innerHTML = pageRows
-    .map(
-      (row) => `<tr class="triple-signal-row" data-triple-signal-ticker="${escapeHtml(row.ticker)}" tabindex="0" role="link">
-        <td>${escapeHtml(row.companyName || "—")}</td>
-        <td><a href="${stockPath(row.ticker)}" class="fundamentals-grid__link" data-stock-symbol="${escapeHtml(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
+    .map((row) => {
+      const ticker = escapeHtml(row.ticker);
+      const company = escapeHtml(row.companyName || row.ticker || "—");
+      const href = stockPath(row.ticker);
+      return `<tr class="triple-signal-row" data-triple-signal-ticker="${ticker}">
+        <td><a href="${href}" class="fundamentals-grid__link" data-stock-symbol="${ticker}">${company}</a></td>
+        <td><a href="${href}" class="fundamentals-grid__link" data-stock-symbol="${ticker}">${ticker}</a></td>
         <td class="mono num">${formatInteger(row.institutionCount)}</td>
         <td class="mono num">${formatInteger(row.insiderPurchaseCount)}</td>
         <td class="mono num">${formatInteger(row.politicianPurchaseCount)}</td>
@@ -19634,8 +19628,8 @@ function renderTripleSignalTableRows(rows) {
         <td class="mono">${escapeHtml(formatTripleSignalDate(row.latestInsiderPurchaseDate))}</td>
         <td class="mono">${escapeHtml(formatTripleSignalDate(row.latestPoliticianPurchaseDate))}</td>
         <td class="mono num"><strong>${Number(row.signalStrengthScore).toFixed(0)}</strong></td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
   if (pagination) {
@@ -19808,8 +19802,9 @@ function syncTripleSignalFiltersFromDom() {
 async function loadTripleSignalHub() {
   const loading = document.getElementById("triple-signal-loading");
   if (activeTripleSignalTicker) {
-    if (loading) loading.hidden = true;
-    await renderTripleSignalDetail(activeTripleSignalTicker);
+    const ticker = activeTripleSignalTicker;
+    activeTripleSignalTicker = null;
+    void openStockPreview(ticker);
     return;
   }
 
@@ -19872,19 +19867,19 @@ function bindTripleSignalHubControls() {
     }
 
     const row = e.target.closest?.("[data-triple-signal-ticker]");
-    if (row && !e.target.closest("a")) {
+    if (row && !e.target.closest("a, button")) {
       const ticker = row.getAttribute("data-triple-signal-ticker");
-      if (ticker) navigateToTripleSignal(ticker);
+      if (ticker) void openStockPreview(ticker);
     }
   });
 
   panel?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     const row = e.target.closest?.("[data-triple-signal-ticker]");
-    if (!row) return;
+    if (!row || e.target.closest("a, button")) return;
     e.preventDefault();
     const ticker = row.getAttribute("data-triple-signal-ticker");
-    if (ticker) navigateToTripleSignal(ticker);
+    if (ticker) void openStockPreview(ticker);
   });
 
   [
@@ -24762,9 +24757,19 @@ async function handleRouteChange() {
   if (route.mode === "signals") {
     closeStocksOverlays();
     activeInstitutionCik = null;
+    // Legacy detail URLs → full stock page (activity drill-down can return later).
+    if (route.doubleSignalTicker) {
+      void openStockPreview(route.doubleSignalTicker);
+      return;
+    }
+    if (route.tripleSignalTicker) {
+      void openStockPreview(route.tripleSignalTicker);
+      return;
+    }
     setExploreMode("signals", { navigate: false });
     if (route.signalsHubView) activeSignalsHubView = route.signalsHubView;
-    if (route.doubleSignalTicker) activeDoubleSignalTicker = route.doubleSignalTicker;
+    activeDoubleSignalTicker = null;
+    activeTripleSignalTicker = null;
     updateSignalsView();
     return;
   }
@@ -25952,9 +25957,20 @@ async function init() {
   }
 
   if (appRoute.mode === "signals") {
+    if (appRoute.doubleSignalTicker) {
+      void openStockPreview(appRoute.doubleSignalTicker);
+      void refreshSidebarMarketPanels();
+      return;
+    }
+    if (appRoute.tripleSignalTicker) {
+      void openStockPreview(appRoute.tripleSignalTicker);
+      void refreshSidebarMarketPanels();
+      return;
+    }
     setExploreMode("signals", { navigate: false });
     if (appRoute.signalsHubView) activeSignalsHubView = appRoute.signalsHubView;
-    if (appRoute.doubleSignalTicker) activeDoubleSignalTicker = appRoute.doubleSignalTicker;
+    activeDoubleSignalTicker = null;
+    activeTripleSignalTicker = null;
     updateSignalsView();
     void refreshSidebarMarketPanels();
     return;
