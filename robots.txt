@@ -1,0 +1,15 @@
+# InvestAtlant — https://investatlant.com
+User-agent: *
+Allow: /
+
+# Auth / account flows
+Disallow: /login
+Disallow: /register
+Disallow: /check-email
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# API & internals
+Disallow: /api/
+
+Sitemap: https://investatlant.com/sitemap.xml

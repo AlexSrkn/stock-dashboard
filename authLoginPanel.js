@@ -2,6 +2,8 @@
  * Dedicated auth screens: /login /register /check-email /forgot-password /reset-password
  */
 
+import { applySeo } from "./seo.js";
+
 /** @typedef {{ id: number, email: string, name: string|null, role: string, plan: string, emailVerified: boolean, createdAt: string }} PublicUser */
 
 /** @type {PublicUser | null} */
@@ -212,28 +214,28 @@ export function showAuthRoute() {
 
   if (path === "/register") {
     showScreen("register");
-    document.title = "Create account — InvestAtlant";
+    applySeo("/register");
     focusSoon("#auth-register-name");
   } else if (path === "/check-email") {
     showScreen("check-email");
-    document.title = "Check your email — InvestAtlant";
+    applySeo("/check-email");
     const email = params.get("email") || pendingVerifyEmail();
     const el = qs(auth, "#auth-check-email-address");
     if (el) el.textContent = email || "your inbox";
     if (email) setPendingVerifyEmail(email);
   } else if (path === "/forgot-password") {
     showScreen("forgot");
-    document.title = "Reset password — InvestAtlant";
+    applySeo("/forgot-password");
     focusSoon("#auth-forgot-email");
   } else if (path === "/reset-password") {
     showScreen("reset");
-    document.title = "Choose a new password — InvestAtlant";
+    applySeo("/reset-password");
     const tokenInput = qs(auth, "#auth-reset-token");
     if (tokenInput) tokenInput.value = params.get("token") || "";
     focusSoon("#auth-reset-password");
   } else {
     showScreen("login");
-    document.title = "Log in — InvestAtlant";
+    applySeo("/login");
     if (params.get("verified") === "1") {
       setMsg(qs(auth, "#auth-login-success"), "Email verified. You can log in now.", true);
     }

@@ -2,7 +2,7 @@
  * Premium gate modal — shown when a free (or logged-out) user tries to open a Premium section.
  */
 
-import { getCurrentAuthUser } from "./authLoginPanel.js?v=account-avatar-1";
+import { getCurrentAuthUser } from "./authLoginPanel.js?v=seo-1";
 
 const CONTACT_EMAIL = "contact@investatlant.com";
 

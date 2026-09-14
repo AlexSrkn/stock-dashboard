@@ -358,6 +358,8 @@ const MIME = {
   ".mjs": "application/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
   ".ico": "image/x-icon",
   ".png": "image/png",
   ".svg": "image/svg+xml",
@@ -557,7 +559,12 @@ function sendFile(clientRes, absPath) {
       return;
     }
     const ext = path.extname(absPath).toLowerCase();
-    clientRes.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+    // Keep HTML fresh so route first-paint fixes are not stuck behind a cached index.
+    if (ext === ".html") {
+      headers["Cache-Control"] = "no-store";
+    }
+    clientRes.writeHead(200, headers);
     clientRes.end(buf);
   });
 }

@@ -19,8 +19,9 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=account-avatar-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=seo-1";
 import { setupPremiumGate } from "./premiumGate.js";
+import { applySeo } from "./seo.js";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -788,6 +789,7 @@ let stockHubControlsBound = false;
 /** @type {Array<{ symbol: string; name: string; meta?: string; sector?: string; industry?: string }>} */
 let stockHubRows = [];
 let stockHubLoading = false;
+let stockHubSearchSeq = 0;
 let stockHubCountsPrefetched = false;
 /** @type {Record<string, { loadedAt: number; rows: typeof stockHubRows; meta?: string }>} */
 const stockHubCollectionCache = {};
@@ -1626,6 +1628,11 @@ function showLandingView(visible) {
   if (shell) shell.hidden = visible;
   if (visible) hideInfoViews();
   document.body.classList.toggle("is-landing", visible);
+  if (visible) {
+    document.documentElement.setAttribute("data-boot", "landing");
+  } else if (document.documentElement.getAttribute("data-boot") === "landing") {
+    document.documentElement.removeAttribute("data-boot");
+  }
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
     clearMobileOverlays();
@@ -2430,17 +2437,21 @@ function mapFundamentalsStockRow(stock, meta) {
 }
 
 function updateStockHubFeatureRow() {
+  const searching = Boolean(stockHubFilters.query.trim());
   document.querySelectorAll("[data-stock-collection]").forEach((btn) => {
     const key = btn.getAttribute("data-stock-collection");
-    const active = activeStockHubCollection === key;
+    // While searching the full universe, don't keep a featured collection looking selected.
+    const active = !searching && activeStockHubCollection === key;
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-pressed", String(active));
   });
   const heading = document.getElementById("stock-hub-directory-heading");
   if (heading) {
-    heading.textContent = activeStockHubCollection
-      ? stockHubCollectionLabel(activeStockHubCollection)
-      : "Browse stocks";
+    heading.textContent = searching
+      ? "Search results"
+      : activeStockHubCollection
+        ? stockHubCollectionLabel(activeStockHubCollection)
+        : "Browse stocks";
   }
 }
 
@@ -2751,7 +2762,9 @@ async function renderStockHub() {
 
   updateStockHubFeatureRow();
 
-  if (!activeStockHubCollection && !stockHubFilters.query.trim()) {
+  const query = stockHubFilters.query.trim();
+
+  if (!activeStockHubCollection && !query) {
     if (loading) {
       loading.hidden = false;
       loading.textContent = "Pick a collection or search to browse stocks.";
@@ -2764,23 +2777,30 @@ async function renderStockHub() {
     return;
   }
 
-  if (stockHubFilters.query.trim() && !activeStockHubCollection) {
+  // Hub search uses the same full-universe endpoint as the topbar search,
+  // not a filter over the currently selected featured collection.
+  if (query) {
     if (loading) {
       loading.hidden = false;
       loading.textContent = "Searching stocks…";
     }
     grid.hidden = true;
+    const seq = ++stockHubSearchSeq;
     try {
-      const data = await apiJson("/api/stocks/search", { q: stockHubFilters.query.trim(), limit: 50 });
+      const data = await apiJson("/api/stocks/search", { q: query, limit: 50 });
+      if (seq !== stockHubSearchSeq) return;
       stockHubRows = (Array.isArray(data.results) ? data.results : []).map((r) => ({
         symbol: String(r.symbol || "").toUpperCase(),
         name: String(r.description || r.name || r.symbol || ""),
       }));
     } catch {
+      if (seq !== stockHubSearchSeq) return;
       stockHubRows = [];
     }
-  } else if (activeStockHubCollection && !stockHubRows.length && !stockHubLoading) {
+  } else if (activeStockHubCollection) {
     try {
+      // Always reload from cache/API so clearing a search restores the collection,
+      // not leftover universe search rows.
       await loadStockHubCollection(activeStockHubCollection);
     } catch (err) {
       if (loading) {
@@ -2795,7 +2815,7 @@ async function renderStockHub() {
 
   if (loading) loading.hidden = true;
 
-  const rows = getFilteredStockHubRows();
+  const rows = query ? stockHubRows : getFilteredStockHubRows();
   if (countEl) {
     const total = stockHubRows.length;
     countEl.textContent =
@@ -2805,9 +2825,7 @@ async function renderStockHub() {
   if (!rows.length) {
     grid.hidden = true;
     grid.innerHTML = "";
-    const hasFilters = Boolean(
-      stockHubFilters.query.trim() || stockHubFilters.sector.trim() || activeStockHubCollection
-    );
+    const hasFilters = Boolean(query || stockHubFilters.sector.trim() || activeStockHubCollection);
     if (empty) empty.hidden = !hasFilters;
     updateStockHubMoreControl(0);
     return;
@@ -24659,6 +24677,7 @@ function setupTabs() {
 async function handleRouteChange() {
   hideInfoViews();
   const route = parseAppRoute(window.location.pathname);
+  applySeo(window.location.pathname);
   if (route.mode === "landing") {
     hideAuthRoute();
     showLandingView(true);
@@ -25818,6 +25837,28 @@ window.addEventListener("resize", () => {
 });
 
 async function init() {
+  // Apply route chrome before any awaited work so `/` never sits on the research UI.
+  const bootRoute = parseAppRoute(window.location.pathname);
+  if (bootRoute.mode === "landing") {
+    showLandingView(true);
+  } else if (bootRoute.mode === "auth") {
+    showAuthRoute();
+  } else if (bootRoute.mode === "premium") {
+    showPremiumView(true);
+  } else if (bootRoute.mode === "faq") {
+    showFaqView(true);
+  } else if (bootRoute.mode === "methodology") {
+    showMethodologyView(true);
+  } else if (bootRoute.mode === "data-sources") {
+    showDataSourcesView(true);
+  } else if (bootRoute.mode === "about") {
+    showAboutView(true);
+  } else if (bootRoute.mode === "contact") {
+    showContactView(true);
+  } else if (bootRoute.mode === "legal") {
+    showLegalView(bootRoute.legalKey);
+  }
+
   updateWatchlistBadge();
   renderWatchlist();
   updateWatchlistAddVisibility();

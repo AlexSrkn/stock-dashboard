@@ -3,21 +3,86 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>InvestAtlant</title>
+    <title>InvestAtlant — Stock &amp; institutional research</title>
+    <meta
+      name="description"
+      content="Research stocks with institutional ownership, insider Form 4 activity, politician trades, sectors, and signals — built for serious market research."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://investatlant.com/" />
+
+    <meta property="og:site_name" content="InvestAtlant" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="InvestAtlant — Stock &amp; institutional research" />
+    <meta
+      property="og:description"
+      content="Research stocks with institutional ownership, insider Form 4 activity, politician trades, sectors, and signals — built for serious market research."
+    />
+    <meta property="og:url" content="https://investatlant.com/" />
+    <meta property="og:image" content="https://investatlant.com/assets/apple-touch-icon.png" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="InvestAtlant — Stock &amp; institutional research" />
+    <meta
+      name="twitter:description"
+      content="Research stocks with institutional ownership, insider Form 4 activity, politician trades, sectors, and signals — built for serious market research."
+    />
+    <meta name="twitter:image" content="https://investatlant.com/assets/apple-touch-icon.png" />
+
     <link rel="icon" href="/assets/favicon-ta.svg?v=ia1" type="image/svg+xml" />
     <link rel="icon" href="/assets/favicon-ta-32.png?v=ia1" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=ia1" sizes="180x180" />
+    <script>
+      /* Decide first paint before CSS/JS: `/` must never flash the research shell. */
+      (function () {
+        var p = location.pathname.replace(/\/+$/, "") || "/";
+        if (p === "/") {
+          document.documentElement.setAttribute("data-boot", "landing");
+          return;
+        }
+        var isPage =
+          p === "/pricing" ||
+          p === "/premium" ||
+          p === "/faq" ||
+          p === "/methodology" ||
+          p === "/data-sources" ||
+          p === "/about" ||
+          p === "/contact" ||
+          p.indexOf("/legal/") === 0 ||
+          /^\/(login|register|check-email|forgot-password|reset-password)(\/|$)/.test(p);
+        document.documentElement.setAttribute("data-boot", isPage ? "page" : "app");
+      })();
+    </script>
+    <style>
+      /* Critical first-paint rules (do not wait for styles.css). */
+      html[data-boot="landing"] #app-shell,
+      html[data-boot="page"] #app-shell,
+      html[data-boot="page"] #view-landing {
+        display: none !important;
+      }
+      html[data-boot="app"] #view-landing {
+        display: none !important;
+      }
+      html[data-boot="app"] #app-shell[hidden] {
+        display: block !important;
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=hub-opacity-1" />
+    <link rel="stylesheet" href="/styles.css?v=landing-boot-2" />
     <link rel="stylesheet" href="/auth.css?v=auth-topbar-width-1" />
     <link rel="stylesheet" href="/landing.css?v=landing-system-17" />
   </head>
   <body>
+    <script>
+      if (document.documentElement.getAttribute("data-boot") === "landing") {
+        document.body.classList.add("is-landing");
+      }
+    </script>
     <div class="app">
       <header class="topbar">
         <button
@@ -1942,7 +2007,7 @@
         </div>
       </div>
 
-      <div id="view-landing" class="landing" hidden>
+      <div id="view-landing" class="landing">
         <section class="landing-hero" aria-labelledby="landing-title">
           <p class="landing__eyebrow">US equities research</p>
           <h1 id="landing-title" class="landing__title">Follow the money behind the market.</h1>
@@ -2116,7 +2181,7 @@
         </p>
       </div>
 
-      <div id="app-shell">
+      <div id="app-shell" hidden>
       <p class="dashboard-status" id="dashboard-status" role="status" aria-live="polite"></p>
 
       <button type="button" class="drawer-scrim" id="drawer-scrim" aria-label="Close sidebar" tabindex="-1" hidden></button>
@@ -2297,6 +2362,45 @@
                 </div>
               </header>
 
+              <section class="institution-hub__directory stock-hub__directory" aria-labelledby="stock-hub-directory-heading">
+                <div class="institution-hub__directory-head">
+                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">S&amp;P 500</h3>
+                  <div class="institution-hub__toolbar">
+                    <div class="institution-hub__toolbar-field">
+                      <label class="institution-hub__toolbar-label" for="stock-directory-search">Search</label>
+                      <input
+                        type="search"
+                        id="stock-directory-search"
+                        class="institution-hub__toolbar-input"
+                        placeholder="Filter by symbol or name…"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                    </div>
+                    <div class="institution-hub__toolbar-field" id="stock-hub-sector-field" hidden>
+                      <label class="institution-hub__toolbar-label" for="stock-hub-sector-filter">Sector</label>
+                      <select id="stock-hub-sector-filter" class="institution-hub__toolbar-select">
+                        <option value="">All sectors</option>
+                      </select>
+                    </div>
+                    <span class="institution-hub__count" id="stock-directory-count" aria-live="polite"></span>
+                  </div>
+                </div>
+                <p class="institution-hub__loading muted small" id="stock-hub-loading">Pick a collection or search to browse stocks.</p>
+                <div class="institution-hub__grid" id="stock-hub-grid" role="list" hidden></div>
+                <div class="institution-hub__more-foot" id="stock-hub-more-foot" hidden>
+                  <button type="button" class="btn btn--ghost institution-hub__more-btn" id="stock-hub-more-btn" aria-expanded="false">
+                    Show more
+                  </button>
+                </div>
+                <div class="institution-hub__empty" id="stock-hub-empty" hidden>
+                  <p class="institution-hub__empty-text">No stocks match the current filters.</p>
+                  <button type="button" class="btn btn--ghost institution-hub__clear-btn" id="stock-hub-clear-filters">
+                    Clear filters
+                  </button>
+                </div>
+              </section>
+
               <section class="institution-hub__strategy" aria-labelledby="stock-hub-strategy-heading">
                 <div class="institution-hub__strategy-head stock-hub__links">
                   <h3 id="stock-hub-strategy-heading" class="institution-hub__section-label">Browse by Strategy</h3>
@@ -2356,45 +2460,6 @@
                     <span class="stock-hub__feature-label">High margin stocks</span>
                     <span class="stock-hub__feature-desc muted small">Top operating margins on $100M+ revenue</span>
                     <span class="stock-hub__feature-count" id="stock-hub-high-margin-count">—</span>
-                  </button>
-                </div>
-              </section>
-
-              <section class="institution-hub__directory stock-hub__directory" aria-labelledby="stock-hub-directory-heading">
-                <div class="institution-hub__directory-head">
-                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">S&amp;P 500</h3>
-                  <div class="institution-hub__toolbar">
-                    <div class="institution-hub__toolbar-field">
-                      <label class="institution-hub__toolbar-label" for="stock-directory-search">Search</label>
-                      <input
-                        type="search"
-                        id="stock-directory-search"
-                        class="institution-hub__toolbar-input"
-                        placeholder="Filter by symbol or name…"
-                        autocomplete="off"
-                        spellcheck="false"
-                      />
-                    </div>
-                    <div class="institution-hub__toolbar-field" id="stock-hub-sector-field" hidden>
-                      <label class="institution-hub__toolbar-label" for="stock-hub-sector-filter">Sector</label>
-                      <select id="stock-hub-sector-filter" class="institution-hub__toolbar-select">
-                        <option value="">All sectors</option>
-                      </select>
-                    </div>
-                    <span class="institution-hub__count" id="stock-directory-count" aria-live="polite"></span>
-                  </div>
-                </div>
-                <p class="institution-hub__loading muted small" id="stock-hub-loading">Pick a collection or search to browse stocks.</p>
-                <div class="institution-hub__grid" id="stock-hub-grid" role="list" hidden></div>
-                <div class="institution-hub__more-foot" id="stock-hub-more-foot" hidden>
-                  <button type="button" class="btn btn--ghost institution-hub__more-btn" id="stock-hub-more-btn" aria-expanded="false">
-                    Show more
-                  </button>
-                </div>
-                <div class="institution-hub__empty" id="stock-hub-empty" hidden>
-                  <p class="institution-hub__empty-text">No stocks match the current filters.</p>
-                  <button type="button" class="btn btn--ghost institution-hub__clear-btn" id="stock-hub-clear-filters">
-                    Clear filters
                   </button>
                 </div>
               </section>
@@ -9728,6 +9793,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=sector-leaders-1"></script>
+    <script type="module" src="/app.js?v=landing-boot-2"></script>
   </body>
 </html>
