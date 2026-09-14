@@ -178,6 +178,7 @@ export function showAuthRoute() {
   const legalPages = document.querySelectorAll('[id^="view-legal-"]');
   if (landing) landing.hidden = true;
   if (shell) shell.hidden = true;
+  document.documentElement.setAttribute("data-boot", "page");
   if (premium) premium.hidden = true;
   if (faq) faq.hidden = true;
   if (methodology) methodology.hidden = true;

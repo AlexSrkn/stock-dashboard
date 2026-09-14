@@ -19,7 +19,7 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=seo-1";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=premium-page-boot-1";
 import { setupPremiumGate } from "./premiumGate.js";
 import { applySeo } from "./seo.js";
 import {
@@ -1369,6 +1369,13 @@ const ABOUT_PAGE_TITLE = "About — InvestAtlant";
 const CONTACT_PAGE_TITLE = "Contact — InvestAtlant";
 const APP_PAGE_TITLE = "InvestAtlant";
 
+/** Keep first-paint `data-boot` in sync so CSS never forces the wrong shell. */
+function setBootMode(mode) {
+  if (mode === "landing" || mode === "page" || mode === "app") {
+    document.documentElement.setAttribute("data-boot", mode);
+  }
+}
+
 function hidePremiumView() {
   const premium = document.getElementById("view-premium");
   if (premium) premium.hidden = true;
@@ -1443,6 +1450,7 @@ function showPremiumView(visible) {
   if (premium) premium.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-premium");
+  setBootMode("page");
   document.title = PREMIUM_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1469,6 +1477,7 @@ function showFaqView(visible) {
   if (faq) faq.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-faq");
+  setBootMode("page");
   document.title = FAQ_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1496,6 +1505,7 @@ function showMethodologyView(visible) {
   if (page) page.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-methodology");
+  setBootMode("page");
   document.title = METHODOLOGY_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1523,6 +1533,7 @@ function showDataSourcesView(visible) {
   if (page) page.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-data-sources");
+  setBootMode("page");
   document.title = DATA_SOURCES_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1550,6 +1561,7 @@ function showAboutView(visible) {
   if (page) page.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-about");
+  setBootMode("page");
   document.title = ABOUT_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1577,6 +1589,7 @@ function showContactView(visible) {
   if (page) page.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-contact");
+  setBootMode("page");
   document.title = CONTACT_PAGE_TITLE;
   clearMobileOverlays();
   closeTopSearch();
@@ -1610,6 +1623,7 @@ function showLegalView(key) {
   if (page) page.hidden = false;
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-legal-page");
+  setBootMode("page");
   document.title = config.title;
   clearMobileOverlays();
   closeTopSearch();
@@ -1628,11 +1642,7 @@ function showLandingView(visible) {
   if (shell) shell.hidden = visible;
   if (visible) hideInfoViews();
   document.body.classList.toggle("is-landing", visible);
-  if (visible) {
-    document.documentElement.setAttribute("data-boot", "landing");
-  } else if (document.documentElement.getAttribute("data-boot") === "landing") {
-    document.documentElement.removeAttribute("data-boot");
-  }
+  setBootMode(visible ? "landing" : "app");
   document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
   if (visible) {
     clearMobileOverlays();
@@ -25843,6 +25853,7 @@ async function init() {
     showLandingView(true);
   } else if (bootRoute.mode === "auth") {
     showAuthRoute();
+    setBootMode("page");
   } else if (bootRoute.mode === "premium") {
     showPremiumView(true);
   } else if (bootRoute.mode === "faq") {
@@ -25857,7 +25868,10 @@ async function init() {
     showContactView(true);
   } else if (bootRoute.mode === "legal") {
     showLegalView(bootRoute.legalKey);
+  } else {
+    setBootMode("app");
   }
+  document.documentElement.setAttribute("data-ready", "1");
 
   updateWatchlistBadge();
   renderWatchlist();

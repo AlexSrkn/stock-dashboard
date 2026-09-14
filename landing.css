@@ -101,7 +101,7 @@
 }
 
 .landing-section--system {
-  margin-top: 4.25rem;
+  margin-top: 2.75rem;
 }
 
 .landing-section__head {
@@ -113,12 +113,9 @@
   text-align: center;
 }
 
-.landing-section__title {
-  margin: 0;
-  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: #fff;
+.landing-section__head--after-graphic {
+  margin-top: 1.75rem;
+  margin-bottom: 0;
 }
 
 .landing-section__copy {
@@ -126,6 +123,24 @@
   font-size: 0.98rem;
   line-height: 1.55;
   color: var(--muted);
+}
+
+.landing-section__copy--after-graphic {
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0.85rem;
+  padding: 0 1.25rem;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.landing-section__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #fff;
 }
 
 .landing-section__head--center .landing-section__copy {
@@ -257,8 +272,8 @@
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
-  min-width: 10.5rem;
-  padding: 1.05rem 1.2rem 1.1rem;
+  min-width: 11.75rem;
+  padding: 1.05rem 1.15rem 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   background: rgba(10, 12, 16, 0.92);
@@ -279,11 +294,12 @@
 
 .landing-node__source {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 650;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .landing-node__label {
@@ -317,7 +333,7 @@
 .landing-node--hub {
   left: 50%;
   top: 76%;
-  min-width: 13.5rem;
+  min-width: 15.5rem;
   padding: 1.25rem 1.45rem 1.3rem;
   border-color: rgba(62, 230, 176, 0.42);
   background:
@@ -774,6 +790,14 @@
     text-align: center;
   }
 
+  .landing-hero {
+    margin-bottom: 0.85rem;
+  }
+
+  .landing-section--system {
+    margin-top: 1.5rem;
+  }
+
   .landing-hero__actions {
     justify-content: center;
   }
@@ -782,8 +806,19 @@
     justify-content: flex-start;
   }
 
-  .landing-section--system .landing-section__head {
-    margin-bottom: 0.45rem;
+  .landing-section__head--after-graphic {
+    margin-top: 1.35rem;
+  }
+
+  .landing-section__copy--after-graphic {
+    max-width: none;
+    margin-top: 0.55rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 1rem;
+    text-align: center;
+    font-size: 0.95rem;
+    line-height: 1.45;
   }
 
   .landing__footnote {

@@ -63,7 +63,7 @@
       html[data-boot="app"] #view-landing {
         display: none !important;
       }
-      html[data-boot="app"] #app-shell[hidden] {
+      html[data-boot="app"]:not([data-ready]) #app-shell[hidden] {
         display: block !important;
       }
     </style>
@@ -73,9 +73,9 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=landing-boot-2" />
+    <link rel="stylesheet" href="/styles.css?v=premium-page-boot-1" />
     <link rel="stylesheet" href="/auth.css?v=auth-topbar-width-1" />
-    <link rel="stylesheet" href="/landing.css?v=landing-system-17" />
+    <link rel="stylesheet" href="/landing.css?v=landing-system-22" />
   </head>
   <body>
     <script>
@@ -2022,16 +2022,7 @@
           </div>
         </section>
 
-        <section class="landing-section landing-section--system landing-reveal" aria-labelledby="landing-system-title">
-          <header class="landing-section__head landing-section__head--center">
-            <p class="landing-kicker">The workspace</p>
-            <h2 id="landing-system-title" class="landing-section__title">Find the signal before the crowd.</h2>
-            <p class="landing-section__copy">
-              InvestAtlant connects public filings, institutional activity, insider trades, congressional disclosures,
-              and sector data to surface emerging market signals.
-            </p>
-          </header>
-
+        <section class="landing-section landing-section--system landing-reveal" aria-label="Filing sources connected into Signals">
           <div class="landing-constellation" aria-label="Filing sources connected into Signals">
             <div class="landing-constellation__field" aria-hidden="true"></div>
             <svg class="landing-constellation__lines" viewBox="0 0 1000 460" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -2059,27 +2050,27 @@
 
             <div class="landing-constellation__map">
               <button type="button" class="landing-node landing-node--stocks" data-landing-enter="stocks">
-                <span class="landing-node__source">SEC filings</span>
+                <span class="landing-node__source">Company Filings</span>
                 <span class="landing-node__label">Stocks</span>
               </button>
               <button type="button" class="landing-node landing-node--institutions" data-landing-enter="institutions">
-                <span class="landing-node__source">SEC 13F</span>
+                <span class="landing-node__source">13F Holdings</span>
                 <span class="landing-node__label">Institutions</span>
               </button>
               <button type="button" class="landing-node landing-node--insiders" data-landing-enter="insiders">
-                <span class="landing-node__source">Form 4</span>
+                <span class="landing-node__source">Insider Filings</span>
                 <span class="landing-node__label">Insiders</span>
               </button>
               <button type="button" class="landing-node landing-node--congress" data-landing-enter="politicians">
-                <span class="landing-node__source">PTR</span>
+                <span class="landing-node__source">Congressional Trades</span>
                 <span class="landing-node__label">Congress</span>
               </button>
               <button type="button" class="landing-node landing-node--sector" data-landing-enter="sector">
-                <span class="landing-node__source">SEC 13F</span>
+                <span class="landing-node__source">Sector research</span>
                 <span class="landing-node__label">Sectors</span>
               </button>
               <button type="button" class="landing-node landing-node--hub" data-landing-enter="signals">
-                <span class="landing-node__source">Alignment</span>
+                <span class="landing-node__source">Cross-Signal Analysis</span>
                 <span class="landing-node__label">Signals</span>
                 <span class="landing-node__pulse" aria-hidden="true"></span>
               </button>
@@ -2087,6 +2078,11 @@
 
             <p class="landing-constellation__hint">Click a source to open it in the workspace</p>
           </div>
+
+          <p class="landing-section__copy landing-section__copy--after-graphic">
+            InvestAtlant connects public filings, institutional activity, insider trades, congressional disclosures,
+            and sector data to surface emerging market signals.
+          </p>
         </section>
 
         <section class="landing-section landing-reveal" aria-labelledby="landing-signals-title">
@@ -2139,7 +2135,7 @@
         <section class="landing-section landing-reveal" id="landing-how" aria-labelledby="landing-how-title">
           <header class="landing-section__head landing-section__head--center">
             <p class="landing-kicker">How it works</p>
-            <h2 id="landing-how-title" class="landing-section__title">Three steps. Same workspace.</h2>
+            <h2 id="landing-how-title" class="landing-section__title">Three steps. From data to insight.</h2>
           </header>
           <ol class="landing-steps">
             <li class="landing-step">
@@ -2149,8 +2145,8 @@
             </li>
             <li class="landing-step">
               <span class="landing-step__n" aria-hidden="true">2</span>
-              <h3>Trace</h3>
-              <p>Follow the underlying filing trail.</p>
+              <h3>Track</h3>
+              <p>Follow capital flows across sectors and filings.</p>
             </li>
             <li class="landing-step">
               <span class="landing-step__n" aria-hidden="true">3</span>
@@ -2177,7 +2173,7 @@
 
         <p class="landing__footnote muted small">
           Holdings from SEC 13F. Insider trades from Form 4. Congress from House and Senate PTRs.
-          Market prices are supporting context via TradingView.
+          Real-time market prices via TradingView.
         </p>
       </div>
 
@@ -9793,6 +9789,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=landing-boot-2"></script>
+    <script type="module" src="/app.js?v=premium-page-boot-1"></script>
   </body>
 </html>

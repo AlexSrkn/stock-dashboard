@@ -40,7 +40,9 @@ html[data-boot="page"] #view-landing {
 html[data-boot="app"] #view-landing {
   display: none !important;
 }
-html[data-boot="app"] #app-shell[hidden] {
+/* Only un-hide the shell for app routes while it still has the HTML [hidden]
+   attribute from first paint — never against body.is-* marketing/info pages. */
+html[data-boot="app"]:not([data-ready]) #app-shell[hidden] {
   display: block !important;
 }
 
@@ -1449,6 +1451,11 @@ body.is-premium #view-about,
 body.is-premium #view-contact,
 body.is-premium [id^="view-legal-"] {
   display: none !important;
+}
+
+html[data-boot="page"] #view-premium:not([hidden]),
+body.is-premium #view-premium:not([hidden]) {
+  display: flex !important;
 }
 
 @keyframes premium-fade-in {

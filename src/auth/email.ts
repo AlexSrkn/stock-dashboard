@@ -26,6 +26,15 @@ function fromAddress(): string {
   );
 }
 
+/** Prefer a dedicated sender for contact (avoid From=To on the same mailbox). */
+function contactFromAddress(): string {
+  return (
+    process.env.CONTACT_EMAIL_FROM?.trim() ||
+    process.env.AUTH_EMAIL_FROM?.trim() ||
+    "InvestAtlant <noreply@investatlant.com>"
+  );
+}
+
 function contactInbox(): string {
   return process.env.CONTACT_INBOX?.trim() || "contact@investatlant.com";
 }
@@ -162,7 +171,7 @@ export async function sendContactEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: fromAddress(),
+        from: contactFromAddress(),
         to: [to],
         reply_to: input.email,
         subject,
