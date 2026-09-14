@@ -4,7 +4,7 @@
  *
  * Note: crawlers that don't execute JS still see index.html defaults.
  * Full SSR is a later upgrade; this covers SPA navigations + social share tools
- * that re-fetch after load, plus static robots.txt / sitemap.xml.
+ * that re-fetch after load, plus robots.txt / dynamic sitemap.xml.
  */
 
 export const SITE_ORIGIN = "https://investatlant.com";
@@ -17,7 +17,7 @@ const EXACT = {
   "/": {
     title: "InvestAtlant — Stock & institutional research",
     description:
-      "Research stocks with institutional ownership, insider Form 4 activity, politician trades, sectors, and signals — built for serious market research.",
+      "InvestAtlant surfaces publicly disclosed trades and the research behind them — see what institutions and insiders are buying or selling, which securities they move into, and when, including congressional PTR filings under the STOCK Act.",
   },
   "/stocks": {
     title: "Stocks — InvestAtlant",
@@ -29,6 +29,18 @@ const EXACT = {
     description:
       "Browse 13F institutional filers, holdings, and portfolio activity on InvestAtlant.",
   },
+  "/institutions/notable-investors": {
+    title: "Notable investors — InvestAtlant",
+    description: "Browse notable institutional investors tracked on InvestAtlant.",
+  },
+  "/institutions/performance": {
+    title: "Institution performance — InvestAtlant",
+    description: "Compare institutional portfolio performance proxies on InvestAtlant.",
+  },
+  "/institutions/most-accumulated": {
+    title: "Most accumulated institutions — InvestAtlant",
+    description: "See which institutions added the most shares last quarter on InvestAtlant.",
+  },
   "/insiders": {
     title: "Insiders — InvestAtlant",
     description:
@@ -38,6 +50,10 @@ const EXACT = {
     title: "Politicians — InvestAtlant",
     description:
       "Follow congressional trading disclosures and politician portfolio activity on InvestAtlant.",
+  },
+  "/politicians/trades": {
+    title: "Congress trades — InvestAtlant",
+    description: "Recent publicly disclosed stock trades by members of Congress on InvestAtlant.",
   },
   "/sector": {
     title: "Sectors — InvestAtlant",
@@ -49,10 +65,50 @@ const EXACT = {
     description:
       "Explore multi-factor research signals including institutional discovery, double/triple signals, and more.",
   },
+  "/signals/double-signal": {
+    title: "Double Signal — InvestAtlant",
+    description: "Find stocks where institutional and insider activity align on InvestAtlant.",
+  },
+  "/signals/triple-signal": {
+    title: "Triple Signal — InvestAtlant",
+    description: "Find stocks with strong multi-factor alignment across filings on InvestAtlant.",
+  },
+  "/signals/conflict-signals": {
+    title: "Conflict Signals — InvestAtlant",
+    description: "Spot divergence between institutional and insider activity on InvestAtlant.",
+  },
+  "/signals/hidden-gems": {
+    title: "Hidden Gems — InvestAtlant",
+    description: "Discover lesser-known names with notable filing activity on InvestAtlant.",
+  },
+  "/signals/conviction-score": {
+    title: "Conviction Score — InvestAtlant",
+    description: "Rank stocks by conviction from institutional and insider filings on InvestAtlant.",
+  },
+  "/signals/institutional-discovery": {
+    title: "Institutional Discovery — InvestAtlant",
+    description: "See where institutions are building new positions on InvestAtlant.",
+  },
+  "/signals/smart-money": {
+    title: "Smart Money — InvestAtlant",
+    description: "Follow smart-money style institutional activity patterns on InvestAtlant.",
+  },
+  "/signals/top-institution-new-entries": {
+    title: "Top institution new entries — InvestAtlant",
+    description: "Track new institutional positions from major filers on InvestAtlant.",
+  },
   "/tools": {
     title: "Tools — InvestAtlant",
     description:
       "Valuation and research calculators including DCF, WACC, EPV, and similar-stock tools.",
+  },
+  "/tools/dcf": {
+    title: "DCF calculator — InvestAtlant",
+    description: "Discounted cash flow valuation calculator on InvestAtlant.",
+  },
+  "/tools/wacc": {
+    title: "WACC calculator — InvestAtlant",
+    description: "Weighted average cost of capital calculator on InvestAtlant.",
   },
   "/premium": {
     title: "Premium — InvestAtlant",
@@ -66,7 +122,7 @@ const EXACT = {
   "/faq": {
     title: "FAQ — InvestAtlant",
     description:
-      "Answers about InvestAtlant accounts, data sources, research views, and Premium.",
+      "InvestAtlant surfaces publicly disclosed trades and the research behind them — institutions, insiders, and congressional PTR filings under the STOCK Act.",
   },
   "/methodology": {
     title: "Methodology — InvestAtlant",
@@ -142,26 +198,52 @@ function normalizePath(pathname) {
 
 /**
  * @param {string} path
+ * @param {{ name?: string | null, symbol?: string | null, cik?: string | null }} [entity]
  * @returns {SeoMeta}
  */
-export function resolveSeoMeta(path) {
+export function resolveSeoMeta(path, entity = {}) {
   const p = normalizePath(path);
   if (EXACT[p]) return { ...EXACT[p], canonicalPath: EXACT[p].canonicalPath || p };
 
   const stock = p.match(/^\/stock\/([^/]+)/i);
   if (stock) {
-    const sym = decodeURIComponent(stock[1]).toUpperCase();
+    const sym = String(entity.symbol || decodeURIComponent(stock[1]) || "")
+      .trim()
+      .toUpperCase();
+    const name = String(entity.name || "").trim();
+    const title =
+      name && name.toUpperCase() !== sym
+        ? `${sym} — ${name} | InvestAtlant`
+        : `${sym} — Stock research | InvestAtlant`;
+    const description = name
+      ? `Research ${sym} (${name}): ownership, insider activity, and market context on InvestAtlant.`
+      : `Research ${sym}: ownership, insider activity, and market context on InvestAtlant.`;
     return {
-      title: `${sym} — InvestAtlant`,
-      description: `Research ${sym}: ownership, insider activity, and market context on InvestAtlant.`,
+      title,
+      description,
       canonicalPath: `/stock/${encodeURIComponent(sym)}`,
     };
   }
 
-  if (p.startsWith("/institutions/") || p.startsWith("/institution/")) {
+  const institution = p.match(/^\/institution\/(\d+)/i);
+  if (institution) {
+    const cik = String(entity.cik || institution[1] || "").replace(/^0+/, "") || institution[1];
+    const name = String(entity.name || "").trim();
     return {
-      title: "Institution — InvestAtlant",
-      description: "Institutional filer profile, holdings, and activity on InvestAtlant.",
+      title: name
+        ? `${name} — Institutional holdings | InvestAtlant`
+        : `Institution ${cik} — Holdings | InvestAtlant`,
+      description: name
+        ? `Holdings, activity, and ownership history for ${name} on InvestAtlant.`
+        : `Institutional filer profile, holdings, and activity on InvestAtlant.`,
+      canonicalPath: `/institution/${cik}`,
+    };
+  }
+
+  if (p.startsWith("/institutions/")) {
+    return {
+      title: "Institutions — InvestAtlant",
+      description: EXACT["/institutions"].description,
       canonicalPath: p,
     };
   }
@@ -245,11 +327,10 @@ function upsertLink(rel, href) {
 }
 
 /**
- * Apply SEO tags for the current (or given) path.
+ * @param {SeoMeta} meta
  * @param {string} [pathname]
  */
-export function applySeo(pathname = window.location.pathname) {
-  const meta = resolveSeoMeta(pathname);
+function commitSeoMeta(meta, pathname = window.location.pathname) {
   const canonicalPath = meta.canonicalPath || normalizePath(pathname);
   const canonicalUrl = `${SITE_ORIGIN}${canonicalPath === "/" ? "/" : canonicalPath}`;
   const ogType = meta.ogType || "website";
@@ -270,4 +351,31 @@ export function applySeo(pathname = window.location.pathname) {
   upsertMeta("name", "twitter:title", meta.title);
   upsertMeta("name", "twitter:description", meta.description);
   upsertMeta("name", "twitter:image", DEFAULT_OG_IMAGE);
+}
+
+/**
+ * Apply SEO tags for the current (or given) path.
+ * @param {string} [pathname]
+ */
+export function applySeo(pathname = window.location.pathname) {
+  commitSeoMeta(resolveSeoMeta(pathname), pathname);
+}
+
+/**
+ * Enrich SEO after entity names load (stock / institution).
+ * @param {{ path?: string, title?: string, description?: string, name?: string | null, symbol?: string | null, cik?: string | null }} input
+ */
+export function applySeoForEntity(input = {}) {
+  const path = input.path || window.location.pathname;
+  const base = resolveSeoMeta(path, {
+    name: input.name,
+    symbol: input.symbol,
+    cik: input.cik,
+  });
+  const meta = {
+    ...base,
+    title: input.title || base.title,
+    description: input.description || base.description,
+  };
+  commitSeoMeta(meta, path);
 }

@@ -21,7 +21,7 @@ import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
 import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=premium-page-boot-1";
 import { setupPremiumGate } from "./premiumGate.js";
-import { applySeo } from "./seo.js";
+import { applySeo, applySeoForEntity } from "./seo.js";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -1360,13 +1360,6 @@ function parseLegalPageKey(pathname) {
   return null;
 }
 
-const LANDING_PAGE_TITLE = "InvestAtlant — Stock & institutional research";
-const PREMIUM_PAGE_TITLE = "Premium — InvestAtlant";
-const FAQ_PAGE_TITLE = "FAQ — InvestAtlant";
-const METHODOLOGY_PAGE_TITLE = "Methodology — InvestAtlant";
-const DATA_SOURCES_PAGE_TITLE = "Data Sources — InvestAtlant";
-const ABOUT_PAGE_TITLE = "About — InvestAtlant";
-const CONTACT_PAGE_TITLE = "Contact — InvestAtlant";
 const APP_PAGE_TITLE = "InvestAtlant";
 
 /** Keep first-paint `data-boot` in sync so CSS never forces the wrong shell. */
@@ -1451,7 +1444,7 @@ function showPremiumView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-premium");
   setBootMode("page");
-  document.title = PREMIUM_PAGE_TITLE;
+  applySeo("/premium");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1478,7 +1471,7 @@ function showFaqView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-faq");
   setBootMode("page");
-  document.title = FAQ_PAGE_TITLE;
+  applySeo("/faq");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1506,7 +1499,7 @@ function showMethodologyView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-methodology");
   setBootMode("page");
-  document.title = METHODOLOGY_PAGE_TITLE;
+  applySeo("/methodology");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1534,7 +1527,7 @@ function showDataSourcesView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-data-sources");
   setBootMode("page");
-  document.title = DATA_SOURCES_PAGE_TITLE;
+  applySeo("/data-sources");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1562,7 +1555,7 @@ function showAboutView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-about");
   setBootMode("page");
-  document.title = ABOUT_PAGE_TITLE;
+  applySeo("/about");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1590,7 +1583,7 @@ function showContactView(visible) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-contact");
   setBootMode("page");
-  document.title = CONTACT_PAGE_TITLE;
+  applySeo("/contact");
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1624,7 +1617,7 @@ function showLegalView(key) {
   document.body.classList.remove("is-landing");
   document.body.classList.add("is-legal-page");
   setBootMode("page");
-  document.title = config.title;
+  applySeo(config.path);
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
@@ -1643,7 +1636,8 @@ function showLandingView(visible) {
   if (visible) hideInfoViews();
   document.body.classList.toggle("is-landing", visible);
   setBootMode(visible ? "landing" : "app");
-  document.title = visible ? LANDING_PAGE_TITLE : APP_PAGE_TITLE;
+  if (visible) applySeo("/");
+  else document.title = APP_PAGE_TITLE;
   if (visible) {
     clearMobileOverlays();
     closeTopSearch();
@@ -15007,6 +15001,11 @@ async function openInstitution(cik, tab = "holdings") {
   activeInstitutionHubView = "directory";
   setExploreMode("institutions", { navigate: false });
   setInstitutionTab(tab, { updateUrl: true });
+  applySeoForEntity({
+    path: `/institution/${bare}`,
+    name: fund.name || null,
+    cik: bare,
+  });
   const input = document.getElementById("top-search-input");
   if (input && fund.name) input.value = fund.name;
   closeTopSearch();
@@ -15179,6 +15178,11 @@ async function openStockFromRoute(route) {
     resetStockPanelUi(sym);
     renderWatchlist();
     renderHeader();
+    applySeoForEntity({
+      path: `/stock/${encodeURIComponent(sym)}`,
+      symbol: sym,
+      name: watchlist[idx].name || null,
+    });
     await loadActiveSymbolPanels(sym);
     return;
   }
@@ -15207,6 +15211,11 @@ async function openStockFromRoute(route) {
     if (getViewingSymbol() !== sym) return;
     previewStock = entry;
     renderHeader();
+    applySeoForEntity({
+      path: `/stock/${encodeURIComponent(sym)}`,
+      symbol: sym,
+      name: entry.name || null,
+    });
     await loadActiveSymbolPanels(sym);
     setDashboardStatus("");
   } catch (err) {
@@ -22432,6 +22441,11 @@ async function openStockPreview(symbol) {
     closeTopSearch();
     renderHeader();
     syncStockUrl(sym);
+    applySeoForEntity({
+      path: `/stock/${encodeURIComponent(sym)}`,
+      symbol: sym,
+      name: entry.name || null,
+    });
     await panelLoad;
     if (req !== openStockPreviewSeq || getViewingSymbol() !== sym) return;
     setDashboardStatus("");

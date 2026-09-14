@@ -43,6 +43,7 @@ import { tryHandleAnalytics } from "./src/api/analytics.ts";
 import { tryHandleLandingPreview } from "./src/api/landingPreview.ts";
 import { tryHandleAuth } from "./src/api/auth.ts";
 import { tryHandleContact } from "./src/api/contact.ts";
+import { tryHandleSitemap } from "./src/seo/sitemap.ts";
 import { ensureAuthSchema } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
@@ -672,6 +673,7 @@ http
     }
 
     void (async () => {
+      if (await tryHandleSitemap(u, clientRes)) return;
       if (await tryHandleAuth(u, req, clientRes)) return;
       if (await tryHandleContact(u, req, clientRes)) return;
       if (await tryHandleStockSearch(u, clientRes)) return;
