@@ -4637,6 +4637,20 @@ body.is-legal-page #view-contact {
   margin-bottom: 1.25rem;
 }
 
+/* Default: Featured collections above the stock list.
+   While searching: results move above Featured so matches are immediate. */
+.stock-hub.is-searching .stock-hub__directory {
+  order: 1;
+}
+
+.stock-hub.is-searching .institution-hub__strategy {
+  order: 2;
+}
+
+.stock-hub.is-searching .stock-hub__collections {
+  order: 3;
+}
+
 .stock-hub__links,
 .insiders-hub__links {
   margin-top: 0;

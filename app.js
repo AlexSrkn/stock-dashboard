@@ -2442,6 +2442,7 @@ function mapFundamentalsStockRow(stock, meta) {
 
 function updateStockHubFeatureRow() {
   const searching = Boolean(stockHubFilters.query.trim());
+  document.getElementById("stock-hub")?.classList.toggle("is-searching", searching);
   document.querySelectorAll("[data-stock-collection]").forEach((btn) => {
     const key = btn.getAttribute("data-stock-collection");
     // While searching the full universe, don't keep a featured collection looking selected.

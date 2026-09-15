@@ -2361,45 +2361,6 @@
                 </div>
               </header>
 
-              <section class="institution-hub__directory stock-hub__directory" aria-labelledby="stock-hub-directory-heading">
-                <div class="institution-hub__directory-head">
-                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">S&amp;P 500</h3>
-                  <div class="institution-hub__toolbar">
-                    <div class="institution-hub__toolbar-field">
-                      <label class="institution-hub__toolbar-label" for="stock-directory-search">Search</label>
-                      <input
-                        type="search"
-                        id="stock-directory-search"
-                        class="institution-hub__toolbar-input"
-                        placeholder="Filter by symbol or name…"
-                        autocomplete="off"
-                        spellcheck="false"
-                      />
-                    </div>
-                    <div class="institution-hub__toolbar-field" id="stock-hub-sector-field" hidden>
-                      <label class="institution-hub__toolbar-label" for="stock-hub-sector-filter">Sector</label>
-                      <select id="stock-hub-sector-filter" class="institution-hub__toolbar-select">
-                        <option value="">All sectors</option>
-                      </select>
-                    </div>
-                    <span class="institution-hub__count" id="stock-directory-count" aria-live="polite"></span>
-                  </div>
-                </div>
-                <p class="institution-hub__loading muted small" id="stock-hub-loading">Pick a collection or search to browse stocks.</p>
-                <div class="institution-hub__grid" id="stock-hub-grid" role="list" hidden></div>
-                <div class="institution-hub__more-foot" id="stock-hub-more-foot" hidden>
-                  <button type="button" class="btn btn--ghost institution-hub__more-btn" id="stock-hub-more-btn" aria-expanded="false">
-                    Show more
-                  </button>
-                </div>
-                <div class="institution-hub__empty" id="stock-hub-empty" hidden>
-                  <p class="institution-hub__empty-text">No stocks match the current filters.</p>
-                  <button type="button" class="btn btn--ghost institution-hub__clear-btn" id="stock-hub-clear-filters">
-                    Clear filters
-                  </button>
-                </div>
-              </section>
-
               <section class="institution-hub__strategy" aria-labelledby="stock-hub-strategy-heading">
                 <div class="institution-hub__strategy-head stock-hub__links">
                   <h3 id="stock-hub-strategy-heading" class="institution-hub__section-label">Browse by Strategy</h3>
@@ -2459,6 +2420,45 @@
                     <span class="stock-hub__feature-label">High margin stocks</span>
                     <span class="stock-hub__feature-desc muted small">Top operating margins on $100M+ revenue</span>
                     <span class="stock-hub__feature-count" id="stock-hub-high-margin-count">—</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="institution-hub__directory stock-hub__directory" aria-labelledby="stock-hub-directory-heading">
+                <div class="institution-hub__directory-head">
+                  <h3 id="stock-hub-directory-heading" class="institution-hub__section-label">S&amp;P 500</h3>
+                  <div class="institution-hub__toolbar">
+                    <div class="institution-hub__toolbar-field">
+                      <label class="institution-hub__toolbar-label" for="stock-directory-search">Search</label>
+                      <input
+                        type="search"
+                        id="stock-directory-search"
+                        class="institution-hub__toolbar-input"
+                        placeholder="Filter by symbol or name…"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                    </div>
+                    <div class="institution-hub__toolbar-field" id="stock-hub-sector-field" hidden>
+                      <label class="institution-hub__toolbar-label" for="stock-hub-sector-filter">Sector</label>
+                      <select id="stock-hub-sector-filter" class="institution-hub__toolbar-select">
+                        <option value="">All sectors</option>
+                      </select>
+                    </div>
+                    <span class="institution-hub__count" id="stock-directory-count" aria-live="polite"></span>
+                  </div>
+                </div>
+                <p class="institution-hub__loading muted small" id="stock-hub-loading">Pick a collection or search to browse stocks.</p>
+                <div class="institution-hub__grid" id="stock-hub-grid" role="list" hidden></div>
+                <div class="institution-hub__more-foot" id="stock-hub-more-foot" hidden>
+                  <button type="button" class="btn btn--ghost institution-hub__more-btn" id="stock-hub-more-btn" aria-expanded="false">
+                    Show more
+                  </button>
+                </div>
+                <div class="institution-hub__empty" id="stock-hub-empty" hidden>
+                  <p class="institution-hub__empty-text">No stocks match the current filters.</p>
+                  <button type="button" class="btn btn--ghost institution-hub__clear-btn" id="stock-hub-clear-filters">
+                    Clear filters
                   </button>
                 </div>
               </section>
