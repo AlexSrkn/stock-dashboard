@@ -11,9 +11,8 @@ let warming = false;
  * Warm heavy sector analytics in the background after boot so the first
  * user click does not wait on multi-minute sec_holding CUSIP scans.
  *
- * Disk-backed caches (accumulation / leaders / selling) hydrate first.
- * Institutional concentration (memory-only, slower) is deferred so it does
- * not block the event loop right after startup.
+ * Institutional concentration hydrates from disk immediately (parallel with
+ * the other sector caches). A missing disk file still triggers a full compute.
  */
 export function warmSectorAnalyticsOnStartup(): void {
   if (warming) return;
@@ -22,6 +21,20 @@ export function warmSectorAnalyticsOnStartup(): void {
     const pool = getPool();
     const t0 = Date.now();
     console.log("Sector analytics: warming caches in background…");
+
+    const concentrationWarm = loadInstitutionalConcentration(pool)
+      .then((payload) =>
+        console.log(
+          `Sector analytics: institutional concentration ready (${payload.institutions.length} rows, ${Date.now() - t0}ms)`
+        )
+      )
+      .catch((err) =>
+        console.warn(
+          "Sector analytics concentration warm failed:",
+          err instanceof Error ? err.message : String(err)
+        )
+      );
+
     try {
       await loadSectorFundamentals(pool);
       console.log("Sector analytics: fundamentals ready");
@@ -31,23 +44,8 @@ export function warmSectorAnalyticsOnStartup(): void {
       console.log("Sector analytics: leaders (buying) ready");
       await loadSectorSelling(pool);
       console.log("Sector analytics: selling ready");
-      console.log(
-        `Sector analytics: hot-path caches ready (${Date.now() - t0}ms); concentration deferred`
-      );
-      setTimeout(() => {
-        void loadInstitutionalConcentration(pool)
-          .then(() =>
-            console.log(
-              `Sector analytics: institutional concentration ready (total ${Date.now() - t0}ms)`
-            )
-          )
-          .catch((err) =>
-            console.warn(
-              "Sector analytics concentration warm failed:",
-              err instanceof Error ? err.message : String(err)
-            )
-          );
-      }, 5_000);
+      await concentrationWarm;
+      console.log(`Sector analytics: hot-path caches ready (${Date.now() - t0}ms)`);
     } catch (err) {
       console.warn(
         "Sector analytics warm failed:",

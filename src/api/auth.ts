@@ -122,7 +122,11 @@ export async function tryHandleAuth(
   try {
     if (path === "/api/auth/me" && req.method === "GET") {
       const user = await getUserFromRequest(req);
-      json(res, 200, { user: user ? toPublicUser(user) : null });
+      json(res, 200, {
+        user: user ? toPublicUser(user) : null,
+        // Server-computed entitlement — do not trust client-edited plan alone.
+        premium: user ? canAccessPremiumContent(user) : false,
+      });
       return true;
     }
 
@@ -153,7 +157,12 @@ export async function tryHandleAuth(
         email: String(body.email || ""),
         password: String(body.password || ""),
       });
-      json(res, 200, { user: result.user }, { "Set-Cookie": result.cookie });
+      json(
+        res,
+        200,
+        { user: result.user, premium: result.premium },
+        { "Set-Cookie": result.cookie }
+      );
       return true;
     }
 

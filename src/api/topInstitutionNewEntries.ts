@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getTopInstitutionNewEntriesService } from "../signals/topInstitutionNewEntriesService.js";
 
 loadEnvFile();
@@ -16,9 +17,11 @@ function json(res: http.ServerResponse, status: number, body: unknown, cacheSeco
 
 export async function tryHandleTopInstitutionNewEntries(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   if (!ROUTE_RE.test(url.pathname)) return false;
+  if (!(await assertPremiumRequest(req, res))) return true;
 
   try {
     const service = getTopInstitutionNewEntriesService();

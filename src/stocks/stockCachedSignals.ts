@@ -79,6 +79,7 @@ function pushScoreSignal(
     sellValueUsd: round2(input.sellStat),
     netValueUsd: round2(input.netStat),
     ratio: null,
+    score: round2(input.score),
     href: input.href,
     hint: input.hint,
     statLabels: input.statLabels,
@@ -156,19 +157,23 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
       0
     );
     const institutions = new Set(topEntries.map((e) => e.institutionId)).size;
+    const entryCount = topEntries.length;
+    // Score: breadth of top funds entering + value presence (not USD magnitude).
+    const score = Math.min(100, institutions * 25 + Math.min(25, entryCount * 5) + (totalValue > 0 ? 25 : 0));
     pushScoreSignal(out, {
       category: "top-institution-entry",
       label:
         institutions === 1
           ? "New entry from top institution"
           : `New entries from ${institutions} top institutions`,
-      score: Math.min(100, institutions * 20 + (totalValue > 0 ? 40 : 20)),
+      score,
       href: "/signals/top-institution-new-entries",
       hint: "New position opened by a top-performing tracked institution",
       buyStat: totalValue,
       sellStat: institutions,
-      netStat: topEntries.length,
+      netStat: entryCount,
       statLabels: { buy: "Position value", sell: "Institutions", net: "Entries" },
+      // Mixed: buy is USD; sell/net are counts — client formats per field.
       statValuesAreNumeric: false,
     });
   }
@@ -203,8 +208,8 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
       hint: "Institutional and insider flows diverge materially",
       buyStat: conflict.insiderBuyVolumeUsd,
       sellStat: conflict.insiderSellVolumeUsd,
-      netStat: conflict.institutionScore,
-      statLabels: { buy: "Insider buys", sell: "Insider sells", net: "Inst score" },
+      netStat: conflict.conflictScore,
+      statLabels: { buy: "Insider buys", sell: "Insider sells", net: "Conflict score" },
       statValuesAreNumeric: false,
     });
     out[out.length - 1]!.direction = bullishConflict ? "buying" : "selling";

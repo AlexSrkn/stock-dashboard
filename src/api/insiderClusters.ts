@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import {
   getInsiderClusterService,
   parseClusterLookbackDays,
@@ -27,12 +28,14 @@ function parseLimit(url: URL, fallback = 100): number {
 
 export async function tryHandleInsiderClusters(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   const service = getInsiderClusterService();
   const lookbackDays = parseClusterLookbackDays(url.searchParams.get("window"));
 
   if (ROUTE_LIST_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const alertsOnly = url.searchParams.get("alerts") === "1";
       const payload = await service.getAllSignals(lookbackDays, {

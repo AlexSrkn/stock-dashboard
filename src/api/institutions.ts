@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import {
   getInstitutionActivity,
   getInstitutionHistory,
@@ -55,6 +56,7 @@ function parseLimit(url: URL, fallback = 50): number {
 
 export async function tryHandleInstitutions(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   if (ROUTE_LIST_RE.test(url.pathname)) {
@@ -67,6 +69,7 @@ export async function tryHandleInstitutions(
   }
 
   if (ROUTE_PERFORMANCE_RANKINGS_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     const period = parsePerformancePeriod(url.searchParams.get("period"));
     try {
       const funds = listTrackedInstitutions();
@@ -89,6 +92,7 @@ export async function tryHandleInstitutions(
   }
 
   if (ROUTE_PORTFOLIO_PROXY_RANKINGS_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const { getPool } = await import("../db/pool.js");
       const pool = getPool();
@@ -149,6 +153,7 @@ export async function tryHandleInstitutions(
   }
 
   if (ROUTE_NEW_POSITIONS_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const { getPool } = await import("../db/pool.js");
       const pool = getPool();
@@ -211,6 +216,7 @@ export async function tryHandleInstitutions(
   }
 
   if (ROUTE_COMPLETELY_SOLD_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const { getPool } = await import("../db/pool.js");
       const pool = getPool();

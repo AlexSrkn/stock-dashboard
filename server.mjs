@@ -43,8 +43,15 @@ import { tryHandleAnalytics } from "./src/api/analytics.ts";
 import { tryHandleLandingPreview } from "./src/api/landingPreview.ts";
 import { tryHandleAuth } from "./src/api/auth.ts";
 import { tryHandleContact } from "./src/api/contact.ts";
+import { tryHandleAdmin } from "./src/api/admin.ts";
+import {
+  tryHandleCreateCheckoutSession,
+  tryHandleCreatePortalSession,
+  tryHandlePremiumOffer,
+  tryHandleStripeWebhook,
+} from "./src/api/stripeCheckout.ts";
 import { tryHandleSitemap } from "./src/seo/sitemap.ts";
-import { ensureAuthSchema } from "./src/auth/index.ts";
+import { ensureAuthSchema, getUserFromRequest } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
 import { ensurePortfolioProxyCacheOnStartup } from "./src/institution/portfolioPerformanceProxy/cache.ts";
@@ -552,7 +559,7 @@ function finnhubProxy(clientReq, clientRes, finPath) {
     });
 }
 
-function sendFile(clientRes, absPath) {
+function sendFile(clientRes, absPath, extraHeaders = {}) {
   fs.readFile(absPath, (err, buf) => {
     if (err) {
       clientRes.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
@@ -560,9 +567,9 @@ function sendFile(clientRes, absPath) {
       return;
     }
     const ext = path.extname(absPath).toLowerCase();
-    const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream", ...extraHeaders };
     // Keep HTML fresh so route first-paint fixes are not stuck behind a cached index.
-    if (ext === ".html") {
+    if (ext === ".html" && !headers["Cache-Control"]) {
       headers["Cache-Control"] = "no-store";
     }
     clientRes.writeHead(200, headers);
@@ -674,6 +681,11 @@ http
 
     void (async () => {
       if (await tryHandleSitemap(u, clientRes)) return;
+      if (await tryHandleStripeWebhook(u, req, clientRes)) return;
+      if (await tryHandlePremiumOffer(u, req, clientRes)) return;
+      if (await tryHandleCreateCheckoutSession(u, req, clientRes)) return;
+      if (await tryHandleCreatePortalSession(u, req, clientRes)) return;
+      if (await tryHandleAdmin(u, req, clientRes)) return;
       if (await tryHandleAuth(u, req, clientRes)) return;
       if (await tryHandleContact(u, req, clientRes)) return;
       if (await tryHandleStockSearch(u, clientRes)) return;
@@ -688,28 +700,57 @@ http
       if (await tryHandleToolsFcfYield(u, req, clientRes)) return;
       if (await tryHandleToolsSimilarStocks(u, req, clientRes)) return;
       if (await tryHandleStocksHub(u, clientRes)) return;
-      if (await tryHandleStockActivity(u, clientRes)) return;
+      if (await tryHandleStockActivity(u, req, clientRes)) return;
       if (await tryHandleLandingPreview(u, clientRes)) return;
-      if (await tryHandleAnalytics(u, clientRes)) return;
+      if (await tryHandleAnalytics(u, req, clientRes)) return;
       if (await tryHandleStockOwnership(u, clientRes)) return;
       if (await tryHandleOwnershipIntelligence(u, clientRes)) return;
       if (await tryHandleStockInsider(u, clientRes)) return;
-      if (await tryHandleScreener(u, clientRes)) return;
+      if (await tryHandleScreener(u, req, clientRes)) return;
       if (await tryHandleStockClassification(u, clientRes)) return;
       if (await tryHandleStockSignals(u, clientRes)) return;
       if (await tryHandleStockFinancials(u, clientRes)) return;
-      if (await tryHandleInstitutions(u, clientRes)) return;
-      if (await tryHandlePoliticians(u, clientRes)) return;
-      if (await tryHandleInsiders(u, clientRes)) return;
-      if (await tryHandleSmartMoney(u, clientRes)) return;
-      if (await tryHandleInsiderClusters(u, clientRes)) return;
-      if (await tryHandleTopInstitutionNewEntries(u, clientRes)) return;
-      if (await tryHandleDoubleSignal(u, clientRes)) return;
-      if (await tryHandleTripleSignal(u, clientRes)) return;
-      if (await tryHandleConflictSignals(u, clientRes)) return;
-      if (await tryHandleHiddenGems(u, clientRes)) return;
-      if (await tryHandleConvictionScore(u, clientRes)) return;
-      if (await tryHandleInstitutionalDiscovery(u, clientRes)) return;
+      if (await tryHandleInstitutions(u, req, clientRes)) return;
+      if (await tryHandlePoliticians(u, req, clientRes)) return;
+      if (await tryHandleInsiders(u, req, clientRes)) return;
+      if (await tryHandleSmartMoney(u, req, clientRes)) return;
+      if (await tryHandleInsiderClusters(u, req, clientRes)) return;
+      if (await tryHandleTopInstitutionNewEntries(u, req, clientRes)) return;
+      if (await tryHandleDoubleSignal(u, req, clientRes)) return;
+      if (await tryHandleTripleSignal(u, req, clientRes)) return;
+      if (await tryHandleConflictSignals(u, req, clientRes)) return;
+      if (await tryHandleHiddenGems(u, req, clientRes)) return;
+      if (await tryHandleConvictionScore(u, req, clientRes)) return;
+      if (await tryHandleInstitutionalDiscovery(u, req, clientRes)) return;
+
+      const adminPath = u.pathname === "/admin" || u.pathname === "/admin/";
+      if (adminPath) {
+        // Server-side gate: page itself is not public. Non-admins get a generic 404.
+        const user = await getUserFromRequest(req);
+        if (!user) {
+          clientRes.writeHead(302, {
+            Location: "/login?next=%2Fadmin",
+            "Cache-Control": "private, no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+          });
+          clientRes.end();
+          return;
+        }
+        if (user.role !== "admin") {
+          clientRes.writeHead(404, {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "private, no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+          });
+          clientRes.end("Not found");
+          return;
+        }
+        sendFile(clientRes, path.join(__dirname, "index.html"), {
+          "Cache-Control": "private, no-store",
+          "X-Robots-Tag": "noindex, nofollow",
+        });
+        return;
+      }
 
       const rel = u.pathname === "/" ? "index.html" : u.pathname.slice(1);
       if (

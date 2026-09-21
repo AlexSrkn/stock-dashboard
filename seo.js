@@ -114,6 +114,11 @@ const EXACT = {
     title: "Premium — InvestAtlant",
     description: "Learn about InvestAtlant Premium access and upcoming paid features.",
   },
+  "/admin": {
+    title: "Admin — InvestAtlant",
+    description: "Admin tools for managing InvestAtlant user plans.",
+    noindex: true,
+  },
   "/pricing": {
     title: "Premium — InvestAtlant",
     description: "Learn about InvestAtlant Premium access and upcoming paid features.",

@@ -9,7 +9,8 @@ const ROUTE_RE = /^\/api\/stocks\/([^/]+)\/signals\/?$/;
 function json(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
+    // Short private cache — server also serves from stock_signal for ~6h.
+    "Cache-Control": "private, max-age=60",
   });
   res.end(JSON.stringify(body));
 }

@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getSmartMoneyService } from "../smartMoney/smartMoneyService.js";
 
 loadEnvFile();
@@ -24,11 +25,13 @@ function parseLimit(url: URL, fallback = 100): number {
 
 export async function tryHandleSmartMoney(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   const service = getSmartMoneyService();
 
   if (ROUTE_LIST_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const limit = parseLimit(url);
       const payload = await service.getAllScores(limit);
@@ -46,6 +49,7 @@ export async function tryHandleSmartMoney(
 
   const tickerMatch = url.pathname.match(ROUTE_TICKER_RE);
   if (tickerMatch) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     const ticker = decodeURIComponent(tickerMatch[1]);
     try {
       const score = await service.getScoreForTicker(ticker);

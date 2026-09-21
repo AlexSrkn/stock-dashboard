@@ -1,4 +1,5 @@
 import type http from "node:http";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getCongressTradesForTicker, normalizeTicker } from "../politicians/byTicker.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 import {
@@ -35,6 +36,7 @@ function json(res: http.ServerResponse, status: number, body: unknown, cacheSeco
 
 export async function tryHandlePoliticians(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   const stockMatch = url.pathname.match(ROUTE_STOCK_CONGRESS_RE);
@@ -72,12 +74,14 @@ export async function tryHandlePoliticians(
 
     const sectorDetailMatch = url.pathname.match(ROUTE_SECTOR_EXPOSURE_DETAIL_RE);
     if (sectorDetailMatch) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       const sectorSlug = decodeURIComponent(sectorDetailMatch[1]);
       json(res, 200, await getPoliticianSectorDetail(url, sectorSlug), 120);
       return true;
     }
 
     if (ROUTE_SECTOR_EXPOSURE_RE.test(url.pathname)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       json(res, 200, await getPoliticianSectorExposure(url), 120);
       return true;
     }
@@ -97,6 +101,7 @@ export async function tryHandlePoliticians(
     }
 
     if (ROUTE_REPEAT_BUYERS_RE.test(url.pathname)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       try {
         json(res, 200, await getPoliticianRepeatBuyers(url), 120);
       } catch (err) {
@@ -107,6 +112,7 @@ export async function tryHandlePoliticians(
     }
 
     if (ROUTE_FIRST_TIME_BUYERS_RE.test(url.pathname)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       try {
         json(res, 200, await getPoliticianFirstTimeBuyers(url), 120);
       } catch (err) {
@@ -117,6 +123,7 @@ export async function tryHandlePoliticians(
     }
 
     if (ROUTE_HEAVY_SELLING_RE.test(url.pathname)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       try {
         json(res, 200, await getPoliticianHeavySelling(url), 120);
       } catch (err) {

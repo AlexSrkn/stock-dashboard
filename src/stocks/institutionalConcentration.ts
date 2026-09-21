@@ -7,6 +7,10 @@ import { getPool } from "../db/pool.js";
 import { canonicalFundName } from "../ownership/trackedInstitutions.js";
 import { getStocksRepository } from "./stocksRepository.js";
 import { latestHoldingQuarters } from "./latestHoldingQuarters.js";
+import { readSectorDiskCache, writeSectorDiskCache } from "./sectorDiskCache.js";
+
+const DISK_CACHE_NAME = "institutional-concentration";
+const DISK_CACHE_VERSION = 1;
 
 const COMMON_STOCK_FILTER = `
   (h.put_call IS NULL OR BTRIM(h.put_call) = '')
@@ -101,8 +105,29 @@ interface InternalCache {
   stocksByKey: Map<StockDetailKey, ConcentrationStockRow[]>;
 }
 
+/** Disk shape — Map serialized as a plain object. */
+interface DiskCacheShape {
+  payload: InstitutionalConcentrationPayload;
+  stocksByKey: Record<string, ConcentrationStockRow[]>;
+}
+
 let cache: InternalCache | null = null;
 let inflight: Promise<InternalCache> | null = null;
+
+function hydrateFromDisk(disk: DiskCacheShape): InternalCache {
+  return {
+    at: Date.now(),
+    payload: disk.payload,
+    stocksByKey: new Map(Object.entries(disk.stocksByKey ?? {})),
+  };
+}
+
+function serializeForDisk(c: InternalCache): DiskCacheShape {
+  return {
+    payload: c.payload,
+    stocksByKey: Object.fromEntries(c.stocksByKey),
+  };
+}
 
 function slug(value: string): string {
   return String(value || "")
@@ -497,11 +522,19 @@ async function computeConcentration(pool: pg.Pool): Promise<InternalCache> {
 
 async function ensureCache(pool: pg.Pool): Promise<InternalCache> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache;
+
+  const disk = readSectorDiskCache<DiskCacheShape>(DISK_CACHE_NAME, DISK_CACHE_VERSION);
+  if (disk?.payload && Array.isArray(disk.payload.institutions)) {
+    cache = hydrateFromDisk(disk);
+    return cache;
+  }
+
   if (inflight) return inflight;
   inflight = (async () => {
     try {
       const next = await computeConcentration(pool);
       cache = next;
+      writeSectorDiskCache(DISK_CACHE_NAME, DISK_CACHE_VERSION, serializeForDisk(next));
       return next;
     } finally {
       inflight = null;
@@ -515,6 +548,16 @@ export async function loadInstitutionalConcentration(
 ): Promise<InstitutionalConcentrationPayload> {
   const c = await ensureCache(pool);
   return c.payload;
+}
+
+/** Force recompute and rewrite disk cache (warm script / ops). */
+export async function recomputeInstitutionalConcentration(
+  pool: pg.Pool = getPool()
+): Promise<InstitutionalConcentrationPayload> {
+  const next = await computeConcentration(pool);
+  cache = next;
+  writeSectorDiskCache(DISK_CACHE_NAME, DISK_CACHE_VERSION, serializeForDisk(next));
+  return next.payload;
 }
 
 export async function loadInstitutionalConcentrationStocks(

@@ -48,6 +48,8 @@
     "test:portfolio-proxy": "tsx --test src/institution/portfolioPerformanceProxy/compute.test.ts",
     "test:auth": "tsx --test src/auth/password.test.ts",
     "stocks:warm-institutional-accumulation": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-accumulation-cache.ts",
+    "sector:warm-institutional-concentration": "node --max-old-space-size=3072 --import tsx scripts/warm-institutional-concentration.ts",
+    "stripe:create-premium-price": "tsx scripts/create-premium-price.ts",
     "stocks:warm-ownership-changes": "node --max-old-space-size=3072 --import tsx scripts/warm-ownership-changes-cache.ts",
     "stocks:warm-ownership-history": "node --max-old-space-size=2048 --import tsx scripts/warm-ownership-history-cache.ts",
     "stocks:warm-most-accumulated": "node --max-old-space-size=3072 --import tsx scripts/warm-stocks-most-accumulated.ts",
@@ -102,6 +104,7 @@
     "lightweight-charts": "^5.2.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.0",
+    "stripe": "^22.6.2",
     "undici": "^8.10.1"
   },
   "devDependencies": {

@@ -159,6 +159,15 @@ export async function requireUser(req: http.IncomingMessage): Promise<AppUser> {
   return user;
 }
 
+/** Require an admin user. Throws AuthError(403) otherwise. */
+export async function requireAdminUser(req: http.IncomingMessage): Promise<AppUser> {
+  const user = await requireUser(req);
+  if (user.role !== "admin") {
+    throw new AuthError(403, "admin_required", "Admin access required.");
+  }
+  return user;
+}
+
 /** Require premium entitlement (server-side). Throws AuthError(403) otherwise. */
 export async function requirePremiumUser(req: http.IncomingMessage): Promise<AppUser> {
   const user = await requireUser(req);
@@ -234,7 +243,7 @@ export async function signup(
 export async function login(
   req: http.IncomingMessage,
   input: { email: string; password: string }
-): Promise<{ user: PublicUser; cookie: string }> {
+): Promise<{ user: PublicUser; cookie: string; premium: boolean }> {
   const repo = getAuthRepository();
   // Schema is applied on server startup — don't re-run DDL on every login.
 
@@ -263,7 +272,11 @@ export async function login(
   }
 
   const { cookie } = await issueSession(existing.id, req);
-  return { user: toPublicUser(existing), cookie };
+  return {
+    user: toPublicUser(existing),
+    cookie,
+    premium: canAccessPremiumContent(existing),
+  };
 }
 
 export async function logout(req: http.IncomingMessage): Promise<{ cookie: string }> {

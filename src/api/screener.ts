@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getFilterCatalog } from "../services/screener/FilterCatalog.js";
 import { runScreener } from "../services/screener/ScreenerService.js";
 import { searchInstitutions } from "../services/ownership/OwnershipSearch.js";
@@ -58,9 +59,11 @@ function parseRequestFromQuery(url: URL): ScreenerRequest {
 /** GET routes: `/api/screener` (filters as JSON query) and `/api/screener/filters` (catalog). */
 export async function tryHandleScreener(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   if (ROUTE_FILTERS.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       json(res, 200, await getFilterCatalog(), 300);
     } catch (err) {
@@ -70,6 +73,7 @@ export async function tryHandleScreener(
   }
 
   if (ROUTE_INSTITUTIONS.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const q = url.searchParams.get("q") || "";
       const limit = Number(url.searchParams.get("limit") || "20") || 20;
@@ -81,6 +85,7 @@ export async function tryHandleScreener(
   }
 
   if (!ROUTE_SCREENER.test(url.pathname)) return false;
+  if (!(await assertPremiumRequest(req, res))) return true;
 
   try {
     const request = parseRequestFromQuery(url);
@@ -96,6 +101,7 @@ export async function handleScreenerPost(
   req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<void> {
+  if (!(await assertPremiumRequest(req, res))) return;
   try {
     const body = await readJsonBody(req);
     const request: ScreenerRequest = {

@@ -73,7 +73,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=premium-page-boot-1" />
+    <link rel="stylesheet" href="/styles.css?v=signals-tiles-2" />
     <link rel="stylesheet" href="/auth.css?v=auth-topbar-width-1" />
     <link rel="stylesheet" href="/landing.css?v=landing-system-22" />
   </head>
@@ -126,11 +126,35 @@
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="recently-active">Recently active</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="most-accumulated">Most accumulated</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-changes">Ownership movers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="holder-overlap">Holder overlap</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-history">Ownership history</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-stocks-view="compare">Stock Comparison</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="screener">Screener</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-changes">
+                      <span class="workspace-nav__subsection-label">Ownership movers</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="ownership-history">
+                      <span class="workspace-nav__subsection-label">Ownership history</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-stocks-view="screener">
+                      <span class="workspace-nav__subsection-label">Screener</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
                   </ul>
                 </div>
               </li>
@@ -151,11 +175,29 @@
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="directory">All institutions</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="notable-investors">Notable Investors</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="performance">Performance</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="most-accumulated">Most accumulated</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="new-positions">New positions</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="completely-sold">Completely sold</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-institutions-view="compare">Institution comparison</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="performance"><span class="workspace-nav__subsection-label">Performance</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="new-positions"><span class="workspace-nav__subsection-label">New positions</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-institutions-view="completely-sold"><span class="workspace-nav__subsection-label">Completely sold</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
                   </ul>
                 </div>
               </li>
@@ -175,12 +217,30 @@
                 <div class="workspace-nav__dropdown" role="menu" aria-label="Insiders sections">
                   <ul class="workspace-nav__subsections">
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="trades">Recent trades</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="clusters">Cluster buying</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="conviction-buys">Conviction Buys</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="repeat-buyers">Repeat Buyers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="sentiment">Insider Sentiment</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="first-time-buyers">First-Time Buyers</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-insiders-view="heavy-selling">Heavy Selling</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="clusters"><span class="workspace-nav__subsection-label">Cluster buying</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="conviction-buys"><span class="workspace-nav__subsection-label">Conviction Buys</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-insiders-view="repeat-buyers"><span class="workspace-nav__subsection-label">Repeat Buyers</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
                   </ul>
                 </div>
               </li>
@@ -202,10 +262,34 @@
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="trades">All trades</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="most-accumulated">Most accumulated</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-politicians-view="largest-portfolios">Largest portfolios</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="repeat-buyers">Repeat Buyers</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="first-time-buyers">First-Time Buyers</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="heavy-selling">Heavy Selling</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="sector-exposure">Sector exposure</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="repeat-buyers"><span class="workspace-nav__subsection-label">Repeat Buyers</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="first-time-buyers"><span class="workspace-nav__subsection-label">First-Time Buyers</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="heavy-selling"><span class="workspace-nav__subsection-label">Heavy Selling</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-politicians-view="sector-exposure"><span class="workspace-nav__subsection-label">Sector exposure</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
                   </ul>
                 </div>
               </li>
@@ -229,7 +313,15 @@
                     <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-buying">Sector Leaders</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-selling">Sector Selling</button></li>
                     <li><button type="button" class="workspace-nav__subsection" data-sector-view="sector-fundamentals">Sector Fundamentals</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="institutional-concentration">Institutional Concentration</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-sector-view="institutional-concentration">
+                      <span class="workspace-nav__subsection-label">Institutional Concentration</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
                   </ul>
                 </div>
               </li>
@@ -248,14 +340,70 @@
                 </button>
                 <div class="workspace-nav__dropdown" role="menu" aria-label="Signals sections">
                   <ul class="workspace-nav__subsections">
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="smart-money">Smart Money</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="top-institution-entries">New entries from top institutions</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="double-signal">Double Signal</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="triple-signal">Triple Signal</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="conflict-signals">Conflict Signals</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="hidden-gems">Hidden Gems</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="conviction-score">Conviction Score</button></li>
-                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="institutional-discovery">Institutional Discovery</button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="top-institution-entries"><span class="workspace-nav__subsection-label">New entries from top institutions</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="double-signal"><span class="workspace-nav__subsection-label">Double Signal</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="triple-signal"><span class="workspace-nav__subsection-label">Triple Signal</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="conflict-signals"><span class="workspace-nav__subsection-label">Conflict Signals</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span></button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="smart-money">
+                      <span class="workspace-nav__subsection-label">Smart Money</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="hidden-gems">
+                      <span class="workspace-nav__subsection-label">Hidden Gems</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="conviction-score">
+                      <span class="workspace-nav__subsection-label">Conviction Score</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
+                    <li><button type="button" class="workspace-nav__subsection" data-signals-view="institutional-discovery">
+                      <span class="workspace-nav__subsection-label">Institutional Discovery</span>
+                      <span class="premium-tag" title="Premium" aria-label="Premium">
+                        <svg class="premium-tag__crown" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+                          <path fill="currentColor" d="M2.2 11.5 1 5.2l3.4 2.4L8 3.5l3.6 4.1L15 5.2l-1.2 6.3H2.2Zm.6 1.3h10.4v1.5H2.8V12.8Z"/>
+                        </svg>
+                        <span class="premium-tag__text">Premium</span>
+                      </span>
+                    </button></li>
                   </ul>
                 </div>
               </li>
@@ -509,25 +657,78 @@
         <article class="premium-page__card" aria-labelledby="premium-page-title">
           <p class="premium-page__eyebrow">Premium</p>
           <h1 id="premium-page-title" class="premium-page__title">Premium access</h1>
+          <div class="premium-page__price" aria-live="polite">
+            <span id="premium-price-amount" class="premium-page__price-amount">…</span>
+            <span id="premium-price-interval" class="premium-page__price-interval">per month</span>
+          </div>
+          <p id="premium-page-status" class="premium-page__status" hidden></p>
           <div class="premium-page__body">
+            <p class="premium-page__highlight">
+              Unlock Premium research features with a monthly subscription.
+            </p>
             <p>
-              Self-serve billing is not live yet. For now, explore the product freely — we may move some sections behind
-              Premium later.
+              Checkout is handled securely by Stripe. Manage billing, update your card, or cancel anytime from the customer portal.
             </p>
             <p>
               Questions? Email
               <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>.
             </p>
           </div>
+          <p id="premium-page-note" class="premium-page__note" hidden></p>
           <div class="premium-page__actions">
-            <a href="/stocks" class="btn btn--primary premium-page__cta">Explore</a>
-            <a
-              href="mailto:contact@investatlant.com?subject=Premium%20access%20request"
-              class="btn btn--ghost premium-page__cta"
-              >Contact us</a
-            >
+            <button type="button" class="btn btn--primary premium-page__cta" id="premium-checkout-btn">
+              Upgrade to Premium
+            </button>
+            <button type="button" class="btn btn--ghost premium-page__cta" id="premium-portal-btn" hidden>
+              Manage billing
+            </button>
+            <a id="premium-login-link" href="/login" class="btn btn--ghost premium-page__cta">Log in to upgrade</a>
+            <a id="premium-explore-link" href="/stocks" class="btn btn--ghost premium-page__cta">Explore</a>
           </div>
         </article>
+      </div>
+
+      <div id="view-admin" class="admin-page" hidden>
+        <div class="admin-page__inner">
+          <header class="admin-page__header">
+            <p class="admin-page__eyebrow">Admin</p>
+            <h1 id="admin-page-title" class="admin-page__title">Users</h1>
+            <p class="admin-page__lead">
+              Search accounts and manually grant or revoke Premium (family &amp; friends). Stripe purchases still unlock
+              Premium automatically on the buyer’s account.
+            </p>
+          </header>
+          <div class="admin-page__toolbar">
+            <label class="admin-page__search-wrap">
+              <span class="visually-hidden">Search users</span>
+              <input
+                type="search"
+                id="admin-user-search"
+                class="admin-page__search"
+                placeholder="Search by email or name…"
+                autocomplete="off"
+              />
+            </label>
+            <button type="button" class="btn btn--ghost" id="admin-user-refresh">Refresh</button>
+          </div>
+          <p id="admin-page-note" class="admin-page__note" hidden></p>
+          <p id="admin-page-loading" class="admin-page__loading muted small">Loading users…</p>
+          <div class="admin-page__table-wrap">
+            <table class="admin-page__table" id="admin-users-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-body"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div id="view-faq" class="faq-page" hidden>
@@ -795,19 +996,26 @@
                 <summary class="faq-item__q">What is InvestAtlant Premium?</summary>
                 <div class="faq-item__a">
                   <p>
-                    Premium is our upcoming paid plan. Self-serve billing is not live yet — email
-                    <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>
-                    if you have questions. Today the product is fully usable; some features may move behind Premium later.
+                    Premium is the paid plan for InvestAtlant. Upgrade on the
+                    <a href="/premium">Premium</a> page — checkout is handled by Stripe. Some features
+                    that are free today may move behind Premium later.
                   </p>
                 </div>
               </details>
               <details class="faq-item">
-                <summary class="faq-item__q">When will Premium launch?</summary>
+                <summary class="faq-item__q">How much does Premium cost?</summary>
                 <div class="faq-item__a">
                   <p>
-                    We have not announced a firm launch date yet. Follow
-                    <a href="/premium">Premium</a> for updates, or email
-                    <a href="mailto:contact@investatlant.com">contact@investatlant.com</a>.
+                    See the live price on <a href="/premium">Premium</a>. Billing is monthly through Stripe.
+                  </p>
+                </div>
+              </details>
+              <details class="faq-item">
+                <summary class="faq-item__q">How do I upgrade?</summary>
+                <div class="faq-item__a">
+                  <p>
+                    Create a free account, open <a href="/premium">Premium</a>, and click
+                    Upgrade to Premium to complete Stripe Checkout.
                   </p>
                 </div>
               </details>
@@ -9772,19 +9980,17 @@
       <div class="premium-gate__backdrop" data-premium-gate-close tabindex="-1"></div>
       <div class="premium-gate__panel">
         <p class="premium-gate__eyebrow">Premium</p>
-        <h2 id="premium-gate-title" class="premium-gate__title">This section is Premium</h2>
+        <h2 id="premium-gate-title" class="premium-gate__title">Unlock Premium Research</h2>
         <p id="premium-gate-lead" class="premium-gate__lead">
-          Premium unlocks Signals and Tools. Email us to request access — billing is not self-serve yet.
+          This section is available with InvestAtlant Premium.
+        </p>
+        <p id="premium-gate-body" class="premium-gate__body">
+          Get deeper access to trade data, advanced research views, and the tools you need to follow capital flows across
+          markets.
         </p>
         <div class="premium-gate__actions">
-          <a
-            id="premium-gate-contact"
-            class="btn btn--primary"
-            href="mailto:contact@investatlant.com?subject=Premium%20access%20request"
-            >Email contact@investatlant.com</a
-          >
+          <button type="button" class="btn premium-gate__unlock" id="premium-gate-unlock">Unlock Premium</button>
           <a id="premium-gate-login" class="btn btn--ghost" href="/login">Log in</a>
-          <a class="btn btn--ghost" href="/premium">Learn more</a>
           <button type="button" class="btn btn--ghost" id="premium-gate-close" data-premium-gate-close>
             Close
           </button>
@@ -9792,6 +9998,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=premium-page-boot-1"></script>
+    <script type="module" src="/app.js?v=signals-tiles-2"></script>
   </body>
 </html>

@@ -40,8 +40,17 @@ describe("canAccessPremiumContent", () => {
     assert.equal(canAccessPremiumContent(user({ plan: "free" })), false);
   });
 
-  it("allows premium users without Stripe fields yet", () => {
-    assert.equal(canAccessPremiumContent(user({ plan: "premium" })), true);
+  it("denies premium plan without active subscription proof", () => {
+    assert.equal(canAccessPremiumContent(user({ plan: "premium" })), false);
+  });
+
+  it("allows premium with Stripe subscription id when status unset", () => {
+    assert.equal(
+      canAccessPremiumContent(
+        user({ plan: "premium", stripeSubscriptionId: "sub_test" })
+      ),
+      true
+    );
   });
 
   it("allows active Stripe subscriptions and in-period canceled", () => {

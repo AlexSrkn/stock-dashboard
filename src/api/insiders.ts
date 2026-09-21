@@ -1,4 +1,5 @@
 import type http from "node:http";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getRecentInsiderTransactions } from "../insider/insiderAnalytics.js";
 import { getConvictionBuys } from "../insider/convictionBuys/service.js";
 import { getRepeatBuyers } from "../insider/repeatBuyers/service.js";
@@ -32,7 +33,11 @@ function parseSignal(url: URL): "high" | "low" | "all" | undefined {
   return raw === "high" || raw === "low" || raw === "all" ? raw : undefined;
 }
 
-export async function tryHandleInsiders(url: URL, res: http.ServerResponse): Promise<boolean> {
+export async function tryHandleInsiders(
+  url: URL,
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<boolean> {
   if (ROUTE_HEAVY_SELLING_RE.test(url.pathname)) {
     try {
       const payload = await getHeavySelling(url);
@@ -79,6 +84,7 @@ export async function tryHandleInsiders(url: URL, res: http.ServerResponse): Pro
   }
 
   if (ROUTE_REPEAT_BUYERS_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const payload = await getRepeatBuyers(url);
       json(res, 200, payload, 120);
@@ -94,6 +100,7 @@ export async function tryHandleInsiders(url: URL, res: http.ServerResponse): Pro
   }
 
   if (ROUTE_CONVICTION_BUYS_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const payload = await getConvictionBuys(url);
       json(res, 200, payload, 120);

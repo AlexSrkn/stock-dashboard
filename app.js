@@ -19,8 +19,10 @@ import { createEvEbitdaCalculatorController } from "./evebitdaValuationPage.js";
 import { createFcfYieldCalculatorController } from "./fcfYieldCalculatorPage.js";
 import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
-import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute } from "./authLoginPanel.js?v=premium-page-boot-1";
-import { setupPremiumGate } from "./premiumGate.js";
+import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute, getCurrentAuthUser } from "./authLoginPanel.js?v=admin-users-1";
+import { setupPremiumGate, requirePremiumAccess, guardPremiumRoute } from "./premiumGate.js";
+import { setupPremiumPage, refreshPremiumPage } from "./premiumPage.js";
+import { setupAdminPage, refreshAdminPage } from "./adminPage.js";
 import { applySeo, applySeoForEntity } from "./seo.js";
 import {
   formatProxyHoldings,
@@ -1319,6 +1321,11 @@ function isPremiumPath(pathname) {
   return p === "/pricing" || p === "/premium";
 }
 
+function isAdminPath(pathname) {
+  const p = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return p === "/admin";
+}
+
 function isFaqPath(pathname) {
   const p = String(pathname || "/").replace(/\/+$/, "") || "/";
   return p === "/faq";
@@ -1375,6 +1382,12 @@ function hidePremiumView() {
   document.body.classList.remove("is-premium");
 }
 
+function hideAdminView() {
+  const admin = document.getElementById("view-admin");
+  if (admin) admin.hidden = true;
+  document.body.classList.remove("is-admin");
+}
+
 function hideFaqView() {
   const faq = document.getElementById("view-faq");
   if (faq) faq.hidden = true;
@@ -1415,6 +1428,7 @@ function hideLegalView() {
 
 function hideInfoViews() {
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideDataSourcesView();
@@ -1432,6 +1446,7 @@ function showPremiumView(visible) {
   const landing = document.getElementById("view-landing");
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideDataSourcesView();
@@ -1448,6 +1463,42 @@ function showPremiumView(visible) {
   clearMobileOverlays();
   closeTopSearch();
   setDashboardStatus("");
+  void refreshPremiumPage();
+}
+
+function showAdminView(visible) {
+  if (!visible) {
+    hideAdminView();
+    return;
+  }
+  // Keep the shell hidden until refreshAdminPage confirms an admin session.
+  const admin = document.getElementById("view-admin");
+  const landing = document.getElementById("view-landing");
+  const shell = document.getElementById("app-shell");
+  hideAuthRoute();
+  hidePremiumView();
+  hideFaqView();
+  hideMethodologyView();
+  hideDataSourcesView();
+  hideAboutView();
+  hideContactView();
+  hideLegalView();
+  if (landing) landing.hidden = true;
+  if (shell) shell.hidden = true;
+  if (admin) admin.hidden = true;
+  document.body.classList.remove("is-landing");
+  document.body.classList.remove("is-admin");
+  setBootMode("page");
+  applySeo("/admin");
+  clearMobileOverlays();
+  closeTopSearch();
+  setDashboardStatus("");
+  void (async () => {
+    await refreshAdminPage();
+    if (getCurrentAuthUser()?.role !== "admin") return;
+    if (admin) admin.hidden = false;
+    document.body.classList.add("is-admin");
+  })();
 }
 
 function showFaqView(visible) {
@@ -1460,6 +1511,7 @@ function showFaqView(visible) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideMethodologyView();
   hideDataSourcesView();
   hideAboutView();
@@ -1488,6 +1540,7 @@ function showMethodologyView(visible) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideDataSourcesView();
   hideAboutView();
@@ -1516,6 +1569,7 @@ function showDataSourcesView(visible) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideAboutView();
@@ -1544,6 +1598,7 @@ function showAboutView(visible) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideDataSourcesView();
@@ -1572,6 +1627,7 @@ function showContactView(visible) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideDataSourcesView();
@@ -1605,6 +1661,7 @@ function showLegalView(key) {
   const shell = document.getElementById("app-shell");
   hideAuthRoute();
   hidePremiumView();
+  hideAdminView();
   hideFaqView();
   hideMethodologyView();
   hideDataSourcesView();
@@ -1806,6 +1863,7 @@ function parseAppRoute(pathname) {
   if (isLandingPath(pathname)) return { mode: "landing" };
   if (isAuthRoutePath(pathname)) return { mode: "auth" };
   if (isPremiumPath(pathname)) return { mode: "premium" };
+  if (isAdminPath(pathname)) return { mode: "admin" };
   if (isFaqPath(pathname)) return { mode: "faq" };
   if (isMethodologyPath(pathname)) return { mode: "methodology" };
   if (isDataSourcesPath(pathname)) return { mode: "data-sources" };
@@ -5093,6 +5151,7 @@ function setScreenerVisible(visible) {
 }
 
 function navigateToStocksScreener() {
+  if (!requirePremiumAccess("screener")) return;
   if (window.location.pathname !== "/stocks/screener") {
     history.pushState({ screener: true }, "", "/stocks/screener");
   }
@@ -5124,6 +5183,7 @@ function navigateToStocksMostAccumulated() {
 }
 
 function navigateToStocksOwnershipChanges() {
+  if (!requirePremiumAccess("ownership-changes")) return;
   if (window.location.pathname !== "/stocks/ownership-changes") {
     history.pushState({ stocksOwnershipChanges: true }, "", "/stocks/ownership-changes");
   }
@@ -5146,6 +5206,7 @@ function navigateToStocksHolderOverlap() {
 }
 
 function navigateToStocksOwnershipHistory() {
+  if (!requirePremiumAccess("ownership-history")) return;
   if (window.location.pathname !== "/stocks/ownership-history") {
     history.pushState({ stocksOwnershipHistory: true }, "", "/stocks/ownership-history");
   }
@@ -5282,6 +5343,7 @@ function navigateToInstitutionMostAccumulated() {
 }
 
 function navigateToInstitutionNewPositions() {
+  if (!requirePremiumAccess("institution-new-positions")) return;
   activeInstitutionCik = null;
   activeInstitutionHubView = "new-positions";
   if (window.location.pathname !== "/institutions/new-positions") {
@@ -5292,6 +5354,7 @@ function navigateToInstitutionNewPositions() {
 }
 
 function navigateToInstitutionCompletelySold() {
+  if (!requirePremiumAccess("institution-completely-sold")) return;
   activeInstitutionCik = null;
   activeInstitutionHubView = "completely-sold";
   if (window.location.pathname !== "/institutions/completely-sold") {
@@ -5335,6 +5398,7 @@ function navigateToNotableInvestors() {
 }
 
 function navigateToInstitutionPerformanceRankings() {
+  if (!requirePremiumAccess("institution-performance")) return;
   activeInstitutionCik = null;
   activeInstitutionHubView = "performance";
   if (window.location.pathname !== "/institutions/performance") {
@@ -5354,6 +5418,7 @@ function navigateToInstitutionDirectory() {
 }
 
 function navigateToInsiderClusters() {
+  if (!requirePremiumAccess("insider-clusters")) return;
   activeInsiderKey = null;
   activeInsiderHubView = "clusters";
   if (window.location.pathname !== "/insiders/clusters") {
@@ -5364,6 +5429,7 @@ function navigateToInsiderClusters() {
 }
 
 function navigateToConvictionBuys() {
+  if (!requirePremiumAccess("insider-conviction-buys")) return;
   activeInsiderKey = null;
   activeInsiderHubView = "conviction-buys";
   if (window.location.pathname !== "/insiders/conviction-buys") {
@@ -5378,6 +5444,7 @@ function navigateToConvictionBuys() {
 }
 
 function navigateToRepeatBuyers() {
+  if (!requirePremiumAccess("insider-repeat-buyers")) return;
   activeInsiderKey = null;
   activeInsiderHubView = "repeat-buyers";
   if (window.location.pathname !== "/insiders/repeat-buyers") {
@@ -6034,6 +6101,7 @@ function instConcPath(sectorSlug = null, industrySlug = null, institutionId = nu
 }
 
 function navigateToInstitutionalConcentration(opts = {}) {
+  if (!requirePremiumAccess("institutional-concentration")) return;
   activeSectorHubView = "institutional-concentration";
   instConcLevel = opts.level || "institutions";
   instConcSectorSlug = opts.sectorSlug || null;
@@ -7667,6 +7735,7 @@ function setupSectorAccumulationPages() {
 
 
 function navigateToSignalsHub() {
+  if (!requirePremiumAccess("signals")) return;
   activeSignalsHubView = "directory";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -7678,6 +7747,7 @@ function navigateToSignalsHub() {
 }
 
 function navigateToSignalsSmartMoney() {
+  if (!requirePremiumAccess("smart-money")) return;
   activeSignalsHubView = "smart-money";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -7989,6 +8059,7 @@ function updateToolsView() {
 }
 
 function navigateToTopInstitutionNewEntries() {
+  if (!requirePremiumAccess("top-institution-entries")) return;
   activeSignalsHubView = "top-institution-entries";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -8008,6 +8079,7 @@ function navigateToDoubleSignal(ticker = null) {
     void openStockPreview(ticker);
     return;
   }
+  if (!requirePremiumAccess("double-signal")) return;
   activeSignalsHubView = "double-signal";
   activeTripleSignalTicker = null;
   activeDoubleSignalTicker = null;
@@ -8024,6 +8096,7 @@ function navigateToTripleSignal(ticker = null) {
     void openStockPreview(ticker);
     return;
   }
+  if (!requirePremiumAccess("triple-signal")) return;
   activeSignalsHubView = "triple-signal";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -8036,6 +8109,7 @@ function navigateToTripleSignal(ticker = null) {
 }
 
 function navigateToConflictSignals() {
+  if (!requirePremiumAccess("conflict-signals")) return;
   activeSignalsHubView = "conflict-signals";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -8051,6 +8125,7 @@ function navigateToConflictSignals() {
 }
 
 function navigateToHiddenGems() {
+  if (!requirePremiumAccess("hidden-gems")) return;
   activeSignalsHubView = "hidden-gems";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -8066,6 +8141,7 @@ function navigateToHiddenGems() {
 }
 
 function navigateToConvictionScore() {
+  if (!requirePremiumAccess("conviction-score")) return;
   activeSignalsHubView = "conviction-score";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -8081,6 +8157,7 @@ function navigateToConvictionScore() {
 }
 
 function navigateToInstitutionalDiscovery() {
+  if (!requirePremiumAccess("institutional-discovery")) return;
   activeSignalsHubView = "institutional-discovery";
   activeDoubleSignalTicker = null;
   activeTripleSignalTicker = null;
@@ -9503,6 +9580,7 @@ function navigateToPoliticianLargestPortfolios() {
 }
 
 function navigateToPoliticianRepeatBuyers() {
+  if (!requirePremiumAccess("politician-repeat-buyers")) return;
   activePoliticianKey = null;
   activePoliticianHubView = "repeat-buyers";
   if (window.location.pathname !== "/politicians/repeat-buyers") {
@@ -9517,6 +9595,7 @@ function navigateToPoliticianRepeatBuyers() {
 }
 
 function navigateToPoliticianFirstTimeBuyers() {
+  if (!requirePremiumAccess("politician-first-time-buyers")) return;
   activePoliticianKey = null;
   activePoliticianHubView = "first-time-buyers";
   if (window.location.pathname !== "/politicians/first-time-buyers") {
@@ -9531,6 +9610,7 @@ function navigateToPoliticianFirstTimeBuyers() {
 }
 
 function navigateToPoliticianHeavySelling() {
+  if (!requirePremiumAccess("politician-heavy-selling")) return;
   activePoliticianKey = null;
   activePoliticianHubView = "heavy-selling";
   if (window.location.pathname !== "/politicians/heavy-selling") {
@@ -9545,6 +9625,7 @@ function navigateToPoliticianHeavySelling() {
 }
 
 function navigateToPoliticianSectorExposure({ sectorSlug = "" } = {}) {
+  if (!requirePremiumAccess("politician-sector-exposure")) return;
   activePoliticianKey = null;
   activePoliticianHubView = "sector-exposure";
   activePoliticianSectorSlug = sectorSlug || "";
@@ -15017,6 +15098,12 @@ async function openInstitutionFromRoute(route) {
   await ensureInstitutionsIndex();
   setExploreMode("institutions", { navigate: false });
   if (route.performanceRankings) {
+    if (!guardPremiumRoute("institution-performance", "/institutions")) {
+      activeInstitutionCik = null;
+      activeInstitutionHubView = "directory";
+      updateInstitutionsView();
+      return;
+    }
     activeInstitutionCik = null;
     activeInstitutionHubView = "performance";
     if (window.location.pathname === "/institutions/proxy-performance") {
@@ -15036,12 +15123,24 @@ async function openInstitutionFromRoute(route) {
     return;
   }
   if (route.newPositions) {
+    if (!guardPremiumRoute("institution-new-positions", "/institutions")) {
+      activeInstitutionCik = null;
+      activeInstitutionHubView = "directory";
+      updateInstitutionsView();
+      return;
+    }
     activeInstitutionCik = null;
     activeInstitutionHubView = "new-positions";
     updateInstitutionsView();
     return;
   }
   if (route.completelySold) {
+    if (!guardPremiumRoute("institution-completely-sold", "/institutions")) {
+      activeInstitutionCik = null;
+      activeInstitutionHubView = "directory";
+      updateInstitutionsView();
+      return;
+    }
     activeInstitutionCik = null;
     activeInstitutionHubView = "completely-sold";
     updateInstitutionsView();
@@ -15631,6 +15730,8 @@ const SIGNAL_CATEGORY_HINTS = {
   politician: "Congressional buys vs sells (PTR)",
 };
 
+const SIGNAL_FLOW_CATEGORIES = new Set(["institutional", "insider", "politician"]);
+
 function setSignalsSubtitle(_text) {
   const el = document.getElementById("signals-subtitle");
   if (el) {
@@ -15653,47 +15754,283 @@ function formatSignalStatValue(value, numeric) {
   return formatSignalValue(x);
 }
 
-function renderSignalCard(signal) {
+function signalDirClass(direction, prefix = "signal") {
+  if (direction === "buying") return `${prefix}--buy`;
+  if (direction === "selling") return `${prefix}--sell`;
+  return `${prefix}--neutral`;
+}
+
+function signalBuySellShare(signal) {
+  const buy = Math.max(0, Number(signal.buyValueUsd) || 0);
+  const sell = Math.max(0, Number(signal.sellValueUsd) || 0);
+  const total = buy + sell;
+  if (total <= 0) return { buyPct: 50, sellPct: 50 };
+  return {
+    buyPct: Math.round((buy / total) * 100),
+    sellPct: Math.round((sell / total) * 100),
+  };
+}
+
+function renderSignalsSummary(signals) {
+  const bullish = signals.filter((s) => s.direction === "buying").length;
+  const bearish = signals.filter((s) => s.direction === "selling").length;
+  const neutral = signals.length - bullish - bearish;
+  return `<div class="signals-summary" aria-label="Signal summary">
+    <span class="signals-summary__item signals-summary__item--buy">
+      <span class="signals-summary__dot" aria-hidden="true"></span>${bullish} bullish
+    </span>
+    <span class="signals-summary__item signals-summary__item--neutral">
+      <span class="signals-summary__dot" aria-hidden="true"></span>${neutral} neutral
+    </span>
+    <span class="signals-summary__item signals-summary__item--sell">
+      <span class="signals-summary__dot" aria-hidden="true"></span>${bearish} bearish
+    </span>
+  </div>`;
+}
+
+/** Flow signals: compact ledger rows (not identical cards). */
+function renderFlowLedgerRow(signal) {
   const category = SIGNAL_CATEGORY_LABELS[signal.category] || signal.category;
   const hint = signal.hint || SIGNAL_CATEGORY_HINTS[signal.category] || "";
-  const statLabels = signal.statLabels || { buy: "Buying", sell: "Selling", net: "Net" };
-  const numericStats = Boolean(signal.statValuesAreNumeric);
-  const dirClass =
-    signal.direction === "buying"
-      ? "signal-card--buy"
-      : signal.direction === "selling"
-        ? "signal-card--sell"
-        : "signal-card--neutral";
-  const strongClass = signal.strength === "high" ? "signal-card--strong" : "";
+  const dir = signalDirClass(signal.direction, "signals-ledger__row");
+  const strong = signal.strength === "high" ? "signals-ledger__row--strong" : "";
+  const { buyPct, sellPct } = signalBuySellShare(signal);
+  const net = Number(signal.netValueUsd) || 0;
+  const netClass =
+    net > 0 ? "is-up" : net < 0 ? "is-down" : "is-flat";
   const ratioText =
     signal.ratio != null && Number.isFinite(signal.ratio)
-      ? `${Number(signal.ratio).toFixed(1)}× ${signal.direction === "selling" ? "sell vs buy" : "buy vs sell"}`
+      ? `${Number(signal.ratio).toFixed(1)}×`
       : "";
+
+  return `<article class="signals-ledger__row ${dir} ${strong}">
+    <div class="signals-ledger__source">
+      <span class="signals-ledger__mark" aria-hidden="true"></span>
+      <div class="signals-ledger__source-text">
+        <span class="signals-ledger__category">${escapeHtml(category)}</span>
+        <span class="signals-ledger__label">${escapeHtml(signal.label)}</span>
+        ${hint ? `<span class="signals-ledger__hint muted small">${escapeHtml(hint)}</span>` : ""}
+      </div>
+    </div>
+    <div class="signals-ledger__net">
+      <span class="signals-ledger__net-value mono ${netClass}">${formatSignalValue(net)}</span>
+      <span class="signals-ledger__net-label">Net
+        ${signal.strength === "high" ? '<span class="signals-ledger__high">HIGH</span>' : ""}
+        ${ratioText ? `<span class="signals-ledger__ratio">${escapeHtml(ratioText)}</span>` : ""}
+      </span>
+    </div>
+    <div class="signals-ledger__sides">
+      <div class="signals-ledger__side">
+        <span class="signals-ledger__side-label">Buy</span>
+        <span class="signals-ledger__side-value mono">${formatSignalValue(signal.buyValueUsd)}</span>
+      </div>
+      <div class="signals-ledger__side">
+        <span class="signals-ledger__side-label">Sell</span>
+        <span class="signals-ledger__side-value mono">${formatSignalValue(signal.sellValueUsd)}</span>
+      </div>
+      <div class="signals-ledger__bar" aria-hidden="true">
+        <span class="signals-ledger__bar-buy" style="width:${buyPct}%"></span>
+        <span class="signals-ledger__bar-sell" style="width:${sellPct}%"></span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderHubScoreRing(score) {
+  const s = Math.max(0, Math.min(100, Number(score) || 0));
+  const deg = Math.round((s / 100) * 360);
+  return `<div class="signal-tile__ring" style="--score-deg:${deg}deg" aria-hidden="true">
+    <span class="signal-tile__ring-value mono">${Math.round(s)}</span>
+  </div>`;
+}
+
+function renderHubStatChips(signal) {
+  const labels = signal.statLabels || { buy: "A", sell: "B", net: "C" };
+  const numeric = Boolean(signal.statValuesAreNumeric);
+  return `<div class="signal-tile__chips">
+    <div class="signal-tile__chip">
+      <span class="signal-tile__chip-label">${escapeHtml(labels.buy)}</span>
+      <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.buyValueUsd, numeric)}</span>
+    </div>
+    <div class="signal-tile__chip">
+      <span class="signal-tile__chip-label">${escapeHtml(labels.sell)}</span>
+      <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.sellValueUsd, numeric)}</span>
+    </div>
+    <div class="signal-tile__chip">
+      <span class="signal-tile__chip-label">${escapeHtml(labels.net)}</span>
+      <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.netValueUsd, numeric)}</span>
+    </div>
+  </div>`;
+}
+
+/** Hub signals: distinct identity tiles by category. */
+function renderHubTile(signal) {
+  const category = SIGNAL_CATEGORY_LABELS[signal.category] || signal.category;
+  const hint = signal.hint || "";
+  const dir = signalDirClass(signal.direction, "signal-tile");
+  const strong = signal.strength === "high" ? "signal-tile--strong" : "";
   const hubLink = signal.href
-    ? `<a href="${escapeHtml(signal.href)}" class="signal-card__hub-link fundamentals-grid__link" data-signal-hub-link="${escapeHtml(signal.href)}">View signal hub →</a>`
+    ? `<a href="${escapeHtml(signal.href)}" class="signal-tile__link fundamentals-grid__link" data-signal-hub-link="${escapeHtml(signal.href)}">Open hub →</a>`
     : "";
-  return `<article class="signal-card ${dirClass} ${strongClass}">
-    <div class="signal-card__head">
-      <span class="signal-card__category">${escapeHtml(category)}</span>
-      ${signal.strength === "high" ? '<span class="signal-card__badge">HIGH</span>' : ""}
+  const highBadge =
+    signal.strength === "high" ? '<span class="signal-tile__badge">HIGH</span>' : "";
+
+  if (signal.category === "smart-money") {
+    const ringScore =
+      signal.score != null && Number.isFinite(Number(signal.score))
+        ? Number(signal.score)
+        : [signal.buyValueUsd, signal.sellValueUsd, signal.netValueUsd]
+            .map(Number)
+            .filter((n) => Number.isFinite(n))
+            .reduce((a, b, _, arr) => a + b / arr.length, 0) || 50;
+    return `<article class="signal-tile signal-tile--smart ${dir} ${strong}">
+      <div class="signal-tile__head">
+        <span class="signal-tile__category">${escapeHtml(category)}</span>
+        ${highBadge}
+      </div>
+      <div class="signal-tile__smart-body">
+        ${renderHubScoreRing(ringScore)}
+        <div class="signal-tile__smart-copy">
+          <div class="signal-tile__title">${escapeHtml(signal.label)}</div>
+          ${hint ? `<p class="signal-tile__hint muted small">${escapeHtml(hint)}</p>` : ""}
+        </div>
+      </div>
+      ${renderHubStatChips(signal)}
+      ${hubLink}
+    </article>`;
+  }
+
+  if (signal.category === "double-signal" || signal.category === "triple-signal") {
+    const labels = signal.statLabels || { buy: "Institutional", sell: "Insider", net: "Combined" };
+    const layers =
+      signal.category === "triple-signal"
+        ? [
+            { key: "buy", label: labels.buy, value: signal.buyValueUsd },
+            { key: "sell", label: labels.sell, value: signal.sellValueUsd },
+            { key: "net", label: labels.net, value: signal.netValueUsd },
+          ]
+        : [
+            { key: "buy", label: labels.buy, value: signal.buyValueUsd },
+            { key: "sell", label: labels.sell, value: signal.sellValueUsd },
+          ];
+    return `<article class="signal-tile signal-tile--stack ${dir} ${strong}">
+      <div class="signal-tile__head">
+        <span class="signal-tile__category">${escapeHtml(category)}</span>
+        ${highBadge}
+      </div>
+      <div class="signal-tile__title">${escapeHtml(signal.label)}</div>
+      <div class="signal-tile__stack" aria-hidden="true">
+        ${layers
+          .map(
+            (layer, i) => `<div class="signal-tile__stack-layer signal-tile__stack-layer--${i}">
+              <span>${escapeHtml(layer.label)}</span>
+              <span class="mono">${formatSignalStatValue(layer.value, false)}</span>
+            </div>`
+          )
+          .join("")}
+      </div>
+      ${hint ? `<p class="signal-tile__hint muted small">${escapeHtml(hint)}</p>` : ""}
+      ${hubLink}
+    </article>`;
+  }
+
+  if (signal.category === "conflict-signal") {
+    const labels = signal.statLabels || { buy: "Side A", sell: "Side B", net: "Score" };
+    const conflictScore =
+      signal.score != null && Number.isFinite(Number(signal.score))
+        ? Number(signal.score)
+        : signal.netValueUsd;
+    return `<article class="signal-tile signal-tile--conflict ${dir} ${strong}">
+      <div class="signal-tile__head">
+        <span class="signal-tile__category">${escapeHtml(category)}</span>
+        ${highBadge}
+      </div>
+      <div class="signal-tile__title">${escapeHtml(signal.label)}</div>
+      <div class="signal-tile__split">
+        <div class="signal-tile__split-side signal-tile__split-side--left">
+          <span class="signal-tile__split-label">${escapeHtml(labels.buy)}</span>
+          <span class="signal-tile__split-value mono">${formatSignalValue(signal.buyValueUsd)}</span>
+        </div>
+        <div class="signal-tile__split-side signal-tile__split-side--right">
+          <span class="signal-tile__split-label">${escapeHtml(labels.sell)}</span>
+          <span class="signal-tile__split-value mono">${formatSignalValue(signal.sellValueUsd)}</span>
+        </div>
+      </div>
+      <div class="signal-tile__conflict-score">
+        <span class="muted small">Conflict score</span>
+        <span class="mono">${formatSignalStatValue(conflictScore, true)}</span>
+      </div>
+      ${hint ? `<p class="signal-tile__hint muted small">${escapeHtml(hint)}</p>` : ""}
+      ${hubLink}
+    </article>`;
+  }
+
+  if (signal.category === "top-institution-entry") {
+    const hero =
+      signal.score != null && Number.isFinite(Number(signal.score))
+        ? Number(signal.score)
+        : 0;
+    return `<article class="signal-tile signal-tile--hero ${dir} ${strong}">
+      <div class="signal-tile__head">
+        <span class="signal-tile__category">${escapeHtml(category)}</span>
+        ${highBadge}
+      </div>
+      <div class="signal-tile__hero-row">
+        <div class="signal-tile__hero-score mono">${formatSignalStatValue(hero, true)}</div>
+        <div class="signal-tile__hero-copy">
+          <div class="signal-tile__title">${escapeHtml(signal.label)}</div>
+          ${hint ? `<p class="signal-tile__hint muted small">${escapeHtml(hint)}</p>` : ""}
+        </div>
+      </div>
+      <div class="signal-tile__chips">
+        <div class="signal-tile__chip">
+          <span class="signal-tile__chip-label">Position value</span>
+          <span class="signal-tile__chip-value mono">${formatSignalValue(signal.buyValueUsd)}</span>
+        </div>
+        <div class="signal-tile__chip">
+          <span class="signal-tile__chip-label">Institutions</span>
+          <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.sellValueUsd, true)}</span>
+        </div>
+        <div class="signal-tile__chip">
+          <span class="signal-tile__chip-label">Entries</span>
+          <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.netValueUsd, true)}</span>
+        </div>
+      </div>
+      ${hubLink}
+    </article>`;
+  }
+
+  // Hidden gem / conviction / discovery — hero score tile
+  const hero =
+    signal.score != null && Number.isFinite(Number(signal.score))
+      ? signal.score
+      : Number.isFinite(Number(signal.buyValueUsd))
+        ? signal.buyValueUsd
+        : signal.netValueUsd;
+  const labels = signal.statLabels || { buy: "Score", sell: "Support", net: "Extra" };
+  const numeric = Boolean(signal.statValuesAreNumeric);
+  return `<article class="signal-tile signal-tile--hero ${dir} ${strong}">
+    <div class="signal-tile__head">
+      <span class="signal-tile__category">${escapeHtml(category)}</span>
+      ${highBadge}
     </div>
-    <div class="signal-card__label">${escapeHtml(signal.label)}</div>
-    <div class="signal-card__stats">
-      <div class="signal-card__stat">
-        <span class="signal-card__stat-label">${escapeHtml(statLabels.buy)}</span>
-        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.buyValueUsd, numericStats)}</span>
-      </div>
-      <div class="signal-card__stat">
-        <span class="signal-card__stat-label">${escapeHtml(statLabels.sell)}</span>
-        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.sellValueUsd, numericStats)}</span>
-      </div>
-      <div class="signal-card__stat">
-        <span class="signal-card__stat-label">${escapeHtml(statLabels.net)}</span>
-        <span class="signal-card__stat-value mono">${formatSignalStatValue(signal.netValueUsd, numericStats)}</span>
+    <div class="signal-tile__hero-row">
+      <div class="signal-tile__hero-score mono">${formatSignalStatValue(hero, true)}</div>
+      <div class="signal-tile__hero-copy">
+        <div class="signal-tile__title">${escapeHtml(signal.label)}</div>
+        ${hint ? `<p class="signal-tile__hint muted small">${escapeHtml(hint)}</p>` : ""}
       </div>
     </div>
-    ${ratioText ? `<div class="signal-card__ratio">${escapeHtml(ratioText)}</div>` : ""}
-    ${hint ? `<div class="signal-card__hint muted small">${escapeHtml(hint)}</div>` : ""}
+    <div class="signal-tile__chips signal-tile__chips--two">
+      <div class="signal-tile__chip">
+        <span class="signal-tile__chip-label">${escapeHtml(labels.sell)}</span>
+        <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.sellValueUsd, numeric)}</span>
+      </div>
+      <div class="signal-tile__chip">
+        <span class="signal-tile__chip-label">${escapeHtml(labels.net)}</span>
+        <span class="signal-tile__chip-value mono">${formatSignalStatValue(signal.netValueUsd, numeric)}</span>
+      </div>
+    </div>
     ${hubLink}
   </article>`;
 }
@@ -15715,31 +16052,24 @@ function renderSignalsPanel(data, errMsg) {
     return;
   }
 
-  const bullish = signals.filter((s) => s.direction === "buying");
-  const bearish = signals.filter((s) => s.direction === "selling");
-  const neutral = signals.filter((s) => s.direction !== "buying" && s.direction !== "selling");
+  const flow = signals.filter((s) => SIGNAL_FLOW_CATEGORIES.has(s.category));
+  const hub = signals.filter((s) => !SIGNAL_FLOW_CATEGORIES.has(s.category));
 
-  const sections = [];
-  if (bullish.length) {
-    sections.push(`<div class="signals-section signals-section--bullish">
-      <h3 class="signals-section__title signals-section__title--bullish">Bullish Signals</h3>
-      <div class="signals-section__grid">${bullish.map(renderSignalCard).join("")}</div>
-    </div>`);
+  const parts = [renderSignalsSummary(signals)];
+  if (flow.length) {
+    parts.push(`<section class="signals-zone signals-zone--flow" aria-label="Flow signals">
+      <h3 class="signals-zone__title">Flow</h3>
+      <div class="signals-ledger">${flow.map(renderFlowLedgerRow).join("")}</div>
+    </section>`);
   }
-  if (neutral.length) {
-    sections.push(`<div class="signals-section signals-section--neutral">
-      <h3 class="signals-section__title">Neutral Signals</h3>
-      <div class="signals-section__grid">${neutral.map(renderSignalCard).join("")}</div>
-    </div>`);
-  }
-  if (bearish.length) {
-    sections.push(`<div class="signals-section signals-section--bearish">
-      <h3 class="signals-section__title signals-section__title--bearish">Bearish Signals</h3>
-      <div class="signals-section__grid">${bearish.map(renderSignalCard).join("")}</div>
-    </div>`);
+  if (hub.length) {
+    parts.push(`<section class="signals-zone signals-zone--hub" aria-label="Research signals">
+      <h3 class="signals-zone__title">Research signals</h3>
+      <div class="signals-hub-grid">${hub.map(renderHubTile).join("")}</div>
+    </section>`);
   }
 
-  grid.innerHTML = sections.join("");
+  grid.innerHTML = parts.join("");
 }
 
 async function fetchStockSignals(symbol) {
@@ -24717,6 +25047,10 @@ async function handleRouteChange() {
     showPremiumView(true);
     return;
   }
+  if (route.mode === "admin") {
+    showAdminView(true);
+    return;
+  }
   if (route.mode === "faq") {
     showFaqView(true);
     return;
@@ -24751,6 +25085,19 @@ async function handleRouteChange() {
   if (route.mode === "politicians") {
     closeStocksOverlays();
     activeInstitutionCik = null;
+    const premiumPolitician = {
+      "repeat-buyers": "politician-repeat-buyers",
+      "first-time-buyers": "politician-first-time-buyers",
+      "heavy-selling": "politician-heavy-selling",
+      "sector-exposure": "politician-sector-exposure",
+    }[route.politicianHubView];
+    if (premiumPolitician && !guardPremiumRoute(premiumPolitician, "/politicians")) {
+      setExploreMode("politicians", { navigate: false });
+      activePoliticianHubView = "trades";
+      closePoliticianProfile({ navigate: false });
+      updatePoliticiansView();
+      return;
+    }
     setExploreMode("politicians", { navigate: false });
     await ensurePoliticiansRecent();
     if (route.politicianHubView) activePoliticianHubView = route.politicianHubView;
@@ -24775,6 +25122,12 @@ async function handleRouteChange() {
       sectorFundSectorSlug = route.sectorFundSectorSlug || null;
     }
     if (activeSectorHubView === "institutional-concentration") {
+      if (!guardPremiumRoute("institutional-concentration", "/sector")) {
+        setExploreMode("sector", { navigate: false });
+        activeSectorHubView = "overview";
+        updateSectorView();
+        return;
+      }
       instConcLevel = route.instConcLevel || "institutions";
       instConcSectorSlug = route.instConcSectorSlug || null;
       instConcIndustrySlug = route.instConcIndustrySlug || null;
@@ -24788,6 +25141,18 @@ async function handleRouteChange() {
   if (route.mode === "insiders") {
     closeStocksOverlays();
     activeInstitutionCik = null;
+    const premiumInsider = {
+      clusters: "insider-clusters",
+      "conviction-buys": "insider-conviction-buys",
+      "repeat-buyers": "insider-repeat-buyers",
+    }[route.insiderHubView];
+    if (premiumInsider && !guardPremiumRoute(premiumInsider, "/insiders")) {
+      setExploreMode("insiders", { navigate: false });
+      activeInsiderHubView = "trades";
+      closeInsiderProfile({ navigate: false });
+      updateInsidersView();
+      return;
+    }
     setExploreMode("insiders", { navigate: false });
     if (route.insiderHubView) activeInsiderHubView = route.insiderHubView;
     if (route.insiderKey) {
@@ -24808,6 +25173,9 @@ async function handleRouteChange() {
     }
     if (route.tripleSignalTicker) {
       void openStockPreview(route.tripleSignalTicker);
+      return;
+    }
+    if (!guardPremiumRoute("signals", "/stocks")) {
       return;
     }
     setExploreMode("signals", { navigate: false });
@@ -24888,6 +25256,12 @@ async function handleRouteChange() {
     history.replaceState({ screener: true }, "", "/stocks/screener");
   }
   if (route.screener) {
+    if (!guardPremiumRoute("screener", "/stocks")) {
+      setExploreMode("stocks", { navigate: false });
+      closeStocksOverlays();
+      updateStocksView();
+      return;
+    }
     setScreenerVisible(true);
     return;
   }
@@ -24904,6 +25278,12 @@ async function handleRouteChange() {
     return;
   }
   if (route.stocksOwnershipChanges) {
+    if (!guardPremiumRoute("ownership-changes", "/stocks")) {
+      setExploreMode("stocks", { navigate: false });
+      closeStocksOverlays();
+      updateStocksView();
+      return;
+    }
     closeStocksOverlays();
     stocksOwnershipChangesOpen = true;
     updateStocksView();
@@ -24916,6 +25296,12 @@ async function handleRouteChange() {
     return;
   }
   if (route.stocksOwnershipHistory) {
+    if (!guardPremiumRoute("ownership-history", "/stocks")) {
+      setExploreMode("stocks", { navigate: false });
+      closeStocksOverlays();
+      updateStocksView();
+      return;
+    }
     closeStocksOverlays();
     stocksOwnershipHistoryOpen = true;
     updateStocksView();
@@ -25216,6 +25602,7 @@ function setupExploreNav() {
         return;
       }
       if (mode === "signals") {
+        if (!requirePremiumAccess("signals")) return;
         setExploreMode("signals", { navigate: false });
         navigateToSignalsHub();
         return;
@@ -25247,6 +25634,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "performance" || view === "proxy-performance") {
+        if (!requirePremiumAccess("institution-performance")) return;
         void (async () => {
           await ensureInstitutionsIndex();
           setExploreMode("institutions", { navigate: false });
@@ -25263,6 +25651,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "new-positions") {
+        if (!requirePremiumAccess("institution-new-positions")) return;
         void (async () => {
           await ensureInstitutionsIndex();
           setExploreMode("institutions", { navigate: false });
@@ -25271,6 +25660,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "completely-sold") {
+        if (!requirePremiumAccess("institution-completely-sold")) return;
         void (async () => {
           await ensureInstitutionsIndex();
           setExploreMode("institutions", { navigate: false });
@@ -25326,6 +25716,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "institutional-concentration") {
+        if (!requirePremiumAccess("institutional-concentration")) return;
         setExploreMode("sector", { navigate: false });
         navigateToInstitutionalConcentration({ level: "institutions" });
         return;
@@ -25353,21 +25744,25 @@ function setupExploreNav() {
         return;
       }
       if (view === "repeat-buyers") {
+        if (!requirePremiumAccess("politician-repeat-buyers")) return;
         setExploreMode("politicians", { navigate: false });
         navigateToPoliticianRepeatBuyers();
         return;
       }
       if (view === "first-time-buyers") {
+        if (!requirePremiumAccess("politician-first-time-buyers")) return;
         setExploreMode("politicians", { navigate: false });
         navigateToPoliticianFirstTimeBuyers();
         return;
       }
       if (view === "heavy-selling") {
+        if (!requirePremiumAccess("politician-heavy-selling")) return;
         setExploreMode("politicians", { navigate: false });
         navigateToPoliticianHeavySelling();
         return;
       }
       if (view === "sector-exposure") {
+        if (!requirePremiumAccess("politician-sector-exposure")) return;
         setExploreMode("politicians", { navigate: false });
         navigateToPoliticianSectorExposure();
       }
@@ -25379,16 +25774,19 @@ function setupExploreNav() {
       e.stopPropagation();
       const view = btn.getAttribute("data-insiders-view");
       if (view === "clusters") {
+        if (!requirePremiumAccess("insider-clusters")) return;
         setExploreMode("insiders", { navigate: false });
         navigateToInsiderClusters();
         return;
       }
       if (view === "conviction-buys") {
+        if (!requirePremiumAccess("insider-conviction-buys")) return;
         setExploreMode("insiders", { navigate: false });
         navigateToConvictionBuys();
         return;
       }
       if (view === "repeat-buyers") {
+        if (!requirePremiumAccess("insider-repeat-buyers")) return;
         setExploreMode("insiders", { navigate: false });
         navigateToRepeatBuyers();
         return;
@@ -25430,6 +25828,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "ownership-changes") {
+        if (!requirePremiumAccess("ownership-changes")) return;
         setExploreMode("stocks", { navigate: false });
         navigateToStocksOwnershipChanges();
         return;
@@ -25440,6 +25839,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "ownership-history") {
+        if (!requirePremiumAccess("ownership-history")) return;
         setExploreMode("stocks", { navigate: false });
         navigateToStocksOwnershipHistory();
         return;
@@ -25450,6 +25850,7 @@ function setupExploreNav() {
         return;
       }
       if (view === "screener") {
+        if (!requirePremiumAccess("screener")) return;
         setExploreMode("stocks", { navigate: false });
         navigateToStocksScreener();
       }
@@ -25461,41 +25862,49 @@ function setupExploreNav() {
       e.stopPropagation();
       const view = btn.getAttribute("data-signals-view");
       if (view === "smart-money") {
+        if (!requirePremiumAccess("smart-money")) return;
         setExploreMode("signals", { navigate: false });
         navigateToSignalsSmartMoney();
         return;
       }
       if (view === "top-institution-entries") {
+        if (!requirePremiumAccess("top-institution-entries")) return;
         setExploreMode("signals", { navigate: false });
         navigateToTopInstitutionNewEntries();
         return;
       }
       if (view === "double-signal") {
+        if (!requirePremiumAccess("double-signal")) return;
         setExploreMode("signals", { navigate: false });
         navigateToDoubleSignal(null);
         return;
       }
       if (view === "triple-signal") {
+        if (!requirePremiumAccess("triple-signal")) return;
         setExploreMode("signals", { navigate: false });
         navigateToTripleSignal(null);
         return;
       }
       if (view === "conflict-signals") {
+        if (!requirePremiumAccess("conflict-signals")) return;
         setExploreMode("signals", { navigate: false });
         navigateToConflictSignals();
         return;
       }
       if (view === "hidden-gems") {
+        if (!requirePremiumAccess("hidden-gems")) return;
         setExploreMode("signals", { navigate: false });
         navigateToHiddenGems();
         return;
       }
       if (view === "conviction-score") {
+        if (!requirePremiumAccess("conviction-score")) return;
         setExploreMode("signals", { navigate: false });
         navigateToConvictionScore();
         return;
       }
       if (view === "institutional-discovery") {
+        if (!requirePremiumAccess("institutional-discovery")) return;
         setExploreMode("signals", { navigate: false });
         navigateToInstitutionalDiscovery();
       }
@@ -25569,16 +25978,6 @@ function setupLanding() {
     navigateToLanding();
   });
   initLandingPage();
-}
-
-function setupPremiumPage() {
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest?.('a[href="/pricing"], a[href="/premium"]');
-    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    history.pushState({}, "", a.getAttribute("href") || "/pricing");
-    void handleRouteChange();
-  });
 }
 
 function setupFaqPage() {
@@ -25871,6 +26270,8 @@ async function init() {
     setBootMode("page");
   } else if (bootRoute.mode === "premium") {
     showPremiumView(true);
+  } else if (bootRoute.mode === "admin") {
+    showAdminView(true);
   } else if (bootRoute.mode === "faq") {
     showFaqView(true);
   } else if (bootRoute.mode === "methodology") {
@@ -25933,6 +26334,8 @@ async function init() {
 
   if (appRoute.mode === "premium") {
     showPremiumView(true);
+  } else if (appRoute.mode === "admin") {
+    showAdminView(true);
     return;
   }
 
@@ -26586,6 +26989,7 @@ setupExploreNav();
 setupMobileTopbarNav();
 setupLanding();
 setupPremiumPage();
+setupAdminPage();
 setupFaqPage();
 setupContactForm();
 setupMarketPulseSidebar();

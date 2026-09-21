@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getConflictSignals } from "../signals/conflictSignals/service.js";
 
 loadEnvFile();
@@ -16,9 +17,11 @@ function json(res: http.ServerResponse, status: number, body: unknown, cacheSeco
 
 export async function tryHandleConflictSignals(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   if (!ROUTE_RE.test(url.pathname)) return false;
+  if (!(await assertPremiumRequest(req, res))) return true;
 
   try {
     const payload = await getConflictSignals(url);
@@ -33,4 +36,3 @@ export async function tryHandleConflictSignals(
   }
   return true;
 }
-

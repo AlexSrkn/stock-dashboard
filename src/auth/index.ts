@@ -5,6 +5,7 @@ export {
   ensureAuthSchema,
   getUserFromRequest,
   requireUser,
+  requireAdminUser,
   requirePremiumUser,
   signup,
   login,
@@ -16,3 +17,4 @@ export {
   validateDisplayName,
 } from "./service.js";
 export { getAuthRepository } from "./repository.js";
+export { assertPremiumRequest } from "./premiumHttp.js";

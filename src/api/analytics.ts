@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile, getPool } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import {
   loadInstitutionalSectorFlows,
   loadInstitutionalSectorOwnership,
@@ -58,6 +59,7 @@ function decodeParam(raw: string): string {
 
 export async function tryHandleAnalytics(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   const path = url.pathname;
@@ -99,6 +101,7 @@ export async function tryHandleAnalytics(
       return true;
     }
     if (ROUTE_INSTITUTIONAL_CONCENTRATION_STOCKS_RE.test(path)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       const cik = String(url.searchParams.get("cik") || "").trim();
       const sectorSlug = String(url.searchParams.get("sector") || "").trim();
       const industrySlug = String(url.searchParams.get("industry") || "").trim() || null;
@@ -120,6 +123,7 @@ export async function tryHandleAnalytics(
       return true;
     }
     if (ROUTE_INSTITUTIONAL_CONCENTRATION_RE.test(path)) {
+      if (!(await assertPremiumRequest(req, res))) return true;
       json(res, 200, await loadInstitutionalConcentration(getPool()), 600);
       return true;
     }

@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import {
   getDoubleSignalService,
   parseDoubleSignalWindowDays,
@@ -20,12 +21,18 @@ function json(res: http.ServerResponse, status: number, body: unknown, cacheSeco
 
 export async function tryHandleDoubleSignal(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
+  const isList = ROUTE_LIST_RE.test(url.pathname);
+  const tickerMatch = url.pathname.match(ROUTE_TICKER_RE);
+  if (!isList && !tickerMatch) return false;
+  if (!(await assertPremiumRequest(req, res))) return true;
+
   const service = getDoubleSignalService();
   const windowDays = parseDoubleSignalWindowDays(url.searchParams.get("window"));
 
-  if (ROUTE_LIST_RE.test(url.pathname)) {
+  if (isList) {
     try {
       const payload = await service.getPayload(windowDays);
       json(res, 200, payload);
@@ -40,29 +47,24 @@ export async function tryHandleDoubleSignal(
     return true;
   }
 
-  const tickerMatch = url.pathname.match(ROUTE_TICKER_RE);
-  if (tickerMatch) {
-    const ticker = decodeURIComponent(tickerMatch[1]);
-    try {
-      const detail = await service.getDetail(ticker, windowDays);
-      if (!detail) {
-        json(res, 404, {
-          error: "not_found",
-          message: `No double signal for ${ticker.toUpperCase()} (${windowDays}d window)`,
-        });
-        return true;
-      }
-      json(res, 200, detail);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("DATABASE_URL")) {
-        json(res, 503, { error: "database_unavailable", message });
-        return true;
-      }
-      json(res, 500, { error: "double_signal_error", message });
+  const ticker = decodeURIComponent(tickerMatch![1]);
+  try {
+    const detail = await service.getDetail(ticker, windowDays);
+    if (!detail) {
+      json(res, 404, {
+        error: "not_found",
+        message: `No double signal for ${ticker.toUpperCase()} (${windowDays}d window)`,
+      });
+      return true;
     }
-    return true;
+    json(res, 200, detail);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("DATABASE_URL")) {
+      json(res, 503, { error: "database_unavailable", message });
+      return true;
+    }
+    json(res, 500, { error: "double_signal_error", message });
   }
-
-  return false;
+  return true;
 }

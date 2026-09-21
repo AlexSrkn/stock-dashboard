@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { loadEnvFile } from "../db/pool.js";
+import { assertPremiumRequest } from "../auth/premiumHttp.js";
 import { getRecentlyActiveStocks } from "../stocks/recentlyActive.js";
 import { getStocksMostAccumulated } from "../stocks/mostAccumulated/compute.js";
 import { getOwnershipChanges } from "../stocks/ownershipChanges/service.js";
@@ -24,6 +25,7 @@ function json(res: http.ServerResponse, status: number, body: unknown, cacheSeco
 
 export async function tryHandleStockActivity(
   url: URL,
+  req: http.IncomingMessage,
   res: http.ServerResponse
 ): Promise<boolean> {
   if (ROUTE_MOST_ACCUMULATED_RE.test(url.pathname)) {
@@ -46,6 +48,7 @@ export async function tryHandleStockActivity(
   }
 
   if (ROUTE_OWNERSHIP_CHANGES_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const payload = await getOwnershipChanges(url);
       json(res, 200, payload, 300);
@@ -76,6 +79,7 @@ export async function tryHandleStockActivity(
   }
 
   if (ROUTE_OWNERSHIP_HISTORY_RE.test(url.pathname)) {
+    if (!(await assertPremiumRequest(req, res))) return true;
     try {
       const payload = await getOwnershipHistory(url);
       json(res, 200, payload, 300);

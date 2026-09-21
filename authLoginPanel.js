@@ -8,6 +8,8 @@ import { applySeo } from "./seo.js";
 
 /** @type {PublicUser | null} */
 let currentUser = null;
+/** Server-computed Premium entitlement from /api/auth/me (not client-editable claims). */
+let currentPremium = false;
 
 const AUTH_PATHS = new Set([
   "/login",
@@ -27,6 +29,24 @@ export function isAuthPath(pathname = location.pathname) {
 
 export function getCurrentAuthUser() {
   return currentUser;
+}
+
+/** True when the server says this session has Premium (or admin). */
+export function getServerPremiumAccess() {
+  if (currentUser?.role === "admin") return true;
+  return Boolean(currentPremium);
+}
+
+function applyAuthPayload(data) {
+  currentUser = data?.user || null;
+  if (typeof data?.premium === "boolean") {
+    currentPremium = data.premium;
+  } else if (currentUser?.role === "admin") {
+    currentPremium = true;
+  } else {
+    // Fallback only when older responses omit `premium`.
+    currentPremium = currentUser?.plan === "premium";
+  }
 }
 
 async function authFetch(path, options = {}) {
@@ -170,6 +190,7 @@ export function showAuthRoute() {
   const shell = document.getElementById("app-shell");
   const auth = document.getElementById("view-auth");
   const premium = document.getElementById("view-premium");
+  const admin = document.getElementById("view-admin");
   const faq = document.getElementById("view-faq");
   const methodology = document.getElementById("view-methodology");
   const dataSources = document.getElementById("view-data-sources");
@@ -180,6 +201,7 @@ export function showAuthRoute() {
   if (shell) shell.hidden = true;
   document.documentElement.setAttribute("data-boot", "page");
   if (premium) premium.hidden = true;
+  if (admin) admin.hidden = true;
   if (faq) faq.hidden = true;
   if (methodology) methodology.hidden = true;
   if (dataSources) dataSources.hidden = true;
@@ -197,6 +219,7 @@ export function showAuthRoute() {
   document.body.classList.add("is-auth");
   document.body.classList.remove("is-landing");
   document.body.classList.remove("is-premium");
+  document.body.classList.remove("is-admin");
   document.body.classList.remove("is-faq");
   document.body.classList.remove("is-methodology");
   document.body.classList.remove("is-data-sources");
@@ -311,7 +334,7 @@ function renderTopbarUser() {
       emailMenuEl.hidden = false;
     }
     if (planEl) {
-      planEl.textContent = currentUser.plan === "premium" ? "Premium" : "Free plan";
+      planEl.textContent = getServerPremiumAccess() ? "Premium" : "Free plan";
       planEl.hidden = false;
     }
   } else {
@@ -323,9 +346,10 @@ function renderTopbarUser() {
 export async function refreshAuthSession() {
   try {
     const data = await authFetch("/api/auth/me");
-    currentUser = data?.user || null;
+    applyAuthPayload(data);
   } catch {
     currentUser = null;
+    currentPremium = false;
   }
   renderTopbarUser();
   return currentUser;
@@ -361,6 +385,7 @@ export function setupAuthLoginPanel() {
       /* ignore */
     }
     currentUser = null;
+    currentPremium = false;
     renderTopbarUser();
     if (userPanel) {
       userPanel.hidden = true;
@@ -390,9 +415,14 @@ export function setupAuthLoginPanel() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      currentUser = data.user;
+      applyAuthPayload(data);
       renderTopbarUser();
-      history.pushState({}, "", "/stocks");
+      const nextRaw = new URLSearchParams(window.location.search).get("next") || "";
+      const next =
+        nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.includes("://")
+          ? nextRaw
+          : "/stocks";
+      history.pushState({}, "", next);
       hideAuthRoute();
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err) {
@@ -449,7 +479,7 @@ export function setupAuthLoginPanel() {
         navigate(`/check-email?email=${encodeURIComponent(email)}`);
         return;
       }
-      currentUser = data.user;
+      applyAuthPayload(data);
       renderTopbarUser();
       history.pushState({}, "", "/stocks");
       hideAuthRoute();

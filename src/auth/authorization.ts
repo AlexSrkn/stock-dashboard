@@ -4,8 +4,8 @@ import type { AppUser, UserPlan } from "./types.js";
  * Server-side premium gate. Use this (or requirePremiumUser) on API handlers —
  * never trust a client-side `user.plan === "premium"` check alone.
  *
- * When Stripe is wired, extend this to also consult subscription_status /
- * current_period_end without changing call sites.
+ * Entitlement comes from the session → DB user row (plan + subscription fields),
+ * not from cookies the browser can invent.
  */
 export function canAccessPremiumContent(user: AppUser | null | undefined): boolean {
   if (!user) return false;
@@ -13,21 +13,23 @@ export function canAccessPremiumContent(user: AppUser | null | undefined): boole
   if (user.role === "admin") return true;
   if (user.plan !== "premium") return false;
 
-  // Future Stripe: treat canceled-but-still-in-period as allowed.
-  if (user.subscriptionStatus) {
-    const status = user.subscriptionStatus.toLowerCase();
-    if (status === "active" || status === "trialing") return true;
-    if (status === "canceled" || status === "cancelled") {
-      if (user.subscriptionCurrentPeriodEnd) {
-        const end = Date.parse(user.subscriptionCurrentPeriodEnd);
-        if (Number.isFinite(end) && end > Date.now()) return true;
-      }
-      return false;
+  const status = String(user.subscriptionStatus || "").toLowerCase();
+
+  if (status === "active" || status === "trialing" || status === "past_due") return true;
+
+  if (status === "canceled" || status === "cancelled") {
+    if (user.subscriptionCurrentPeriodEnd) {
+      const end = Date.parse(user.subscriptionCurrentPeriodEnd);
+      if (Number.isFinite(end) && end > Date.now()) return true;
     }
-    // unknown status with plan=premium — allow until billing is enforced
+    return false;
   }
 
-  return true;
+  // Paid Checkout fulfillment stores a subscription id; require it when status is unset.
+  if (user.stripeSubscriptionId) return true;
+
+  // No Stripe subscription and no active status → not entitled.
+  return false;
 }
 
 export function isFreePlan(user: AppUser | null | undefined): boolean {

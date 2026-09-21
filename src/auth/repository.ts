@@ -266,7 +266,7 @@ export class AuthRepository {
       `UPDATE app_user
        SET plan = $2,
            subscription_status = CASE
-             WHEN $2 = 'premium' THEN COALESCE(subscription_status, 'active')
+             WHEN $2 = 'premium' THEN 'active'
              ELSE NULL
            END,
            subscription_current_period_end = CASE
@@ -277,6 +277,118 @@ export class AuthRepository {
        WHERE id = $1
        RETURNING *`,
       [userId, normalized]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
+
+  /** Persist Stripe customer/subscription IDs and unlock Premium after Checkout. */
+  async applyStripeCheckout(
+    userId: number,
+    input: {
+      customerId?: string | null;
+      subscriptionId?: string | null;
+      subscriptionStatus?: string | null;
+      currentPeriodStart?: Date | string | null;
+      currentPeriodEnd?: Date | string | null;
+      cancelAtPeriodEnd?: boolean | null;
+    }
+  ): Promise<AppUser | null> {
+    const res = await this.pool.query(
+      `UPDATE app_user
+       SET stripe_customer_id = COALESCE($2, stripe_customer_id),
+           stripe_subscription_id = COALESCE($3, stripe_subscription_id),
+           subscription_status = COALESCE($4, subscription_status, 'active'),
+           subscription_current_period_start = COALESCE($5, subscription_current_period_start),
+           subscription_current_period_end = COALESCE($6, subscription_current_period_end),
+           subscription_cancel_at_period_end = COALESCE($7, subscription_cancel_at_period_end, FALSE),
+           plan = 'premium',
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [
+        userId,
+        input.customerId ?? null,
+        input.subscriptionId ?? null,
+        input.subscriptionStatus ?? null,
+        input.currentPeriodStart ?? null,
+        input.currentPeriodEnd ?? null,
+        input.cancelAtPeriodEnd ?? null,
+      ]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
+
+  /**
+   * Sync plan/subscription fields from Stripe subscription webhooks.
+   * Looks up by customer id, then subscription id.
+   */
+  async applyStripeSubscription(input: {
+    customerId?: string | null;
+    subscriptionId: string;
+    status: string;
+    currentPeriodStart?: Date | string | null;
+    currentPeriodEnd?: Date | string | null;
+    cancelAtPeriodEnd?: boolean;
+  }): Promise<AppUser | null> {
+    const status = String(input.status || "").toLowerCase();
+    const entitled =
+      status === "active" ||
+      status === "trialing" ||
+      status === "past_due" ||
+      (status === "canceled" &&
+        input.currentPeriodEnd != null &&
+        new Date(input.currentPeriodEnd).getTime() > Date.now());
+
+    const customerId = String(input.customerId || "").trim() || null;
+    const subscriptionId = String(input.subscriptionId || "").trim();
+    if (!subscriptionId) return null;
+
+    const res = await this.pool.query(
+      `UPDATE app_user
+       SET stripe_customer_id = COALESCE($1, stripe_customer_id),
+           stripe_subscription_id = $2,
+           subscription_status = $3,
+           subscription_current_period_start = $4,
+           subscription_current_period_end = $5,
+           subscription_cancel_at_period_end = $6,
+           plan = CASE WHEN $7 THEN 'premium' ELSE 'free' END,
+           updated_at = NOW()
+       WHERE ($1::text IS NOT NULL AND stripe_customer_id = $1)
+          OR stripe_subscription_id = $2
+       RETURNING *`,
+      [
+        customerId,
+        subscriptionId,
+        status || null,
+        input.currentPeriodStart ?? null,
+        input.currentPeriodEnd ?? null,
+        Boolean(input.cancelAtPeriodEnd),
+        entitled,
+      ]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
+
+  async findUserByStripeCustomerId(customerId: string): Promise<AppUser | null> {
+    const id = String(customerId || "").trim();
+    if (!id) return null;
+    const res = await this.pool.query(
+      `SELECT * FROM app_user WHERE stripe_customer_id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!res.rows[0]) return null;
+    return mapUser(res.rows[0]);
+  }
+
+  async findUserByStripeSubscriptionId(subscriptionId: string): Promise<AppUser | null> {
+    const id = String(subscriptionId || "").trim();
+    if (!id) return null;
+    const res = await this.pool.query(
+      `SELECT * FROM app_user WHERE stripe_subscription_id = $1 LIMIT 1`,
+      [id]
     );
     if (!res.rows[0]) return null;
     return mapUser(res.rows[0]);

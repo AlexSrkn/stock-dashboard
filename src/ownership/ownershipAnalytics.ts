@@ -97,9 +97,9 @@ function sortByValueDesc(holders: FundHoldingAggregate[]): FundHoldingAggregate[
   return [...holders].sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0));
 }
 
-const QUARTER_PAIR_TTL_MS = 60_000;
+const QUARTER_PAIR_TTL_MS = 6 * 60 * 60 * 1000; // 6h — signals/ownership reuse this heavily
 /** Cap in-process holder maps — expired entries used to accumulate forever (OOM). */
-const QUARTER_PAIR_CACHE_MAX = 48;
+const QUARTER_PAIR_CACHE_MAX = 96;
 const quarterPairCache = new Map<
   string,
   {

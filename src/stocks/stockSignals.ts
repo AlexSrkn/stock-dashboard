@@ -10,6 +10,11 @@ import { buildStockCachedSignals } from "./stockCachedSignals.js";
 /** Buying is "High" when one side is at least this multiple of the other. */
 const HIGH_RATIO = 2.5;
 
+/** Serve persisted institutional/insider/politician signals without recomputing. */
+const FLOW_SIGNAL_FRESH_MS = 6 * 60 * 60 * 1000; // 6h
+/** Still return persisted rows while a background refresh runs. */
+const FLOW_SIGNAL_STALE_OK_MS = 24 * 60 * 60 * 1000; // 24h
+
 export type SignalCategory =
   | "institutional"
   | "insider"
@@ -44,6 +49,8 @@ export interface StockSignal {
   statValuesAreNumeric?: boolean;
   /** Cached hub signals — short description shown under stats. */
   hint?: string | null;
+  /** Optional 0–100 score for hub tiles (dial / hero). */
+  score?: number | null;
 }
 
 export interface StockSignalsResponse {
@@ -222,33 +229,106 @@ function computePoliticianSignal(ticker: string): StockSignal {
 
 /**
  * Compute the three activity signals for a ticker and (optionally) persist them.
+ * Prefer persisted flow rows when fresh; hub cards are always merged live.
  */
 export async function computeStockSignals(
   ticker: string,
   pool: pg.Pool = getPool(),
-  options: { persist?: boolean } = {}
+  options: { persist?: boolean; skipCache?: boolean } = {}
 ): Promise<StockSignalsResponse> {
   const sym = String(ticker || "").trim().toUpperCase();
   if (!sym) throw new Error("Missing ticker");
 
-  const [institutional, insider] = await Promise.all([
-    computeInstitutionalSignal(pool, sym),
-    computeInsiderSignal(pool, sym),
-  ]);
-  const politician = computePoliticianSignal(sym);
+  const repo = getStockSignalsRepository(pool);
 
-  const flowSignals = [institutional, insider, politician];
-  const cachedSignals = buildStockCachedSignals(sym);
-  const signals = [...flowSignals, ...cachedSignals];
-  const computedAt = new Date().toISOString();
-
-  if (options.persist !== false) {
+  if (!options.skipCache) {
     try {
-      await getStockSignalsRepository(pool).saveSignals(sym, flowSignals);
+      const stored = await repo.getFlowSignals(sym, 0);
+      if (stored) {
+        if (stored.ageMs <= FLOW_SIGNAL_FRESH_MS) {
+          return {
+            ticker: sym,
+            computedAt: stored.computedAt,
+            signals: [...stored.signals, ...buildStockCachedSignals(sym)],
+          };
+        }
+        // Stale but usable — return now and refresh in the background.
+        if (stored.ageMs <= FLOW_SIGNAL_STALE_OK_MS) {
+          scheduleStockSignalsRefresh(sym, pool);
+          return {
+            ticker: sym,
+            computedAt: stored.computedAt,
+            signals: [...stored.signals, ...buildStockCachedSignals(sym)],
+          };
+        }
+      }
     } catch {
-      /* persistence is best-effort; never block the response */
+      /* fall through to live compute */
     }
   }
 
-  return { ticker: sym, computedAt, signals };
+  return recomputeAndPersistStockSignals(sym, pool, options.persist !== false);
+}
+
+/** Dedup live recomputes (HTTP + background refresh). */
+const computeInflight = new Map<string, Promise<StockSignalsResponse>>();
+
+/** Force a live recompute (used by background refresh / cold miss). */
+export async function recomputeAndPersistStockSignals(
+  ticker: string,
+  pool: pg.Pool = getPool(),
+  persist = true
+): Promise<StockSignalsResponse> {
+  const sym = String(ticker || "").trim().toUpperCase();
+  if (!sym) throw new Error("Missing ticker");
+
+  const existing = computeInflight.get(sym);
+  if (existing) return existing;
+
+  const run = (async (): Promise<StockSignalsResponse> => {
+    const [institutional, insider] = await Promise.all([
+      computeInstitutionalSignal(pool, sym),
+      computeInsiderSignal(pool, sym),
+    ]);
+    const politician = computePoliticianSignal(sym);
+
+    const flowSignals = [institutional, insider, politician];
+    const cachedSignals = buildStockCachedSignals(sym);
+    const signals = [...flowSignals, ...cachedSignals];
+    const computedAt = new Date().toISOString();
+
+    if (persist) {
+      // Await so the next request can hit stock_signal instead of recomputing.
+      try {
+        await getStockSignalsRepository(pool).saveSignals(sym, flowSignals);
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    return { ticker: sym, computedAt, signals };
+  })().finally(() => {
+    computeInflight.delete(sym);
+  });
+
+  computeInflight.set(sym, run);
+  return run;
+}
+
+/**
+ * Kick a background recompute. Safe to call repeatedly; deduped per ticker.
+ */
+export function scheduleStockSignalsRefresh(
+  ticker: string,
+  pool: pg.Pool = getPool()
+): void {
+  const sym = String(ticker || "").trim().toUpperCase();
+  if (!sym) return;
+  void recomputeAndPersistStockSignals(sym, pool, true).catch((err) => {
+    console.warn(
+      "[stock-signals] background refresh failed",
+      sym,
+      err instanceof Error ? err.message : err
+    );
+  });
 }
