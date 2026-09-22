@@ -7,6 +7,7 @@
     "build": "tsc",
     "build:indicators": "tsc -p indicators/tsconfig.json",
     "typecheck": "tsc --noEmit",
+    "x:draft-trades": "tsx scripts/draft-x-trade-posts.ts",
     "test:performance": "tsx --test src/institution/performance/performanceEngine.test.ts",
     "test:smart-money": "tsx --test src/smartMoney/compositeScore.test.ts src/smartMoney/aggregate.test.ts",
     "performance:warm-cache": "node --max-old-space-size=3072 --import tsx scripts/warm-performance-cache.ts",

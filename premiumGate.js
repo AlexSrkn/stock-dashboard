@@ -30,7 +30,7 @@ export const PREMIUM_SECTIONS = new Set([
   "insider-clusters",
   "insider-conviction-buys",
   "insider-repeat-buyers",
-  // Politicians — ranked views (all trades stay free)
+  // Politicians — ranked views (recent trades stay free)
   "politician-repeat-buyers",
   "politician-first-time-buyers",
   "politician-heavy-selling",

@@ -10,5 +10,6 @@ data/13f-info/managers-all.json
 data/13f-info/managers-candidates.csv
 data/13f-info/managers-candidates.json
 data/politicians/recent.json
+data/x-drafts/
 node_modules/
 .env

@@ -543,6 +543,56 @@ button.workspace-nav__subsection {
   background: transparent;
 }
 
+.logo-combo {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.logo-combo .logo-chart {
+  grid-area: 1 / 1;
+}
+
+.logo-mark__ia {
+  grid-area: 1 / 1;
+  z-index: 1;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  pointer-events: none;
+  font-size: 1.52rem;
+  transform: translateX(0.02em);
+}
+
+.logo-mark__bridge {
+  grid-area: 1 / 1;
+  z-index: 0;
+  /* Match letters' em so this actually covers the I–A gap. */
+  width: 0.55em;
+  height: 0.92em;
+  background: #05070b;
+  /* Gap sits left of center because I is narrower than A. */
+  transform: translateX(-0.18em);
+}
+
+.logo-mark__letters {
+  grid-area: 1 / 1;
+  z-index: 1;
+  font-family: var(--font);
+  font-size: 1em;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: #fff;
+  user-select: none;
+  -webkit-text-stroke: 3px #05070b;
+  paint-order: stroke fill;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
 .logo-wordmark {
   font-size: 1.35rem;
   font-weight: 700;
@@ -559,6 +609,20 @@ button.workspace-nav__subsection {
 
   .logo-chart {
     height: 1.85rem;
+  }
+
+  .logo-mark__ia {
+    font-size: 1.29rem;
+  }
+
+  .logo-mark__letters {
+    -webkit-text-stroke: 2.5px #05070b;
+  }
+
+  .logo-mark__bridge {
+    width: 0.52em;
+    height: 0.9em;
+    transform: translateX(-0.16em);
   }
 }
 
@@ -8627,6 +8691,20 @@ body.chart-fullscreen-active {
     height: 2.4rem;
   }
 
+  .topbar .logo-mark__ia {
+    font-size: 1.72rem;
+  }
+
+  .topbar .logo-mark__letters {
+    -webkit-text-stroke: 3.25px #05070b;
+  }
+
+  .topbar .logo-mark__bridge {
+    width: 0.58em;
+    height: 0.94em;
+    transform: translateX(-0.2em);
+  }
+
   .topbar .logo-wordmark {
     display: block;
     font-size: 1.55rem;
@@ -9093,6 +9171,10 @@ body.chart-fullscreen-active {
 
   .topbar .logo-chart {
     height: 2.25rem;
+  }
+
+  .topbar .logo-mark__ia {
+    font-size: 1.6rem;
   }
 
   .topbar .logo-wordmark {
