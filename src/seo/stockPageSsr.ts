@@ -341,16 +341,28 @@ export function injectStockPageSsr(indexHtml: string, data: StockPageSsrData): s
   html = replaceMetaContent(html, 'name="twitter:title"', data.title);
   html = replaceMetaContent(html, 'name="twitter:description"', data.description);
 
+  // Fill the visible SPA stock header so crawlers (and first paint) match the URL
+  // even if they ignore the clipped #seo-stock-ssr block.
+  const displayName = data.companyName?.trim() || data.ticker;
+  html = html.replace(
+    /(<h2[^>]*id="active-symbol-label"[^>]*>)([^<]*)(<\/h2>)/i,
+    `$1${escapeHtml(data.ticker)}$3`
+  );
+  html = html.replace(
+    /(<p[^>]*id="active-name-label"[^>]*>)([^<]*)(<\/p>)/i,
+    `$1${escapeHtml(displayName)}$3`
+  );
+
   const bodyBlock = `${renderJsonLd(data)}\n${renderStockPageSsrBody(data)}`;
   if (/<body[^>]*>/i.test(html)) {
     html = html.replace(/<body([^>]*)>/i, `<body$1>\n${bodyBlock}\n`);
   }
 
-  // Hide prerender visually once the app shell boots (content stays in HTML for crawlers).
-  if (!html.includes('html[data-boot="app"] #seo-stock-ssr')) {
+  // Keep SSR tables in the document for crawlers; hide only after SPA marks ready.
+  if (!html.includes("html[data-ready] #seo-stock-ssr")) {
     html = html.replace(
       "</style>",
-      `html[data-boot="app"] #seo-stock-ssr {
+      `html[data-ready] #seo-stock-ssr {
         position: absolute;
         width: 1px;
         height: 1px;
