@@ -25,9 +25,9 @@ const EXACT = {
       "Explore equities with ownership intelligence, fundamentals context, and research tools on InvestAtlant.",
   },
   "/institutions": {
-    title: "Institutions — InvestAtlant",
+    title: "Institutional Investors — 13F Holdings Directory | InvestAtlant",
     description:
-      "Browse 13F institutional filers, holdings, and portfolio activity on InvestAtlant.",
+      "Browse tracked institutional investors and their 13F holdings, activity, and portfolio history on InvestAtlant.",
   },
   "/institutions/notable-investors": {
     title: "Notable investors — InvestAtlant",
@@ -38,8 +38,9 @@ const EXACT = {
     description: "Compare institutional portfolio performance proxies on InvestAtlant.",
   },
   "/institutions/most-accumulated": {
-    title: "Most accumulated institutions — InvestAtlant",
-    description: "See which institutions added the most shares last quarter on InvestAtlant.",
+    title: "Institutional Buying — Most Accumulated Stocks | InvestAtlant",
+    description:
+      "See stocks with the most institutional buying from 13F filings — net shares added by tracked funds on InvestAtlant.",
   },
   "/insiders": {
     title: "Insider Trading — Recent Form 4 Buys & Sales | InvestAtlant",
@@ -58,13 +59,20 @@ const EXACT = {
       "Track high-conviction insider buys from SEC Form 4 open-market purchases on InvestAtlant.",
   },
   "/politicians": {
-    title: "Politicians — InvestAtlant",
+    title: "Congress Trading — Recent Politician Stock Trades | InvestAtlant",
     description:
-      "Follow congressional trading disclosures and politician portfolio activity on InvestAtlant.",
+      "Follow recent congressional stock trades disclosed under the STOCK Act (House and Senate PTR filings) on InvestAtlant.",
+    canonicalPath: "/politicians/trades",
   },
   "/politicians/trades": {
-    title: "Congress trades — InvestAtlant",
-    description: "Recent publicly disclosed stock trades by members of Congress on InvestAtlant.",
+    title: "Congress Trading — Recent Politician Stock Trades | InvestAtlant",
+    description:
+      "Follow recent congressional stock trades disclosed under the STOCK Act (House and Senate PTR filings) on InvestAtlant.",
+  },
+  "/politicians/most-accumulated": {
+    title: "Congress Stock Buys — Most Accumulated by Politicians | InvestAtlant",
+    description:
+      "See stocks most accumulated by members of Congress from publicly disclosed PTR filings on InvestAtlant.",
   },
   "/sector": {
     title: "Sectors — InvestAtlant",

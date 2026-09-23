@@ -53,6 +53,8 @@ import {
 import { tryHandleSitemap } from "./src/seo/sitemap.ts";
 import { tryHandleStockPageSsr } from "./src/seo/stockPageSsr.ts";
 import { tryHandleInsidersHubSsr } from "./src/seo/insidersHubSsr.ts";
+import { tryHandleInstitutionsHubSsr } from "./src/seo/institutionsHubSsr.ts";
+import { tryHandlePoliticiansHubSsr } from "./src/seo/politiciansHubSsr.ts";
 import { ensureAuthSchema, getUserFromRequest } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
@@ -802,6 +804,20 @@ http
             u.pathname === "/insiders/trades" ||
             u.pathname === "/insiders/conviction-buys") &&
           (await tryHandleInsidersHubSsr(u, clientRes))
+        ) {
+          return;
+        }
+        if (
+          (u.pathname === "/institutions" || u.pathname === "/institutions/most-accumulated") &&
+          (await tryHandleInstitutionsHubSsr(u, clientRes))
+        ) {
+          return;
+        }
+        if (
+          (u.pathname === "/politicians" ||
+            u.pathname === "/politicians/trades" ||
+            u.pathname === "/politicians/most-accumulated") &&
+          (await tryHandlePoliticiansHubSsr(u, clientRes))
         ) {
           return;
         }
