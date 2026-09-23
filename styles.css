@@ -535,7 +535,7 @@ button.workspace-nav__subsection {
 
 .logo-chart {
   display: block;
-  height: 2.15rem;
+  height: 1.94rem;
   width: auto;
   object-fit: contain;
   object-position: center;
@@ -608,7 +608,7 @@ button.workspace-nav__subsection {
   }
 
   .logo-chart {
-    height: 1.85rem;
+    height: 1.67rem;
   }
 
   .logo-mark__ia {
@@ -1407,8 +1407,8 @@ a.topbar-login__link.topbar-login__signup {
 }
 
 .logo-chart--footer {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.22rem;
+  height: 1.22rem;
 }
 
 .logo-wordmark--footer {
@@ -8688,7 +8688,7 @@ body.chart-fullscreen-active {
   }
 
   .topbar .logo-chart {
-    height: 2.4rem;
+    height: 2.16rem;
   }
 
   .topbar .logo-mark__ia {
@@ -9170,7 +9170,7 @@ body.chart-fullscreen-active {
   }
 
   .topbar .logo-chart {
-    height: 2.25rem;
+    height: 2.03rem;
   }
 
   .topbar .logo-mark__ia {
