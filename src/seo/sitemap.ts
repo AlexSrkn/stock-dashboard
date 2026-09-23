@@ -24,6 +24,8 @@ const HUB_ENTRIES: SitemapEntry[] = [
   { path: "/stocks", changefreq: "daily", priority: "0.9" },
   { path: "/institutions", changefreq: "daily", priority: "0.8" },
   { path: "/insiders", changefreq: "daily", priority: "0.8" },
+  { path: "/insiders/trades", changefreq: "daily", priority: "0.85" },
+  { path: "/insiders/conviction-buys", changefreq: "daily", priority: "0.85" },
   { path: "/politicians", changefreq: "daily", priority: "0.8" },
   { path: "/sector", changefreq: "weekly", priority: "0.7" },
   { path: "/signals", changefreq: "daily", priority: "0.8" },

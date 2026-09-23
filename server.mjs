@@ -52,6 +52,7 @@ import {
 } from "./src/api/stripeCheckout.ts";
 import { tryHandleSitemap } from "./src/seo/sitemap.ts";
 import { tryHandleStockPageSsr } from "./src/seo/stockPageSsr.ts";
+import { tryHandleInsidersHubSsr } from "./src/seo/insidersHubSsr.ts";
 import { ensureAuthSchema, getUserFromRequest } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
@@ -794,6 +795,14 @@ http
         u.pathname.startsWith("/institution/")
       ) {
         if (u.pathname.startsWith("/stock/") && (await tryHandleStockPageSsr(u, clientRes))) {
+          return;
+        }
+        if (
+          (u.pathname === "/insiders" ||
+            u.pathname === "/insiders/trades" ||
+            u.pathname === "/insiders/conviction-buys") &&
+          (await tryHandleInsidersHubSsr(u, clientRes))
+        ) {
           return;
         }
         sendFile(clientRes, path.join(__dirname, "index.html"));

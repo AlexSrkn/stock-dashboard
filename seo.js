@@ -42,9 +42,20 @@ const EXACT = {
     description: "See which institutions added the most shares last quarter on InvestAtlant.",
   },
   "/insiders": {
-    title: "Insiders — InvestAtlant",
+    title: "Insider Trading — Recent Form 4 Buys & Sales | InvestAtlant",
     description:
-      "Track SEC Form 4 insider transactions, clusters, and buying patterns on InvestAtlant.",
+      "See recent insider trading from SEC Form 4 filings — open-market buys and sales on InvestAtlant.",
+    canonicalPath: "/insiders/trades",
+  },
+  "/insiders/trades": {
+    title: "Insider Trading — Recent Form 4 Buys & Sales | InvestAtlant",
+    description:
+      "See recent insider trading from SEC Form 4 filings — open-market buys and sales on InvestAtlant.",
+  },
+  "/insiders/conviction-buys": {
+    title: "Insider Buys — High-Conviction Form 4 Purchases | InvestAtlant",
+    description:
+      "Track high-conviction insider buys from SEC Form 4 open-market purchases on InvestAtlant.",
   },
   "/politicians": {
     title: "Politicians — InvestAtlant",
