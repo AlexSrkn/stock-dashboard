@@ -51,6 +51,7 @@ import {
   tryHandleStripeWebhook,
 } from "./src/api/stripeCheckout.ts";
 import { tryHandleSitemap } from "./src/seo/sitemap.ts";
+import { tryHandleStockPageSsr } from "./src/seo/stockPageSsr.ts";
 import { ensureAuthSchema, getUserFromRequest } from "./src/auth/index.ts";
 import { ensureReturnsMatrixOnStartup } from "./src/institution/performance/priceCache.ts";
 import { ensurePerformanceSummariesOnStartup } from "./src/institution/performance/cache.ts";
@@ -792,6 +793,9 @@ http
         u.pathname === "/institution" ||
         u.pathname.startsWith("/institution/")
       ) {
+        if (u.pathname.startsWith("/stock/") && (await tryHandleStockPageSsr(u, clientRes))) {
+          return;
+        }
         sendFile(clientRes, path.join(__dirname, "index.html"));
         return;
       }

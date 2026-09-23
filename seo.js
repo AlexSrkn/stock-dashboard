@@ -216,13 +216,13 @@ export function resolveSeoMeta(path, entity = {}) {
       .trim()
       .toUpperCase();
     const name = String(entity.name || "").trim();
-    const title =
-      name && name.toUpperCase() !== sym
-        ? `${sym} — ${name} | InvestAtlant`
-        : `${sym} — Stock research | InvestAtlant`;
-    const description = name
-      ? `Research ${sym} (${name}): ownership, insider activity, and market context on InvestAtlant.`
-      : `Research ${sym}: ownership, insider activity, and market context on InvestAtlant.`;
+    const label = name && name.toUpperCase() !== sym ? name : null;
+    const title = label
+      ? `${label} (${sym}) Stock — Insider Trading, Institutional Ownership & SEC Filings`
+      : `${sym} Stock — Insider Trading, Institutional Ownership & SEC Filings`;
+    const description = label
+      ? `See ${label} (${sym}) insider trading, institutional ownership, and SEC filings on InvestAtlant.`
+      : `See ${sym} insider trading, institutional ownership, and SEC filings on InvestAtlant.`;
     return {
       title,
       description,
