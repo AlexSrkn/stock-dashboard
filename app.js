@@ -24,6 +24,7 @@ import { setupPremiumGate, requirePremiumAccess, guardPremiumRoute } from "./pre
 import { setupPremiumPage, refreshPremiumPage } from "./premiumPage.js?v=premium-member-1";
 import { setupAdminPage, refreshAdminPage } from "./adminPage.js";
 import { applySeo, applySeoForEntity } from "./seo.js";
+import { parseStockIntentPath, stockSeoPath } from "./stockIntentRoutes.js";
 import {
   formatProxyHoldings,
   formatProxyPct,
@@ -1296,14 +1297,12 @@ async function fetchTopHolders(symbol) {
 }
 
 function parseStockRoute(pathname) {
-  const m = String(pathname || "").match(
-    /^\/stock\/([A-Za-z0-9.\^-]+)(?:\/([a-z0-9-]+))?\/?$/
-  );
-  if (!m) return null;
-  const tab = m[2] || "overview";
+  const parsed = parseStockIntentPath(pathname);
+  if (!parsed) return null;
+  const tab = STOCK_TABS.includes(parsed.tab) ? parsed.tab : "overview";
   return {
-    symbol: m[1].toUpperCase(),
-    tab: STOCK_TABS.includes(tab) ? tab : "overview",
+    symbol: parsed.symbol,
+    tab,
   };
 }
 
@@ -1839,8 +1838,7 @@ async function enterAppFromLanding(mode) {
 }
 
 function stockPath(symbol, tab = "overview") {
-  const sym = encodeURIComponent(symbol);
-  return tab === "overview" ? `/stock/${sym}` : `/stock/${sym}/${tab}`;
+  return stockSeoPath(symbol, tab);
 }
 
 function bareInstitutionCik(cik) {
@@ -15279,7 +15277,7 @@ async function openStockFromRoute(route) {
     renderWatchlist();
     renderHeader();
     applySeoForEntity({
-      path: `/stock/${encodeURIComponent(sym)}`,
+      path: stockPath(sym, activeStockTab),
       symbol: sym,
       name: watchlist[idx].name || null,
     });
@@ -15312,7 +15310,7 @@ async function openStockFromRoute(route) {
     previewStock = entry;
     renderHeader();
     applySeoForEntity({
-      path: `/stock/${encodeURIComponent(sym)}`,
+      path: stockPath(sym, activeStockTab),
       symbol: sym,
       name: entry.name || null,
     });
@@ -22773,7 +22771,7 @@ async function openStockPreview(symbol) {
     renderHeader();
     syncStockUrl(sym);
     applySeoForEntity({
-      path: `/stock/${encodeURIComponent(sym)}`,
+      path: stockPath(sym, activeStockTab),
       symbol: sym,
       name: entry.name || null,
     });

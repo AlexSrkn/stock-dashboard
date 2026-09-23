@@ -13,18 +13,29 @@ import { getInsiderTransactions } from "../insider/insiderAnalytics.js";
 import type { FundHoldingAggregate } from "../ownership/types.js";
 import type { InsiderTransactionRow } from "../db/insiderTransactions.js";
 import { SITE_ORIGIN } from "./sitemap.js";
+import {
+  buildStockIntentSeoMeta,
+  parseStockIntentPath,
+  stockSeoPath,
+} from "../../stockIntentRoutes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 const INDEX_PATH = path.join(ROOT, "index.html");
 
-const STOCK_PATH_RE = /^\/stock\/([^/]+)(?:\/|$)/i;
 const DATA_TIMEOUT_MS = 2500;
 const HOLDER_LIMIT = 8;
 const INSIDER_LIMIT = 8;
 
 let cachedIndexHtml: string | null = null;
 let cachedIndexMtimeMs = 0;
+
+export type StockSsrIntent =
+  | "overview"
+  | "insider-trading"
+  | "institutional-ownership"
+  | "13f"
+  | "sec-filings";
 
 export type StockPageSsrData = {
   ticker: string;
@@ -37,6 +48,8 @@ export type StockPageSsrData = {
   canonicalPath: string;
   title: string;
   description: string;
+  h1: string;
+  intent: StockSsrIntent;
 };
 
 function escapeHtml(value: string): string {
@@ -100,44 +113,47 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 export function parseStockTickerFromPath(pathname: string): string | null {
-  const match = String(pathname || "").match(STOCK_PATH_RE);
-  if (!match) return null;
-  try {
-    const sym = decodeURIComponent(match[1] || "")
-      .trim()
-      .toUpperCase();
-    if (!sym || !/^[A-Z][A-Z0-9.\-]{0,11}$/.test(sym)) return null;
-    return sym;
-  } catch {
-    return null;
-  }
+  return parseStockIntentPath(pathname)?.symbol ?? null;
+}
+
+export function parseStockSsrIntent(pathname: string): StockSsrIntent {
+  const parsed = parseStockIntentPath(pathname);
+  if (!parsed) return "overview";
+  const meta = buildStockIntentSeoMeta(parsed.symbol, null, parsed.tab, parsed.slug);
+  return (meta.intent as StockSsrIntent) || "overview";
 }
 
 export function buildStockSeoMeta(
   ticker: string,
-  companyName: string | null
-): { title: string; description: string; canonicalPath: string } {
-  const sym = ticker.toUpperCase();
-  const name = String(companyName || "").trim();
-  const label = name && name.toUpperCase() !== sym ? name : null;
-  const title = label
-    ? `${label} (${sym}) Stock — Insider Trading, Institutional Ownership & SEC Filings`
-    : `${sym} Stock — Insider Trading, Institutional Ownership & SEC Filings`;
-  const description = label
-    ? `See ${label} (${sym}) insider trading, institutional ownership, and SEC filings on InvestAtlant.`
-    : `See ${sym} insider trading, institutional ownership, and SEC filings on InvestAtlant.`;
+  companyName: string | null,
+  intent: StockSsrIntent = "overview"
+): { title: string; description: string; canonicalPath: string; h1: string; intent: StockSsrIntent } {
+  const tab =
+    intent === "insider-trading"
+      ? "insider-activity"
+      : intent === "institutional-ownership" || intent === "13f"
+        ? "ownership"
+        : intent === "sec-filings"
+          ? "sec-filings"
+          : "overview";
+  const slug = intent === "overview" ? null : intent;
+  const meta = buildStockIntentSeoMeta(ticker, companyName, tab, slug);
   return {
-    title,
-    description,
-    canonicalPath: `/stock/${encodeURIComponent(sym)}`,
+    title: meta.title,
+    description: meta.description,
+    canonicalPath: meta.canonicalPath,
+    h1: meta.h1,
+    intent: (meta.intent as StockSsrIntent) || "overview",
   };
 }
 
-export async function loadStockPageSsrData(ticker: string): Promise<StockPageSsrData> {
+export async function loadStockPageSsrData(
+  ticker: string,
+  intent: StockSsrIntent = "overview"
+): Promise<StockPageSsrData> {
   const sym = String(ticker || "")
     .trim()
     .toUpperCase();
-  const metaBase = buildStockSeoMeta(sym, null);
 
   let companyName: string | null = null;
   let sector: string | null = null;
@@ -154,36 +170,42 @@ export async function loadStockPageSsrData(ticker: string): Promise<StockPageSsr
     /* keep nulls */
   }
 
-  const meta = buildStockSeoMeta(sym, companyName);
+  const meta = buildStockSeoMeta(sym, companyName, intent);
+  const needHolders = intent === "overview" || intent === "institutional-ownership" || intent === "13f";
+  const needInsiders = intent === "overview" || intent === "insider-trading";
 
   const [holdersResult, insidersResult] = await Promise.all([
-    withTimeout(
-      getTopHolders(getPool(), sym, { limit: HOLDER_LIMIT }).then((r) => ({
-        holders: (r.holders || []).slice(0, HOLDER_LIMIT),
-        quarter: r.meta?.currentQuarter || null,
-      })),
-      DATA_TIMEOUT_MS,
-      { holders: [] as FundHoldingAggregate[], quarter: null as string | null }
-    ),
-    withTimeout(
-      (async () => {
-        const high = await getInsiderTransactions(sym, {
-          limit: INSIDER_LIMIT,
-          signal: "high",
-          sort: "date",
-        });
-        if (high.transactions?.length) {
-          return high.transactions.slice(0, INSIDER_LIMIT);
-        }
-        const any = await getInsiderTransactions(sym, {
-          limit: INSIDER_LIMIT,
-          sort: "date",
-        });
-        return (any.transactions || []).slice(0, INSIDER_LIMIT);
-      })(),
-      DATA_TIMEOUT_MS,
-      [] as InsiderTransactionRow[]
-    ),
+    needHolders
+      ? withTimeout(
+          getTopHolders(getPool(), sym, { limit: HOLDER_LIMIT }).then((r) => ({
+            holders: (r.holders || []).slice(0, HOLDER_LIMIT),
+            quarter: r.meta?.currentQuarter || null,
+          })),
+          DATA_TIMEOUT_MS,
+          { holders: [] as FundHoldingAggregate[], quarter: null as string | null }
+        )
+      : Promise.resolve({ holders: [] as FundHoldingAggregate[], quarter: null as string | null }),
+    needInsiders
+      ? withTimeout(
+          (async () => {
+            const high = await getInsiderTransactions(sym, {
+              limit: INSIDER_LIMIT,
+              signal: "high",
+              sort: "date",
+            });
+            if (high.transactions?.length) {
+              return high.transactions.slice(0, INSIDER_LIMIT);
+            }
+            const any = await getInsiderTransactions(sym, {
+              limit: INSIDER_LIMIT,
+              sort: "date",
+            });
+            return (any.transactions || []).slice(0, INSIDER_LIMIT);
+          })(),
+          DATA_TIMEOUT_MS,
+          [] as InsiderTransactionRow[]
+        )
+      : Promise.resolve([] as InsiderTransactionRow[]),
   ]);
 
   return {
@@ -196,7 +218,9 @@ export async function loadStockPageSsrData(ticker: string): Promise<StockPageSsr
     insiders: insidersResult,
     canonicalPath: meta.canonicalPath,
     title: meta.title,
-    description: meta.description || metaBase.description,
+    description: meta.description,
+    h1: meta.h1,
+    intent: meta.intent,
   };
 }
 
@@ -263,25 +287,49 @@ ${rows}
 export function renderStockPageSsrBody(data: StockPageSsrData): string {
   const sym = escapeHtml(data.ticker);
   const name = data.companyName ? escapeHtml(data.companyName) : null;
-  const heading = name ? `${name} (${sym})` : sym;
   const sectorBits = [data.sector, data.industry].filter(Boolean).map((s) => escapeHtml(String(s)));
-  const blurb = name
-    ? `${name} (${sym}) stock research on InvestAtlant: institutional ownership from 13F filings, insider Form 4 activity, and SEC context.`
-    : `${sym} stock research on InvestAtlant: institutional ownership from 13F filings, insider Form 4 activity, and SEC context.`;
+  const h1 = escapeHtml(data.h1);
 
-  return `<section id="seo-stock-ssr" class="seo-stock-ssr" data-ticker="${sym}">
+  let blurb: string;
+  let tables: string;
+  if (data.intent === "insider-trading") {
+    blurb = name
+      ? `Open-market and disclosed Form 4 insider trading for ${name} (${sym}) on InvestAtlant.`
+      : `Open-market and disclosed Form 4 insider trading for ${sym} on InvestAtlant.`;
+    tables = renderInsidersTable(data);
+  } else if (data.intent === "institutional-ownership" || data.intent === "13f") {
+    blurb = name
+      ? `Institutional ownership and 13F holdings context for ${name} (${sym}) on InvestAtlant.`
+      : `Institutional ownership and 13F holdings context for ${sym} on InvestAtlant.`;
+    tables = renderHoldersTable(data);
+  } else if (data.intent === "sec-filings") {
+    blurb = name
+      ? `SEC filings research for ${name} (${sym}) on InvestAtlant — open the interactive filings tab for the full list.`
+      : `SEC filings research for ${sym} on InvestAtlant — open the interactive filings tab for the full list.`;
+    tables = `<p>Interactive SEC filing history loads in the app for ${sym}. Related research:</p>
+<ul>
+  <li><a href="${escapeHtml(stockSeoPath(data.ticker, "insider-activity"))}">${sym} insider trading</a></li>
+  <li><a href="${escapeHtml(stockSeoPath(data.ticker, "ownership"))}">${sym} institutional ownership</a></li>
+</ul>`;
+  } else {
+    blurb = name
+      ? `${name} (${sym}) stock research on InvestAtlant: institutional ownership from 13F filings, insider Form 4 activity, and SEC context.`
+      : `${sym} stock research on InvestAtlant: institutional ownership from 13F filings, insider Form 4 activity, and SEC context.`;
+    tables = `${renderHoldersTable(data)}\n${renderInsidersTable(data)}`;
+  }
+
+  return `<section id="seo-stock-ssr" class="seo-stock-ssr" data-ticker="${sym}" data-intent="${escapeHtml(data.intent)}">
   <article>
-    <h1>${heading}</h1>
+    <h1>${h1}</h1>
     ${sectorBits.length ? `<p>${sectorBits.join(" · ")}</p>` : ""}
     <p>${blurb}</p>
     <nav aria-label="Stock sections">
-      <a href="/stock/${sym}">Overview</a> ·
-      <a href="/stock/${sym}/ownership">Ownership</a> ·
-      <a href="/stock/${sym}/insider-activity">Insider Activity</a> ·
-      <a href="/stock/${sym}/filings">SEC Filings</a>
+      <a href="${escapeHtml(stockSeoPath(data.ticker))}">Overview</a> ·
+      <a href="${escapeHtml(stockSeoPath(data.ticker, "insider-activity"))}">Insider trading</a> ·
+      <a href="${escapeHtml(stockSeoPath(data.ticker, "ownership"))}">Institutional ownership</a> ·
+      <a href="${escapeHtml(stockSeoPath(data.ticker, "sec-filings"))}">SEC filings</a>
     </nav>
-    ${renderHoldersTable(data)}
-    ${renderInsidersTable(data)}
+    ${tables}
   </article>
 </section>`;
 }
@@ -380,8 +428,11 @@ export function injectStockPageSsr(indexHtml: string, data: StockPageSsrData): s
   return html;
 }
 
-export async function renderStockPageHtml(ticker: string): Promise<string> {
-  const data = await loadStockPageSsrData(ticker);
+export async function renderStockPageHtml(
+  ticker: string,
+  intent: StockSsrIntent = "overview"
+): Promise<string> {
+  const data = await loadStockPageSsrData(ticker, intent);
   const indexHtml = readIndexHtml();
   return injectStockPageSsr(indexHtml, data);
 }
@@ -392,9 +443,10 @@ export async function tryHandleStockPageSsr(
 ): Promise<boolean> {
   const ticker = parseStockTickerFromPath(url.pathname);
   if (!ticker) return false;
+  const intent = parseStockSsrIntent(url.pathname);
 
   try {
-    const html = await renderStockPageHtml(ticker);
+    const html = await renderStockPageHtml(ticker, intent);
     res.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=120, stale-while-revalidate=600",

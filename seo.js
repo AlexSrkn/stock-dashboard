@@ -7,6 +7,11 @@
  * that re-fetch after load, plus robots.txt / dynamic sitemap.xml.
  */
 
+import {
+  buildStockIntentSeoMeta,
+  parseStockIntentPath,
+} from "./stockIntentRoutes.js";
+
 export const SITE_ORIGIN = "https://investatlant.com";
 export const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/assets/apple-touch-icon.png`;
 
@@ -231,21 +236,17 @@ export function resolveSeoMeta(path, entity = {}) {
 
   const stock = p.match(/^\/stock\/([^/]+)/i);
   if (stock) {
-    const sym = String(entity.symbol || decodeURIComponent(stock[1]) || "")
+    const parsed = parseStockIntentPath(p);
+    const sym = String(entity.symbol || parsed?.symbol || decodeURIComponent(stock[1]) || "")
       .trim()
       .toUpperCase();
     const name = String(entity.name || "").trim();
-    const label = name && name.toUpperCase() !== sym ? name : null;
-    const title = label
-      ? `${label} (${sym}) Stock — Insider Trading, Institutional Ownership & SEC Filings`
-      : `${sym} Stock — Insider Trading, Institutional Ownership & SEC Filings`;
-    const description = label
-      ? `See ${label} (${sym}) insider trading, institutional ownership, and SEC filings on InvestAtlant.`
-      : `See ${sym} insider trading, institutional ownership, and SEC filings on InvestAtlant.`;
+    const tab = parsed?.tab || "overview";
+    const meta = buildStockIntentSeoMeta(sym, name || null, tab, parsed?.slug || null);
     return {
-      title,
-      description,
-      canonicalPath: `/stock/${encodeURIComponent(sym)}`,
+      title: meta.title,
+      description: meta.description,
+      canonicalPath: meta.canonicalPath,
     };
   }
 

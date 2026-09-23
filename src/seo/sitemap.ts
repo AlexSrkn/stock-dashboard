@@ -90,17 +90,26 @@ function collectStockEntries(): SitemapEntry[] {
     const payload = loadSp500();
     const seen = new Set<string>();
     const out: SitemapEntry[] = [];
+    const intentSlugs = ["insider-trading", "institutional-ownership", "13f", "sec-filings"];
     for (const stock of payload.stocks || []) {
       const sym = String(stock.symbol || "")
         .trim()
         .toUpperCase();
       if (!sym || seen.has(sym)) continue;
       seen.add(sym);
+      const enc = encodeURIComponent(sym);
       out.push({
-        path: `/stock/${encodeURIComponent(sym)}`,
+        path: `/stock/${enc}`,
         changefreq: "weekly",
         priority: "0.65",
       });
+      for (const slug of intentSlugs) {
+        out.push({
+          path: `/stock/${enc}/${slug}`,
+          changefreq: "weekly",
+          priority: slug === "13f" ? "0.55" : "0.6",
+        });
+      }
     }
     return out;
   } catch (err) {
