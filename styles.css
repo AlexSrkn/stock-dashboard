@@ -1526,14 +1526,19 @@ body.is-auth .site-footer {
   display: none;
 }
 
-/* Premium coming soon */
+/* Premium pricing / already-member page */
 .premium-page {
   min-height: calc(100dvh - var(--topbar-height) - 2rem);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1.25rem 3rem;
+  background: #000;
   animation: premium-fade-in 0.4s ease;
+}
+
+body.is-premium {
+  background: #000;
 }
 
 #view-premium[hidden] {
@@ -1723,9 +1728,17 @@ body.is-admin #view-admin:not([hidden]) {
   max-width: 34rem;
   padding: 2rem 1.85rem 1.85rem;
   border-radius: calc(var(--radius) + 2px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(18, 24, 34, 0.92);
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #05070b;
+  box-shadow: none;
+}
+
+.premium-page.is-member .premium-page__title {
+  color: #fff;
+}
+
+.premium-page.is-member .premium-page__highlight {
+  color: var(--accent) !important;
 }
 
 .premium-page__eyebrow {

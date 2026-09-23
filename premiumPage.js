@@ -51,17 +51,32 @@ function updatePremiumCtaState() {
   const loginLink = document.getElementById("premium-login-link");
   const exploreLink = document.getElementById("premium-explore-link");
   const status = document.getElementById("premium-page-status");
+  const title = document.getElementById("premium-page-title");
+  const highlight = document.getElementById("premium-page-highlight");
+  const page = document.getElementById("view-premium");
+  const price = document.querySelector(".premium-page__price");
 
   const isPremium = clientHasPremiumAccess();
 
+  if (page) page.classList.toggle("is-member", isPremium);
+
+  if (title) {
+    title.textContent = isPremium ? "You already have Premium" : "Premium access";
+  }
+  if (highlight) {
+    highlight.textContent = isPremium
+      ? "Your account is unlocked — explore institutional, insider, and politician research."
+      : "Unlock Premium research features with a monthly subscription.";
+  }
+
   if (status) {
-    if (isPremium) {
-      status.hidden = false;
-      status.textContent = "Your account is on Premium.";
-    } else {
-      status.hidden = true;
-      status.textContent = "";
-    }
+    // Title already covers the member message; keep status free for notes.
+    status.hidden = true;
+    status.textContent = "";
+  }
+
+  if (price) {
+    price.hidden = isPremium;
   }
 
   if (upgradeBtn) {

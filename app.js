@@ -21,7 +21,7 @@ import { createFindSimilarStocksController } from "./findSimilarStocksPage.js";
 import { createInstitutionPerformanceProxyController } from "./institutionPerformanceProxyPage.js";
 import { setupAuthLoginPanel, isAuthPath, showAuthRoute, hideAuthRoute, getCurrentAuthUser } from "./authLoginPanel.js?v=admin-users-1";
 import { setupPremiumGate, requirePremiumAccess, guardPremiumRoute } from "./premiumGate.js";
-import { setupPremiumPage, refreshPremiumPage } from "./premiumPage.js";
+import { setupPremiumPage, refreshPremiumPage } from "./premiumPage.js?v=premium-member-1";
 import { setupAdminPage, refreshAdminPage } from "./adminPage.js";
 import { applySeo, applySeoForEntity } from "./seo.js";
 import {
