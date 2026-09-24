@@ -327,10 +327,10 @@ export function injectInstitutionsHubSsr(
     html = html.replace(/<body([^>]*)>/i, `<body$1>\n${bodyBlock}\n`);
   }
 
-  if (!html.includes('html[data-boot="app"] #seo-institutions-ssr')) {
+  if (!html.includes("#seo-institutions-ssr")) {
     html = html.replace(
       "</style>",
-      `html[data-boot="app"] #seo-institutions-ssr {
+      `#seo-institutions-ssr {
         position: absolute;
         width: 1px;
         height: 1px;

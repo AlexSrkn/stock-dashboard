@@ -406,13 +406,11 @@ export function injectStockPageSsr(indexHtml: string, data: StockPageSsrData): s
     html = html.replace(/<body([^>]*)>/i, `<body$1>\n${bodyBlock}\n`);
   }
 
-  // Clip for humans as soon as head sets data-boot=app (same as hub SSR).
-  // Content stays in the DOM for crawlers; waiting for data-ready caused a
-  // multi-second flash of SEO tables when opening stock links (e.g. from X).
-  if (!html.includes('html[data-boot="app"] #seo-stock-ssr')) {
+  // Critical CSS in index.html already clips #seo-stock-ssr on every route.
+  if (!html.includes("#seo-stock-ssr")) {
     html = html.replace(
       "</style>",
-      `html[data-boot="app"] #seo-stock-ssr {
+      `#seo-stock-ssr {
         position: absolute;
         width: 1px;
         height: 1px;

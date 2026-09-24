@@ -26286,6 +26286,16 @@ async function init() {
     setBootMode("app");
   }
   document.documentElement.setAttribute("data-ready", "1");
+  // SSR SEO blocks were for the initial HTML response only. Drop them so SPA
+  // route changes (e.g. logo → landing) cannot reveal stock tables again.
+  for (const id of [
+    "seo-stock-ssr",
+    "seo-insiders-ssr",
+    "seo-institutions-ssr",
+    "seo-politicians-ssr",
+  ]) {
+    document.getElementById(id)?.remove();
+  }
 
   updateWatchlistBadge();
   renderWatchlist();

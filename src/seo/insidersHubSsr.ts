@@ -320,10 +320,11 @@ export function injectInsidersHubSsr(indexHtml: string, data: InsidersHubSsrData
     html = html.replace(/<body([^>]*)>/i, `<body$1>\n${bodyBlock}\n`);
   }
 
-  if (!html.includes('html[data-boot="app"] #seo-insiders-ssr')) {
+  // Critical CSS in index.html already clips #seo-*-ssr on every route.
+  if (!html.includes("#seo-insiders-ssr")) {
     html = html.replace(
       "</style>",
-      `html[data-boot="app"] #seo-insiders-ssr {
+      `#seo-insiders-ssr {
         position: absolute;
         width: 1px;
         height: 1px;

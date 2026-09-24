@@ -338,10 +338,10 @@ export function injectPoliticiansHubSsr(indexHtml: string, data: PoliticiansHubS
     html = html.replace(/<body([^>]*)>/i, `<body$1>\n${bodyBlock}\n`);
   }
 
-  if (!html.includes('html[data-boot="app"] #seo-politicians-ssr')) {
+  if (!html.includes("#seo-politicians-ssr")) {
     html = html.replace(
       "</style>",
-      `html[data-boot="app"] #seo-politicians-ssr {
+      `#seo-politicians-ssr {
         position: absolute;
         width: 1px;
         height: 1px;
