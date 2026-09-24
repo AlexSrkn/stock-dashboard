@@ -66,6 +66,21 @@
       html[data-boot="app"]:not([data-ready]) #app-shell[hidden] {
         display: block !important;
       }
+      /* SEO SSR bodies stay in HTML for crawlers; never paint for app boot. */
+      html[data-boot="app"] #seo-stock-ssr,
+      html[data-boot="app"] #seo-insiders-ssr,
+      html[data-boot="app"] #seo-institutions-ssr,
+      html[data-boot="app"] #seo-politicians-ssr {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+      }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -73,7 +88,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=premium-member-1" />
+    <link rel="stylesheet" href="/styles.css?v=seo-ssr-hide-1" />
     <link rel="stylesheet" href="/auth.css?v=auth-logo-ia-8" />
     <link rel="stylesheet" href="/landing.css?v=landing-system-22" />
   </head>
