@@ -4,11 +4,16 @@ import { parseUsDateToIso } from "../politicians/normalize.js";
 import type { PoliticianTrade } from "../politicians/types.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 
-export type TradeSource = "politician" | "insider";
+export type TradeSource = "politician" | "insider" | "institutional";
 export type TradeSide = "buy" | "sell";
 
 /** Skip politician trades whose transaction date is older than this (days). */
 export const DEFAULT_POLITICIAN_MAX_TRADE_AGE_DAYS = 90;
+
+/** Insider trades at/above this USD get a 🚨 flag. */
+export const INTERESTING_INSIDER_USD = 250_000;
+/** Politician trades at/above this (range max / mid) get a 🚨 flag. */
+export const INTERESTING_POLITICIAN_USD = 50_000;
 
 export interface XTradeDraft {
   id: string;
@@ -21,6 +26,8 @@ export interface XTradeDraft {
   /** Disclosure / PTR filing date (ISO), when known. */
   filingDate?: string | null;
   amountLabel: string | null;
+  /** True when size/role warrants a 🚨 callout. */
+  interesting?: boolean;
   stockUrl: string;
   text: string;
   charCount: number;
@@ -65,24 +72,24 @@ function formatUsdCompact(value: number): string {
   const abs = Math.abs(value);
   if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
   if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`;
+  if (abs >= 1_000) return `$${Math.round(value / 1_000)}K`;
   return `$${Math.round(value)}`;
 }
 
 function formatPoliticianAmount(trade: PoliticianTrade): string | null {
-  const range = String(trade.amountRange || "").trim();
-  if (range) return range;
-  if (trade.amountMin != null && trade.amountMax != null) {
+  if (trade.amountMin != null && trade.amountMax != null && trade.amountMin !== trade.amountMax) {
     return `${formatUsdCompact(trade.amountMin)}–${formatUsdCompact(trade.amountMax)}`;
   }
+  const range = String(trade.amountRange || "").trim();
+  if (range) return range.replace(/\s+/g, " ");
   if (trade.amountMin != null) return formatUsdCompact(trade.amountMin);
   if (trade.amountMax != null) return formatUsdCompact(trade.amountMax);
   return null;
 }
 
-function formatInsiderAmount(row: InsiderTransactionRow): string | null {
+function insiderAmountUsd(row: InsiderTransactionRow): number | null {
   if (row.transactionValue != null && Number.isFinite(row.transactionValue) && row.transactionValue > 0) {
-    return formatUsdCompact(row.transactionValue);
+    return row.transactionValue;
   }
   if (
     row.shares != null &&
@@ -90,9 +97,30 @@ function formatInsiderAmount(row: InsiderTransactionRow): string | null {
     Number.isFinite(row.shares) &&
     Number.isFinite(row.pricePerShare)
   ) {
-    return formatUsdCompact(row.shares * row.pricePerShare);
+    return row.shares * row.pricePerShare;
   }
   return null;
+}
+
+function politicianAmountUsd(trade: PoliticianTrade): number | null {
+  if (trade.amountMax != null && Number.isFinite(trade.amountMax)) return trade.amountMax;
+  if (trade.amountMin != null && Number.isFinite(trade.amountMin)) return trade.amountMin;
+  return null;
+}
+
+function isInterestingInsider(row: InsiderTransactionRow, amountUsd: number | null): boolean {
+  if (amountUsd != null && amountUsd >= INTERESTING_INSIDER_USD) return true;
+  const title = String(row.insiderTitle || "").toLowerCase();
+  if (!title) return false;
+  const senior =
+    /\b(ceo|chief executive|cfo|chief financial|coo|chairman|chairwoman|president)\b/.test(
+      title
+    );
+  return Boolean(senior && amountUsd != null && amountUsd >= 100_000);
+}
+
+function isInterestingPolitician(amountUsd: number | null): boolean {
+  return amountUsd != null && amountUsd >= INTERESTING_POLITICIAN_USD;
 }
 
 function insiderSide(row: InsiderTransactionRow): TradeSide | null {
@@ -117,6 +145,35 @@ export function draftId(parts: {
   return `${parts.source}|${name}|${parts.ticker}|${parts.side}|${date}`;
 }
 
+export function sourceEmoji(source: TradeSource, side: TradeSide): string {
+  if (source === "insider") return side === "buy" ? "🟢" : "🔴";
+  if (source === "politician") return "🏛️";
+  return "🏦";
+}
+
+export function headlineLabel(source: TradeSource, side: TradeSide): string {
+  const action = side === "buy" ? "Buy" : "Sale";
+  if (source === "insider") return `Insider ${action}`;
+  if (source === "politician") return `Politician ${action}`;
+  return `Institutional ${action}`;
+}
+
+function ctaLine(source: TradeSource): string {
+  if (source === "insider") return "Full transaction & insider history ↓";
+  if (source === "politician") return "Full filing & politician trade history ↓";
+  return "Full institutional ownership ↓";
+}
+
+/** Format amount for the post body (`~$395K` for point estimates, ranges as-is). */
+function amountPhrase(amountLabel: string | null | undefined, approximate: boolean): string | null {
+  const raw = String(amountLabel || "").trim();
+  if (!raw) return null;
+  if (approximate && !raw.includes("–") && !raw.includes("-") && !raw.startsWith("~")) {
+    return `~${raw}`;
+  }
+  return raw;
+}
+
 export function formatTradePost(input: {
   source: TradeSource;
   personName: string;
@@ -125,15 +182,23 @@ export function formatTradePost(input: {
   ticker: string;
   amountLabel?: string | null;
   stockUrl: string;
+  interesting?: boolean;
 }): string {
   const verb = input.side === "buy" ? "bought" : "sold";
-  const label = input.source === "politician" ? "Politician" : "Insider";
+  const emoji = sourceEmoji(input.source, input.side);
+  const prefix = input.interesting ? `🚨 ${emoji}` : emoji;
+  const headline = headlineLabel(input.source, input.side);
   const detail =
     input.source === "insider" && input.personDetail
       ? ` (${input.personDetail})`
       : "";
-  const amount = input.amountLabel ? ` (${input.amountLabel})` : "";
-  return `${label} ${input.personName}${detail} ${verb} $${input.ticker}${amount}.\n${input.stockUrl}`;
+  const amount = amountPhrase(
+    input.amountLabel,
+    input.source === "insider"
+  );
+  const amountBit = amount ? ` ${amount}` : "";
+  const line1 = `${prefix} ${headline}: ${input.personName}${detail} ${verb}${amountBit} of $${input.ticker}.`;
+  return `${line1}\n\n${ctaLine(input.source)}\n${input.stockUrl}`;
 }
 
 /** Normalize MM/DD/YYYY or ISO to YYYY-MM-DD for sorting / age checks. */
@@ -233,6 +298,7 @@ export function collectPoliticianDrafts(
 
       const url = stockUrl(baseUrl, ticker);
       const amountLabel = formatPoliticianAmount(trade);
+      const interesting = isInterestingPolitician(politicianAmountUsd(trade));
       const text = formatTradePost({
         source: "politician",
         personName,
@@ -240,6 +306,7 @@ export function collectPoliticianDrafts(
         ticker,
         amountLabel,
         stockUrl: url,
+        interesting,
       });
 
       upsertDraft(map, {
@@ -252,6 +319,7 @@ export function collectPoliticianDrafts(
         tradeDate,
         filingDate,
         amountLabel,
+        interesting,
         stockUrl: url,
         text,
         charCount: text.length,
@@ -293,7 +361,9 @@ export function collectInsiderDrafts(
 
     const title = String(row.insiderTitle || "").trim() || null;
     const url = stockUrl(baseUrl, ticker);
-    const amountLabel = formatInsiderAmount(row);
+    const amountUsd = insiderAmountUsd(row);
+    const amountLabel = amountUsd != null ? formatUsdCompact(amountUsd) : null;
+    const interesting = isInterestingInsider(row, amountUsd);
     const text = formatTradePost({
       source: "insider",
       personName,
@@ -302,6 +372,7 @@ export function collectInsiderDrafts(
       ticker,
       amountLabel,
       stockUrl: url,
+      interesting,
     });
 
     upsertDraft(map, {
@@ -313,6 +384,7 @@ export function collectInsiderDrafts(
       ticker,
       tradeDate,
       amountLabel,
+      interesting,
       stockUrl: url,
       text,
       charCount: text.length,
@@ -412,6 +484,7 @@ export function draftsToMarkdown(drafts: XTradeDraft[], generatedAt: string): st
     lines.push("```");
     lines.push(``);
     lines.push(`- chars: ${d.charCount}`);
+    if (d.interesting) lines.push(`- flag: interesting`);
     lines.push(`- traded: ${d.tradeDate || "unknown"}`);
     if (d.source === "politician" && d.filingDate) {
       lines.push(`- filed: ${d.filingDate}`);
