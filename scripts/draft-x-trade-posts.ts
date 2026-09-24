@@ -48,6 +48,11 @@ async function main() {
   const limit = Number(argValue("--limit") ?? "10") || 10;
   const source = parseSource(argValue("--source"));
   const dryRun = process.argv.includes("--dry-run");
+  const maxAgeRaw = argValue("--max-age-days");
+  const maxPoliticianTradeAgeDays =
+    maxAgeRaw == null || maxAgeRaw === ""
+      ? undefined
+      : Math.max(0, Number(maxAgeRaw) || 0);
   const baseUrl =
     argValue("--base-url") ||
     process.env.AUTH_PUBLIC_ORIGIN?.trim() ||
@@ -86,6 +91,7 @@ async function main() {
     source,
     insiderRows,
     seenIds: seen,
+    maxPoliticianTradeAgeDays,
   });
   warnings.push(...collectWarnings);
 

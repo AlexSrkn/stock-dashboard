@@ -1,10 +1,14 @@
 import type { InsiderTransactionRow } from "../db/insiderTransactions.js";
 import { normalizeTicker } from "../politicians/byTicker.js";
+import { parseUsDateToIso } from "../politicians/normalize.js";
 import type { PoliticianTrade } from "../politicians/types.js";
 import { readPoliticiansRecent } from "../politicians/recent.js";
 
 export type TradeSource = "politician" | "insider";
 export type TradeSide = "buy" | "sell";
+
+/** Skip politician trades whose transaction date is older than this (days). */
+export const DEFAULT_POLITICIAN_MAX_TRADE_AGE_DAYS = 90;
 
 export interface XTradeDraft {
   id: string;
@@ -14,6 +18,8 @@ export interface XTradeDraft {
   side: TradeSide;
   ticker: string;
   tradeDate: string | null;
+  /** Disclosure / PTR filing date (ISO), when known. */
+  filingDate?: string | null;
   amountLabel: string | null;
   stockUrl: string;
   text: string;
@@ -27,6 +33,14 @@ export interface CollectDraftsOptions {
   insiderRows?: InsiderTransactionRow[];
   /** Existing draft ids to skip (dedupe across runs). */
   seenIds?: Iterable<string>;
+  /**
+   * Politician only: drop trades with transactionDate older than N days.
+   * Matches what looks “recent” on /politicians (trade date column). Default 90.
+   * Set 0 to disable.
+   */
+  maxPoliticianTradeAgeDays?: number;
+  /** Clock override for age filtering (tests). */
+  now?: Date;
 }
 
 function normalizeBaseUrl(raw: string): string {
@@ -122,8 +136,30 @@ export function formatTradePost(input: {
   return `${label} ${input.personName}${detail} ${verb} $${input.ticker}${amount}.\n${input.stockUrl}`;
 }
 
-function tradeSortDate(iso: string | null | undefined): string {
-  return String(iso || "").slice(0, 10);
+/** Normalize MM/DD/YYYY or ISO to YYYY-MM-DD for sorting / age checks. */
+export function toDraftIsoDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  return parseUsDateToIso(raw);
+}
+
+function daysBetweenIso(iso: string, now: Date): number {
+  const ms = Date.parse(`${iso}T00:00:00Z`);
+  if (!Number.isFinite(ms)) return Number.POSITIVE_INFINITY;
+  const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.floor((nowUtc - ms) / 86_400_000);
+}
+
+function isWithinMaxAge(
+  iso: string | null,
+  maxAgeDays: number,
+  now: Date
+): boolean {
+  if (maxAgeDays <= 0) return true;
+  if (!iso) return false;
+  const age = daysBetweenIso(iso, now);
+  return age >= 0 && age <= maxAgeDays;
 }
 
 function amountSortKey(label: string | null): number {
@@ -149,11 +185,18 @@ function upsertDraft(map: Map<string, XTradeDraft>, draft: XTradeDraft): void {
 
 export function collectPoliticianDrafts(
   baseUrl: string,
-  seen: Set<string>
+  seen: Set<string>,
+  options?: {
+    maxTradeAgeDays?: number;
+    now?: Date;
+  }
 ): XTradeDraft[] {
   const payload = readPoliticiansRecent();
   if (!payload) return [];
 
+  const maxAge =
+    options?.maxTradeAgeDays ?? DEFAULT_POLITICIAN_MAX_TRADE_AGE_DAYS;
+  const now = options?.now ?? new Date();
   const map = new Map<string, XTradeDraft>();
   const bundles = [...payload.house, ...payload.senate];
 
@@ -168,10 +211,17 @@ export function collectPoliticianDrafts(
 
       const side = trade.transactionCategory;
       const tradeDate =
-        tradeSortDate(trade.transactionDate) ||
-        tradeSortDate(trade.filingDate) ||
-        tradeSortDate(bundle.filingDate) ||
+        toDraftIsoDate(trade.transactionDate) ||
+        toDraftIsoDate(trade.filingDate) ||
+        toDraftIsoDate(bundle.filingDate) ||
         null;
+      const filingDate =
+        toDraftIsoDate(trade.filingDate) || toDraftIsoDate(bundle.filingDate) || null;
+
+      // Prefer transaction date for freshness; fall back to filing if tx missing.
+      const ageDate = toDraftIsoDate(trade.transactionDate) || filingDate;
+      if (!isWithinMaxAge(ageDate, maxAge, now)) continue;
+
       const id = draftId({
         source: "politician",
         personName,
@@ -200,6 +250,7 @@ export function collectPoliticianDrafts(
         side,
         ticker,
         tradeDate,
+        filingDate,
         amountLabel,
         stockUrl: url,
         text,
@@ -230,7 +281,7 @@ export function collectInsiderDrafts(
     if (!personName) continue;
 
     const tradeDate =
-      tradeSortDate(row.transactionDate) || tradeSortDate(row.filingDate) || null;
+      toDraftIsoDate(row.transactionDate) || toDraftIsoDate(row.filingDate) || null;
     const id = draftId({
       source: "insider",
       personName,
@@ -273,6 +324,12 @@ export function collectInsiderDrafts(
 
 function sortDraftsNewest(drafts: XTradeDraft[]): XTradeDraft[] {
   return [...drafts].sort((a, b) => {
+    // Politicians: prefer disclosure date (matches /politicians default), then trade date.
+    if (a.source === "politician" || b.source === "politician") {
+      const af = a.filingDate || a.tradeDate || "";
+      const bf = b.filingDate || b.tradeDate || "";
+      if (af !== bf) return bf.localeCompare(af);
+    }
     const ad = a.tradeDate || "";
     const bd = b.tradeDate || "";
     if (ad !== bd) return bd.localeCompare(ad);
@@ -289,10 +346,18 @@ export function collectTradeDrafts(options: CollectDraftsOptions): {
   const source = options.source ?? "all";
   const seen = new Set(options.seenIds ?? []);
   const warnings: string[] = [];
+  const maxPoliticianTradeAgeDays =
+    options.maxPoliticianTradeAgeDays ?? DEFAULT_POLITICIAN_MAX_TRADE_AGE_DAYS;
+  const now = options.now ?? new Date();
 
   const politicians =
     source === "all" || source === "politicians"
-      ? sortDraftsNewest(collectPoliticianDrafts(baseUrl, seen))
+      ? sortDraftsNewest(
+          collectPoliticianDrafts(baseUrl, seen, {
+            maxTradeAgeDays: maxPoliticianTradeAgeDays,
+            now,
+          })
+        )
       : [];
   const insiders =
     source === "all" || source === "insiders"
@@ -347,7 +412,10 @@ export function draftsToMarkdown(drafts: XTradeDraft[], generatedAt: string): st
     lines.push("```");
     lines.push(``);
     lines.push(`- chars: ${d.charCount}`);
-    lines.push(`- date: ${d.tradeDate || "unknown"}`);
+    lines.push(`- traded: ${d.tradeDate || "unknown"}`);
+    if (d.source === "politician" && d.filingDate) {
+      lines.push(`- filed: ${d.filingDate}`);
+    }
     lines.push(`- id: \`${d.id}\``);
     lines.push(``);
   });
