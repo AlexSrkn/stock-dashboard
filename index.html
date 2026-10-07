@@ -89,7 +89,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=seo-ssr-hide-2" />
+    <link rel="stylesheet" href="/styles.css?v=signals-fundamentals-ui-1" />
     <link rel="stylesheet" href="/auth.css?v=auth-logo-ia-8" />
     <link rel="stylesheet" href="/landing.css?v=landing-system-22" />
   </head>
@@ -3705,40 +3705,49 @@
               </div>
             </section>
 
-            <section class="overview-header trades-card" aria-label="Investment signal summary">
-              <div class="overview-header__main">
-                <div class="overview-header__score-wrap">
-                  <p class="overview-header__label">Signal score</p>
-                  <p class="overview-header__score mono" id="overview-total-score">—</p>
-                  <p class="overview-header__rating" id="overview-overall-rating">—</p>
+            <section class="signals-zone signals-zone--fundamentals trades-card" aria-label="Fundamentals signal score">
+              <h3 class="signals-zone__title">Fundamentals score</h3>
+              <div class="signals-score">
+                <div class="signals-score__hero">
+                  <div class="signals-score__score-block">
+                    <p class="signals-score__label">Signal score</p>
+                    <p class="signals-score__value mono" id="overview-total-score">—</p>
+                    <p class="signals-score__rating" id="overview-overall-rating">—</p>
+                  </div>
+                  <div class="signals-score__counts" id="overview-signal-counts" aria-label="Signal counts">
+                    <span class="signals-summary__item signals-summary__item--buy">
+                      <span class="signals-summary__dot" aria-hidden="true"></span><strong>0</strong> strong
+                    </span>
+                    <span class="signals-summary__item signals-summary__item--neutral">
+                      <span class="signals-summary__dot" aria-hidden="true"></span><strong>0</strong> neutral
+                    </span>
+                    <span class="signals-summary__item signals-summary__item--sell">
+                      <span class="signals-summary__dot" aria-hidden="true"></span><strong>0</strong> weak
+                    </span>
+                  </div>
                 </div>
-                <div class="overview-header__counts" id="overview-signal-counts">
-                  <span class="overview-count overview-count--green">🟢 <strong>0</strong> Strong</span>
-                  <span class="overview-count overview-count--neutral"><span class="overview-signal-dot" aria-hidden="true"></span> <strong>0</strong> Neutral</span>
-                  <span class="overview-count overview-count--red">🔴 <strong>0</strong> Weak</span>
-                </div>
-              </div>
-              <p class="muted small overview-header__source" id="overview-data-source">SEC Company Facts</p>
-            </section>
-
-            <section class="overview-top-signals trades-card" aria-labelledby="overview-top-signals-heading">
-              <h2 id="overview-top-signals-heading" class="overview-section-title">Top signals</h2>
-              <div class="overview-top-signals__grid">
-                <div class="overview-top-signals__col">
-                  <h3 class="overview-top-signals__subtitle overview-top-signals__subtitle--green">Top bullish signals</h3>
-                  <ul class="overview-top-signals__list" id="overview-bullish-list"></ul>
-                </div>
-                <div class="overview-top-signals__col">
-                  <h3 class="overview-top-signals__subtitle overview-top-signals__subtitle--red">Top bearish signals</h3>
-                  <ul class="overview-top-signals__list" id="overview-bearish-list"></ul>
-                </div>
+                <p class="muted small signals-score__source" id="overview-data-source">SEC Company Facts</p>
               </div>
             </section>
 
-            <section class="overview-categories trades-card" aria-labelledby="signals-categories-heading">
-              <h2 id="signals-categories-heading" class="overview-section-title">Category scores</h2>
+            <section class="signals-zone signals-zone--top trades-card" aria-labelledby="overview-top-signals-heading">
+              <h3 id="overview-top-signals-heading" class="signals-zone__title">Top fundamentals signals</h3>
+              <div class="signals-top-grid">
+                <div class="signals-top-col">
+                  <h4 class="signals-top-col__title signals-top-col__title--buy">Bullish</h4>
+                  <ul class="signals-top-list" id="overview-bullish-list"></ul>
+                </div>
+                <div class="signals-top-col">
+                  <h4 class="signals-top-col__title signals-top-col__title--sell">Bearish</h4>
+                  <ul class="signals-top-list" id="overview-bearish-list"></ul>
+                </div>
+              </div>
+            </section>
+
+            <section class="signals-zone signals-zone--categories trades-card" aria-labelledby="signals-categories-heading">
+              <h3 id="signals-categories-heading" class="signals-zone__title">Category scores</h3>
               <p class="muted small signals-categories__source" id="signals-categories-source">SEC Company Facts</p>
-              <div class="overview-categories__grid" id="signals-categories-grid"></div>
+              <div class="signals-categories-grid" id="signals-categories-grid"></div>
             </section>
           </div>
 
@@ -10014,6 +10023,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=stock-intent-seo-1"></script>
+    <script type="module" src="/app.js?v=signals-fundamentals-ui-1"></script>
   </body>
 </html>

@@ -22000,43 +22000,64 @@ function signalBadgeHtml(signal) {
 }
 
 function overallRatingClass(rating) {
-  return `overview-header__rating--${String(rating || "neutral").toLowerCase()}`;
+  return `signals-score__rating--${String(rating || "neutral").toLowerCase()}`;
+}
+
+function signalsCountSummaryHtml(green, yellow, red) {
+  return `<span class="signals-summary__item signals-summary__item--buy">
+      <span class="signals-summary__dot" aria-hidden="true"></span><strong>${green}</strong> strong
+    </span>
+    <span class="signals-summary__item signals-summary__item--neutral">
+      <span class="signals-summary__dot" aria-hidden="true"></span><strong>${yellow}</strong> neutral
+    </span>
+    <span class="signals-summary__item signals-summary__item--sell">
+      <span class="signals-summary__dot" aria-hidden="true"></span><strong>${red}</strong> weak
+    </span>`;
 }
 
 function renderTopSignalRow({ metric, displayMetric, signal, value }) {
   const name = displayMetric || metric;
   const val = formatSignalMetricValue(metric, value);
-  return `<li class="overview-top-signal overview-top-signal--${escapeHtml(signal)}">
-    <span class="overview-top-signal__badge" aria-hidden="true">${signalBadgeHtml(signal)}</span>
-    <span class="overview-top-signal__metric">${escapeHtml(name)}</span>
-    <span class="overview-top-signal__value mono">${val}</span>
+  const dir =
+    signal === "green" ? "buy" : signal === "red" ? "sell" : "neutral";
+  return `<li class="signals-top-row signals-top-row--${dir}">
+    <span class="signals-top-row__mark" aria-hidden="true"></span>
+    <span class="signals-top-row__metric">${escapeHtml(name)}</span>
+    <span class="signals-top-row__value mono">${val}</span>
   </li>`;
 }
 
 function renderCategoryDetailRow({ metric, displayMetric, signal, value }) {
   const name = displayMetric || metric;
   const val = formatSignalMetricValue(metric, value);
-  return `<div class="overview-category-metric">
-    <span class="overview-category-metric__name">${escapeHtml(name)}</span>
-    <span class="overview-category-metric__value mono">${val}</span>
-    <span class="overview-category-metric__badge" aria-hidden="true">${signalBadgeHtml(signal)}</span>
+  const dir =
+    signal === "green" ? "buy" : signal === "red" ? "sell" : "neutral";
+  return `<div class="signals-cat-metric signals-cat-metric--${dir}">
+    <span class="signals-cat-metric__mark" aria-hidden="true"></span>
+    <span class="signals-cat-metric__name">${escapeHtml(name)}</span>
+    <span class="signals-cat-metric__value mono">${val}</span>
   </div>`;
 }
 
 function renderCategoryCard({ name, score, tone, metrics }) {
-  const scoreLabel = score != null ? `${score}/100` : "—";
+  const scoreNum = score != null && Number.isFinite(Number(score)) ? Number(score) : null;
+  const scoreLabel = scoreNum != null ? `${scoreNum}` : "—";
+  const pct = scoreNum != null ? Math.max(0, Math.min(100, scoreNum)) : 0;
+  const dir = tone === "green" ? "buy" : tone === "red" ? "sell" : "neutral";
   const rows =
     metrics.length > 0
       ? metrics.map(renderCategoryDetailRow).join("")
-      : `<p class="overview-category__empty muted small">No metrics available.</p>`;
-  return `<details class="overview-category overview-category--${escapeHtml(tone)}" open>
-    <summary class="overview-category__summary">
-      <span class="overview-category__name">${escapeHtml(name)}</span>
-      <span class="overview-category__score mono">${scoreLabel}</span>
-      <span class="overview-category__badge" aria-hidden="true">${signalBadgeHtml(tone)}</span>
-    </summary>
-    <div class="overview-category__details">${rows}</div>
-  </details>`;
+      : `<p class="signals-cat-tile__empty muted small">No metrics available.</p>`;
+  return `<article class="signals-cat-tile signals-cat-tile--${dir}">
+    <div class="signals-cat-tile__head">
+      <span class="signals-cat-tile__name">${escapeHtml(name)}</span>
+      <span class="signals-cat-tile__score mono">${scoreLabel}<span class="signals-cat-tile__score-max">/100</span></span>
+    </div>
+    <div class="signals-cat-tile__bar" aria-hidden="true">
+      <span class="signals-cat-tile__bar-fill" style="width:${pct}%"></span>
+    </div>
+    <div class="signals-cat-tile__metrics">${rows}</div>
+  </article>`;
 }
 
 function setSignalsCategoriesSource(text) {
@@ -22085,17 +22106,18 @@ function renderStockOverview(overviewData, errMsg) {
   if (panel) panel.classList.toggle("overview-panel--empty", !hasOverviewData || !!errMsg);
 
   if (errMsg) {
-    if (scoreEl) scoreEl.textContent = "—";
+    if (scoreEl) {
+      scoreEl.textContent = "—";
+      scoreEl.className = "signals-score__value mono";
+    }
     if (ratingEl) {
       ratingEl.textContent = "Unavailable";
-      ratingEl.className = "overview-header__rating";
+      ratingEl.className = "signals-score__rating";
     }
-    if (countsEl) {
-      countsEl.innerHTML = `<span class="overview-count overview-count--green">🟢 <strong>0</strong> Strong</span>
-        <span class="overview-count overview-count--neutral">${neutralBadgeHtml()} <strong>0</strong> Neutral</span>
-        <span class="overview-count overview-count--red">🔴 <strong>0</strong> Weak</span>`;
+    if (countsEl) countsEl.innerHTML = signalsCountSummaryHtml(0, 0, 0);
+    if (bullishEl) {
+      bullishEl.innerHTML = `<li class="signals-top-row__empty muted small">${escapeHtml(errMsg)}</li>`;
     }
-    if (bullishEl) bullishEl.innerHTML = `<li class="overview-top-signal__empty muted small">${escapeHtml(errMsg)}</li>`;
     if (bearishEl) bearishEl.innerHTML = "";
     if (keyStatsEl) {
       keyStatsEl.classList.add("overview-key-stats__grid--empty");
@@ -22105,18 +22127,17 @@ function renderStockOverview(overviewData, errMsg) {
   }
 
   if (!hasOverviewData) {
-    if (scoreEl) scoreEl.textContent = "—";
+    if (scoreEl) {
+      scoreEl.textContent = "—";
+      scoreEl.className = "signals-score__value mono";
+    }
     if (ratingEl) {
       ratingEl.textContent = "—";
-      ratingEl.className = "overview-header__rating";
+      ratingEl.className = "signals-score__rating";
     }
-    if (countsEl) {
-      countsEl.innerHTML = `<span class="overview-count overview-count--green">🟢 <strong>0</strong> Strong</span>
-        <span class="overview-count overview-count--neutral">${neutralBadgeHtml()} <strong>0</strong> Neutral</span>
-        <span class="overview-count overview-count--red">🔴 <strong>0</strong> Weak</span>`;
-    }
+    if (countsEl) countsEl.innerHTML = signalsCountSummaryHtml(0, 0, 0);
     if (bullishEl) {
-      bullishEl.innerHTML = `<li class="overview-top-signal__empty muted small">Select a stock to generate signals.</li>`;
+      bullishEl.innerHTML = `<li class="signals-top-row__empty muted small">Select a stock to generate signals.</li>`;
     }
     if (bearishEl) bearishEl.innerHTML = "";
     if (keyStatsEl) {
@@ -22127,18 +22148,17 @@ function renderStockOverview(overviewData, errMsg) {
   }
 
   if (!secFilings) {
-    if (scoreEl) scoreEl.textContent = "—";
+    if (scoreEl) {
+      scoreEl.textContent = "—";
+      scoreEl.className = "signals-score__value mono";
+    }
     if (ratingEl) {
       ratingEl.textContent = "Unavailable";
-      ratingEl.className = "overview-header__rating";
+      ratingEl.className = "signals-score__rating";
     }
-    if (countsEl) {
-      countsEl.innerHTML = `<span class="overview-count overview-count--green">🟢 <strong>0</strong> Strong</span>
-        <span class="overview-count overview-count--neutral">${neutralBadgeHtml()} <strong>0</strong> Neutral</span>
-        <span class="overview-count overview-count--red">🔴 <strong>0</strong> Weak</span>`;
-    }
+    if (countsEl) countsEl.innerHTML = signalsCountSummaryHtml(0, 0, 0);
     if (bullishEl) {
-      bullishEl.innerHTML = `<li class="overview-top-signal__empty muted small">SEC filings fundamentals unavailable.</li>`;
+      bullishEl.innerHTML = `<li class="signals-top-row__empty muted small">SEC filings fundamentals unavailable.</li>`;
     }
     if (bearishEl) bearishEl.innerHTML = "";
   } else {
@@ -22148,28 +22168,35 @@ function renderStockOverview(overviewData, errMsg) {
     const bearish = getTopBearishSignals(signals);
 
     const scoreText = `${summary.totalScore >= 0 ? "+" : ""}${summary.totalScore}`;
-    if (scoreEl) scoreEl.textContent = scoreText;
+    if (scoreEl) {
+      scoreEl.textContent = scoreText;
+      const tone =
+        summary.totalScore > 0 ? "up" : summary.totalScore < 0 ? "down" : "flat";
+      scoreEl.className = `signals-score__value mono signals-score__value--${tone}`;
+    }
     if (ratingEl) {
       ratingEl.textContent = rating;
-      ratingEl.className = `overview-header__rating ${overallRatingClass(rating)}`;
+      ratingEl.className = `signals-score__rating ${overallRatingClass(rating)}`;
     }
     if (countsEl) {
-      countsEl.innerHTML = `<span class="overview-count overview-count--green">🟢 <strong>${summary.totalGreen}</strong> Strong</span>
-      <span class="overview-count overview-count--neutral">${neutralBadgeHtml()} <strong>${summary.totalYellow}</strong> Neutral</span>
-      <span class="overview-count overview-count--red">🔴 <strong>${summary.totalRed}</strong> Weak</span>`;
+      countsEl.innerHTML = signalsCountSummaryHtml(
+        summary.totalGreen,
+        summary.totalYellow,
+        summary.totalRed
+      );
     }
 
     if (bullishEl) {
       bullishEl.innerHTML =
         bullish.length > 0
           ? bullish.map(renderTopSignalRow).join("")
-          : `<li class="overview-top-signal__empty muted small">No strong bullish signals.</li>`;
+          : `<li class="signals-top-row__empty muted small">No strong bullish signals.</li>`;
     }
     if (bearishEl) {
       bearishEl.innerHTML =
         bearish.length > 0
           ? bearish.map(renderTopSignalRow).join("")
-          : `<li class="overview-top-signal__empty muted small">No strong bearish signals.</li>`;
+          : `<li class="signals-top-row__empty muted small">No strong bearish signals.</li>`;
     }
   }
 
@@ -22197,7 +22224,7 @@ function renderOverviewEmpty(msg) {
     const keyStatsEl = document.getElementById("overview-key-stats-grid");
     const text = escapeHtml(msg);
     if (bullishEl) {
-      bullishEl.innerHTML = `<li class="overview-top-signal__empty muted small">${text}</li>`;
+      bullishEl.innerHTML = `<li class="signals-top-row__empty muted small">${text}</li>`;
     }
     if (keyStatsEl) {
       keyStatsEl.classList.add("overview-key-stats__grid--empty");
