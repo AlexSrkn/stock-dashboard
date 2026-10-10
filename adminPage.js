@@ -49,6 +49,16 @@ async function loadUsers(q = "") {
             const status = u.subscriptionStatus || (premium ? "active" : "—");
             const actionPlan = premium ? "free" : "premium";
             const actionLabel = premium ? "Revoke Premium" : "Grant Premium";
+            const isAdmin = String(u.role || "") === "admin";
+            const deleteBtn = isAdmin
+              ? ""
+              : `<button
+                    type="button"
+                    class="btn btn--ghost admin-page__delete-btn"
+                    data-admin-delete="1"
+                    data-user-id="${escapeHtml(u.id)}"
+                    data-user-email="${escapeHtml(u.email)}"
+                  >Delete</button>`;
             return `
               <tr data-user-id="${escapeHtml(u.id)}">
                 <td class="mono">${escapeHtml(u.email)}</td>
@@ -63,6 +73,7 @@ async function loadUsers(q = "") {
                     data-admin-plan="${actionPlan}"
                     data-user-id="${escapeHtml(u.id)}"
                   >${actionLabel}</button>
+                  ${deleteBtn}
                 </td>
               </tr>`;
           })
@@ -87,6 +98,16 @@ async function setUserPlan(userId, plan) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || "Failed to update plan");
   return data.user;
+}
+
+async function deleteUser(userId) {
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || "Failed to delete user");
+  return data;
 }
 
 export async function refreshAdminPage() {
@@ -129,6 +150,27 @@ export function setupAdminPage() {
   });
 
   document.getElementById("admin-users-body")?.addEventListener("click", async (e) => {
+    const deleteBtn = e.target.closest?.("[data-admin-delete]");
+    if (deleteBtn) {
+      const userId = deleteBtn.getAttribute("data-user-id");
+      const email = deleteBtn.getAttribute("data-user-email") || "this user";
+      if (!userId) return;
+      const ok = window.confirm(
+        `Delete ${email}?\n\nThis permanently removes the account and sessions. It cannot be undone.`
+      );
+      if (!ok) return;
+      deleteBtn.disabled = true;
+      try {
+        await deleteUser(userId);
+        setNote(`Deleted ${email}.`, "success");
+        await loadUsers(search?.value || "");
+      } catch (err) {
+        setNote(err instanceof Error ? err.message : String(err), "error");
+        deleteBtn.disabled = false;
+      }
+      return;
+    }
+
     const btn = e.target.closest?.("[data-admin-plan]");
     if (!btn) return;
     const userId = btn.getAttribute("data-user-id");

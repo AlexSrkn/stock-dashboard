@@ -1,7 +1,9 @@
 import type http from "node:http";
 import {
   AuthError,
+  assertRateLimit,
   canAccessPremiumContent,
+  clientIp,
   forgotPassword,
   getUserFromRequest,
   login,
@@ -21,6 +23,58 @@ loadEnvFile();
 const AUTH_PREFIX = /^\/api\/auth(\/|$)/;
 const PREMIUM_PING_RE = /^\/api\/premium\/ping\/?$/;
 const ACCOUNT_RE = /^\/api\/account\/?$/;
+
+const HOUR_MS = 60 * 60_000;
+const FIFTEEN_MIN_MS = 15 * 60_000;
+
+function assertAuthIpLimit(
+  req: http.IncomingMessage,
+  action: "signup" | "login" | "forgot" | "resend" | "reset"
+): void {
+  const ip = clientIp(req);
+  if (action === "signup") {
+    assertRateLimit({
+      key: `auth:signup:${ip}`,
+      limit: 5,
+      windowMs: HOUR_MS,
+      message: "Too many signups from this network. Try again later.",
+    });
+    return;
+  }
+  if (action === "login") {
+    assertRateLimit({
+      key: `auth:login:${ip}`,
+      limit: 30,
+      windowMs: FIFTEEN_MIN_MS,
+      message: "Too many login attempts. Please wait a few minutes.",
+    });
+    return;
+  }
+  if (action === "forgot") {
+    assertRateLimit({
+      key: `auth:forgot:${ip}`,
+      limit: 5,
+      windowMs: HOUR_MS,
+      message: "Too many password reset requests. Try again later.",
+    });
+    return;
+  }
+  if (action === "resend") {
+    assertRateLimit({
+      key: `auth:resend:${ip}`,
+      limit: 5,
+      windowMs: HOUR_MS,
+      message: "Too many verification emails requested. Try again later.",
+    });
+    return;
+  }
+  assertRateLimit({
+    key: `auth:reset:${ip}`,
+    limit: 10,
+    windowMs: HOUR_MS,
+    message: "Too many password resets. Try again later.",
+  });
+}
 
 function json(
   res: http.ServerResponse,
@@ -131,6 +185,7 @@ export async function tryHandleAuth(
     }
 
     if (path === "/api/auth/signup" && req.method === "POST") {
+      assertAuthIpLimit(req, "signup");
       const body = await readJsonBody(req);
       // Ignore any client-supplied plan/role — server assigns free/user only.
       const result = await signup(req, {
@@ -152,6 +207,7 @@ export async function tryHandleAuth(
     }
 
     if (path === "/api/auth/login" && req.method === "POST") {
+      assertAuthIpLimit(req, "login");
       const body = await readJsonBody(req);
       const result = await login(req, {
         email: String(body.email || ""),
@@ -173,6 +229,7 @@ export async function tryHandleAuth(
     }
 
     if (path === "/api/auth/forgot-password" && req.method === "POST") {
+      assertAuthIpLimit(req, "forgot");
       const body = await readJsonBody(req);
       const result = await forgotPassword(String(body.email || ""));
       json(res, 200, result);
@@ -180,6 +237,7 @@ export async function tryHandleAuth(
     }
 
     if (path === "/api/auth/reset-password" && req.method === "POST") {
+      assertAuthIpLimit(req, "reset");
       const body = await readJsonBody(req);
       const result = await resetPassword({
         token: String(body.token || ""),
@@ -190,6 +248,7 @@ export async function tryHandleAuth(
     }
 
     if (path === "/api/auth/resend-verification" && req.method === "POST") {
+      assertAuthIpLimit(req, "resend");
       const body = await readJsonBody(req);
       const result = await resendVerification(String(body.email || ""));
       json(res, 200, result);

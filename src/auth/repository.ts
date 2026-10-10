@@ -168,6 +168,12 @@ export class AuthRepository {
     await this.pool.query(`DELETE FROM app_session WHERE user_id = $1`, [userId]);
   }
 
+  /** Deletes the user; sessions/tokens cascade via FK. Returns false if missing. */
+  async deleteUser(userId: number): Promise<boolean> {
+    const res = await this.pool.query(`DELETE FROM app_user WHERE id = $1`, [userId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
   async createAuthToken(input: {
     userId: number;
     purpose: AuthTokenPurpose;

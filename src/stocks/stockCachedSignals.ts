@@ -250,6 +250,9 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
         String(s.ticker).toUpperCase() === sym && !s.insufficientData && s.convictionScore != null
     );
   if (conviction?.convictionScore != null) {
+    // medianPortfolioWeight is a 0–1 fraction; chip label is "%", so convert
+    // before round2 (else 0.35% → 0.0035 → rounds to 0).
+    const medianWeightPct = Number(conviction.medianPortfolioWeight) * 100;
     pushScoreSignal(out, {
       category: "conviction-score",
       label: conviction.classification || "Conviction score",
@@ -258,7 +261,7 @@ export function buildStockCachedSignals(ticker: string): StockCachedSignal[] {
       hint: "Portfolio-weight breadth and accumulation persistence",
       buyStat: conviction.convictionScore,
       sellStat: conviction.institutionalHolders,
-      netStat: conviction.medianPortfolioWeight,
+      netStat: Number.isFinite(medianWeightPct) ? medianWeightPct : 0,
       statLabels: { buy: "Score", sell: "Holders", net: "Med weight %" },
     });
   }

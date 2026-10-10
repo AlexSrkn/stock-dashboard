@@ -9,6 +9,7 @@ import type http from "node:http";
 import {
   AuthError,
   canAccessPremiumContent,
+  deleteUserAsAdmin,
   getAuthRepository,
   requireAdminUser,
   type UserPlan,
@@ -19,6 +20,7 @@ loadEnvFile();
 
 const USERS_RE = /^\/api\/admin\/users\/?$/;
 const USER_PLAN_RE = /^\/api\/admin\/users\/(\d+)\/plan\/?$/;
+const USER_ID_RE = /^\/api\/admin\/users\/(\d+)\/?$/;
 
 function json(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, {
@@ -187,6 +189,23 @@ export async function tryHandleAdmin(
       const updated = await getAuthRepository().setUserPlan(userId, plan);
       if (!updated) throw new AuthError(404, "not_found", "User not found.");
       json(res, 200, { user: serializeAdminUser(updated) });
+    } catch (err) {
+      handleError(res, err);
+    }
+    return true;
+  }
+
+  const userMatch = url.pathname.match(USER_ID_RE);
+  if (userMatch) {
+    if (req.method !== "DELETE") {
+      json(res, 405, { error: "method_not_allowed", message: "Use DELETE." });
+      return true;
+    }
+    try {
+      const admin = await requireAdminApi(req);
+      const userId = Number(userMatch[1]);
+      await deleteUserAsAdmin(admin, userId);
+      json(res, 200, { ok: true, deletedId: userId });
     } catch (err) {
       handleError(res, err);
     }

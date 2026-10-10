@@ -15,6 +15,8 @@ export {
   verifyEmail,
   resendVerification,
   validateDisplayName,
+  deleteUserAsAdmin,
 } from "./service.js";
 export { getAuthRepository } from "./repository.js";
 export { assertPremiumRequest } from "./premiumHttp.js";
+export { assertRateLimit, clientIp } from "./rateLimit.js";

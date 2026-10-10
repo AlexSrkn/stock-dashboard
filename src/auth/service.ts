@@ -14,7 +14,19 @@ import { AuthError, toPublicUser, type AppUser, type PublicUser } from "./types.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LEN = 8;
 const MAX_PASSWORD_LEN = 128;
-const RESEND_COOLDOWN_MS = 60_000;
+/** Per-email cooldown between verification / reset sends. */
+const RESEND_COOLDOWN_MS = 5 * 60_000;
+
+/** Domains commonly used by scanners / disposable probes — reject at signup. */
+const BLOCKED_SIGNUP_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "test.com",
+  "localhost",
+  "invalid",
+  "localtest.me",
+]);
 
 /** emailNormalized → last send timestamp */
 const resendCooldown = new Map<string, number>();
@@ -44,6 +56,17 @@ export function validateEmail(email: string): string {
     throw new AuthError(400, "invalid_email", "Enter a valid email address.");
   }
   return normalized;
+}
+
+function assertSignupEmailAllowed(email: string): void {
+  const domain = email.split("@")[1] || "";
+  if (BLOCKED_SIGNUP_DOMAINS.has(domain)) {
+    throw new AuthError(
+      400,
+      "invalid_email",
+      "Enter a valid personal or work email address."
+    );
+  }
 }
 
 export function validatePassword(password: string): string {
@@ -191,6 +214,7 @@ export async function signup(
 
   const displayName = validateDisplayName(String(input.name || ""));
   const email = validateEmail(input.email);
+  assertSignupEmailAllowed(email);
   const password = validatePassword(input.password);
 
   const existing = await repo.findUserByEmail(email);
@@ -357,6 +381,36 @@ export async function resetPassword(input: {
   const user = await repo.findUserById(consumed.userId);
   if (!user) throw new AuthError(400, "invalid_token", "Reset link is invalid or expired.");
   return { user: toPublicUser(user) };
+}
+
+/**
+ * Admin-only account removal. Blocks deleting yourself or another admin.
+ */
+export async function deleteUserAsAdmin(
+  admin: AppUser,
+  targetUserId: number
+): Promise<void> {
+  const repo = getAuthRepository();
+  if (!Number.isFinite(targetUserId) || targetUserId <= 0) {
+    throw new AuthError(400, "invalid_user", "Invalid user id.");
+  }
+  if (admin.id === targetUserId) {
+    throw new AuthError(400, "cannot_delete_self", "You can’t delete your own admin account.");
+  }
+  const target = await repo.findUserById(targetUserId);
+  if (!target) {
+    throw new AuthError(404, "not_found", "User not found.");
+  }
+  if (target.role === "admin") {
+    throw new AuthError(403, "cannot_delete_admin", "Admin accounts can’t be deleted here.");
+  }
+  const ok = await repo.deleteUser(targetUserId);
+  if (!ok) {
+    throw new AuthError(404, "not_found", "User not found.");
+  }
+  console.log(
+    `[auth] Admin ${admin.email} deleted user ${target.email} (id=${targetUserId})`
+  );
 }
 
 export async function verifyEmail(
